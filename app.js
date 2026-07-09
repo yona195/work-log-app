@@ -171,7 +171,7 @@ function deleteEmployee(id) {
 }
 
 function deleteSimpleItem(type, id) {
-  appData[type] = appData[type].filter(item => item.id !== id);
+  appData[type] = appData[type].filter(item => String(item.id) !== String(id));
   saveData();
 
   showPage(type);
