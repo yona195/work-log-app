@@ -17,14 +17,6 @@ function saveData() {
 }
 
 async function loadData() {
-  const localData = localStorage.getItem(STORAGE_KEY);
-
-  if (localData) {
-    appData = JSON.parse(localData);
-    updateSyncStatus();
-    return;
-  }
-
   await loadFromCloud();
 }
 
@@ -56,8 +48,6 @@ function updateSyncStatus() {
 }
 
 async function saveToCloud() {
-  updateSyncStatus();
-
   await fetch(API_URL, {
     method: "POST",
     body: JSON.stringify({
@@ -66,6 +56,7 @@ async function saveToCloud() {
     })
   });
 
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
   markSaved();
   alert("הנתונים נשמרו ל-Google Sheets");
 }

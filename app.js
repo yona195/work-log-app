@@ -164,7 +164,7 @@ function addEmployee() {
 }
 
 function deleteEmployee(id) {
-  appData.employees = appData.employees.filter(employee => employee.id !== id);
+  appData.employees = appData.employees.filter(employee => String(employee.id) !== String(id));
   saveData();
 
   renderEmployeesPage();
@@ -178,14 +178,14 @@ function deleteSimpleItem(type, id) {
 }
 
 function deleteBuilding(id) {
-  appData.buildings = appData.buildings.filter(building => building.id !== id);
+  appData.buildings = appData.buildings.filter(building => String(building.id) !== String(id));
   saveData();
 
   renderBuildingsPage();
 }
 
 function deleteWorkLog(id) {
-  appData.workLogs = appData.workLogs.filter(log => log.id !== id);
+  appData.workLogs = appData.workLogs.filter(log => String(log.id) !== String(id));
   saveData();
 
   renderWorkLogPage();
