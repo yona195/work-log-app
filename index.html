@@ -1,11 +1,39 @@
 <!DOCTYPE html>
-<html>
+<html lang="he" dir="rtl">
 <head>
-    <title>יומן עבודה</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>יומן עבודה</title>
+
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
 
-<h1>יומן עבודה</h1>
+  <div class="app">
+    <aside class="sidebar">
+      <h2>יומן עבודה</h2>
 
+      <button class="nav-btn active" data-page="dashboard">ראשי</button>
+      <button class="nav-btn" data-page="employees">עובדים</button>
+      <button class="nav-btn" data-page="sites">אתרי עבודה</button>
+      <button class="nav-btn" data-page="buildings">מבנים</button>
+      <button class="nav-btn" data-page="customers">מזמיני עבודה</button>
+      <button class="nav-btn" data-page="worklog">יומן עבודה</button>
+      <button class="nav-btn" data-page="reports">דוחות PDF</button>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <h1 id="pageTitle">דף ראשי</h1>
+        <p>מערכת מקומית לניהול יומן עבודה</p>
+      </header>
+
+      <section id="content"></section>
+    </main>
+  </div>
+
+  <script src="data.js"></script>
+  <script src="pdf.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>
