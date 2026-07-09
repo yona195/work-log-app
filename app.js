@@ -324,7 +324,7 @@ function renderWorkLogPage() {
               const employee = appData.employees.find(e => e.id === log.employeeId);
               return `
                 <tr>
-                  <td>${log.date}</td>
+                  <td>${String(log.date).split("T")[0]}</td>
                   <td>${employee ? employee.name : ""}</td>
                   <td>${employee?.type === "external" ? "עובד חיצוני" : "עובד שלי"}</td>
                   <td>${getName(appData.sites, log.siteId)}</td>
@@ -468,7 +468,6 @@ function generateReport() {
           <tr>
             <th>תאריך</th>
             <th>עובד</th>
-            <th>סוג עובד</th>
             <th>אתר</th>
             <th>מבנה</th>
             <th>מזמין</th>
@@ -481,9 +480,8 @@ function generateReport() {
 
             return `
               <tr>
-                <td>${log.date}</td>
+                <td>${String(log.date).split("T")[0]}</td>
                 <td>${employee ? employee.name : ""}</td>
-                <td>${employee?.type === "external" ? "עובד חיצוני" : "עובד שלי"}</td>
                 <td>${getName(appData.sites, log.siteId)}</td>
                 <td>${getName(appData.buildings, log.buildingId)}</td>
                 <td>${getName(appData.customers, log.customerId)}</td>
