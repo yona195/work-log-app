@@ -8,7 +8,7 @@ loadData()
       error
     );
   });
-  
+
 const content = document.getElementById("content");
 const pageTitle = document.getElementById("pageTitle");
 const navButtons = document.querySelectorAll(".nav-btn");
@@ -451,7 +451,7 @@ function renderEmployeesPage() {
     <div class="card" style="margin-top:20px;">
       <h3>
         העובדים שלי
-        — סה״כ ${internalEmployees.length}
+        - סה״כ ${internalEmployees.length}
       </h3>
 
       ${
@@ -480,7 +480,7 @@ function renderEmployeesPage() {
           >
             <h3>
               ${subcontractor.name}
-              — סה״כ ${employees.length}
+              - סה״כ ${employees.length}
             </h3>
 
             <button
@@ -843,8 +843,8 @@ function renderWorkLogPage() {
                 ${employee.name}
                 ${
                   isInternal
-                    ? "— עובד שלי"
-                    : `— ${
+                    ? "- עובד שלי"
+                    : `- ${
                         subcontractorName ||
                         "ללא קבלן"
                       }`
@@ -1439,7 +1439,7 @@ function updateReportEmployeeOptions() {
     ${filteredEmployees.map(employee => `
       <option value="${employee.id}">
         ${employee.name}
-        — ${getEmployeeAffiliationName(employee)}
+        - ${getEmployeeAffiliationName(employee)}
       </option>
     `).join("")}
   `;
