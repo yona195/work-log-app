@@ -24,26 +24,18 @@ function createWorkLogPDF(filteredLogs) {
 
     const employeeCount = reportEmployees.length;
 
-    const site = appData.sites.find(
-      site => String(site.id) === String(log.siteId)
-    );
-
-    const building = appData.buildings.find(
-      building => String(building.id) === String(log.buildingId)
-    );
-
-    const customer = appData.customers.find(
-      customer => String(customer.id) === String(log.customerId)
-    );
+    const site = getName(appData.sites, log.siteId);
+    const buildingNames = getBuildingNames(log);
+    const customer = getName(appData.customers, log.customerId);
 
     return `
       <tr>
         <td dir="ltr">${formatDate(log.date)}</td>
         <td>${employeeNames}</td>
         <td>${employeeCount}</td>
-        <td>${site ? site.name : ""}</td>
-        <td>${building ? building.name : ""}</td>
-        <td>${customer ? customer.name : ""}</td>
+        <td>${site}</td>
+        <td>${buildingNames}</td>
+        <td>${customer}</td>
         <td>${log.notes || ""}</td>
       </tr>
     `;
@@ -87,6 +79,7 @@ function createWorkLogPDF(filteredLogs) {
           width: 100%;
           border-collapse: collapse;
           margin-top: 20px;
+          table-layout: auto;
         }
 
         th {
@@ -101,6 +94,7 @@ function createWorkLogPDF(filteredLogs) {
           text-align: center;
           font-size: 14px;
           vertical-align: middle;
+          word-break: break-word;
         }
 
         @media print {

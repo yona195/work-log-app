@@ -213,3 +213,85 @@ textarea {
 .checkbox-item:hover{
     background:#eef4ff;
 }
+.employee-actions {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.secondary-btn {
+    background: #e5e7eb;
+    color: #1f2937;
+    border: 1px solid #d1d5db;
+    padding: 9px 16px;
+    border-radius: 8px;
+    font-size: 14px;
+}
+
+.secondary-btn:hover {
+    background: #dbeafe;
+    border-color: #2563eb;
+    color: #1d4ed8;
+}
+
+@media (max-width: 600px) {
+    .employee-actions {
+        flex-direction: column;
+    }
+
+    .secondary-btn {
+        width: 100%;
+    }
+}
+.hidden {
+    display: none;
+}
+
+.buildings-section {
+    margin-top: 10px;
+}
+
+.section-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 15px;
+    margin-bottom: 10px;
+}
+
+.section-title-row label {
+    font-weight: bold;
+    margin: 0;
+}
+
+.building-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.building-actions .secondary-btn {
+    padding: 7px 12px;
+    font-size: 13px;
+}
+
+.empty-message {
+    padding: 18px;
+    text-align: center;
+    color: #6b7280;
+    font-weight: 500;
+}
+
+@media (max-width: 600px) {
+    .section-title-row {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .building-actions {
+        width: 100%;
+    }
+
+    .building-actions .secondary-btn {
+        flex: 1;
+    }
+}

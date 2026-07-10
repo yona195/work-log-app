@@ -339,6 +339,15 @@ function renderWorkLogPage() {
           placeholder="🔍 חפש עובד..."
           onkeyup="filterEmployees()"
       />
+      <div class="employee-actions">
+        <button type="button" class="secondary-btn" onclick="selectAllEmployees()">
+          בחר הכל
+        </button>
+
+        <button type="button" class="secondary-btn" onclick="clearAllEmployees()">
+          נקה הכל
+        </button>
+      </div>
       <div id="logEmployeesBox" class="checkbox-list">
         ${appData.employees.map(e => `
           <label class="checkbox-item">
@@ -356,10 +365,36 @@ function renderWorkLogPage() {
         ${appData.sites.map(s => `<option value="${s.id}">${s.name}</option>`).join("")}
       </select>
 
-      <label>מבנה</label>
-      <select id="logBuilding">
-        <option value="">בחר קודם אתר</option>
-      </select>
+      <div id="buildingsSection" class="buildings-section hidden">
+        <div class="section-title-row">
+          <label>מבנים</label>
+
+          <div class="building-actions">
+            <button
+              type="button"
+              class="secondary-btn"
+              onclick="selectAllBuildings()"
+            >
+              בחר הכל
+            </button>
+
+            <button
+              type="button"
+              class="secondary-btn"
+              onclick="clearAllBuildings()"
+            >
+              נקה הכל
+            </button>
+          </div>
+        </div>
+        <input
+            id="buildingSearch"
+            type="text"
+            placeholder="🔍 חפש מבנה..."
+            onkeyup="filterBuildings()"
+        />
+        <div id="logBuildingsBox" class="checkbox-list"></div>
+      </div>
 
       <label>מזמין עבודה</label>
       <select id="logCustomer">
@@ -399,7 +434,7 @@ function renderWorkLogPage() {
                   <td>${employeeNames}</td>
                   <td>${log.employeeCount || 1}</td>
                   <td>${getName(appData.sites, log.siteId)}</td>
-                  <td>${getName(appData.buildings, log.buildingId)}</td>
+                  <td>${getBuildingNames(log)}</td>
                   <td>${getName(appData.customers, log.customerId)}</td>
                   <td>${log.notes || ""}</td>
                   <td><button onclick="deleteWorkLog('${log.id}')">מחק</button></td>
@@ -420,34 +455,117 @@ function renderWorkLogPage() {
   updateEmployeeCountText();
 }
 
-function filterEmployees() {
+function selectAllEmployees() {
+  document
+    .querySelectorAll('input[name="logEmployees"]')
+    .forEach(checkbox => {
+      const item = checkbox.closest(".checkbox-item");
 
-    const text =
-        document.getElementById("employeeSearch").value.toLowerCase();
-
-    document.querySelectorAll(".checkbox-item").forEach(item => {
-
-        const name = item.innerText.toLowerCase();
-
-        item.style.display =
-            name.includes(text) ? "flex" : "none";
-
+      if (item && getComputedStyle(item).display !== "none") {
+        checkbox.checked = true;
+      }
     });
 
+  updateEmployeeCountText();
 }
 
+function clearAllEmployees() {
+  document
+    .querySelectorAll('input[name="logEmployees"]')
+    .forEach(checkbox => {
+      checkbox.checked = false;
+    });
+
+  updateEmployeeCountText();
+}
+
+function filterEmployees() {
+  const text = document
+    .getElementById("employeeSearch")
+    .value
+    .toLowerCase();
+
+  document
+    .querySelectorAll('#logEmployeesBox .checkbox-item')
+    .forEach(item => {
+      const name = item.innerText.toLowerCase();
+      item.style.display = name.includes(text) ? "flex" : "none";
+    });
+}
+function filterBuildings() {
+  const text = document
+    .getElementById("buildingSearch")
+    .value
+    .toLowerCase();
+
+  document
+    .querySelectorAll('#logBuildingsBox .checkbox-item')
+    .forEach(item => {
+      const name = item.innerText.toLowerCase();
+      item.style.display = name.includes(text) ? "flex" : "none";
+    });
+}
 function updateBuildingOptions() {
   const siteId = document.getElementById("logSite").value;
-  const buildingSelect = document.getElementById("logBuilding");
+  const buildingsSection = document.getElementById("buildingsSection");
+  const buildingBox = document.getElementById("logBuildingsBox");
+  const search = document.getElementById("buildingSearch");
 
-  const buildings = appData.buildings.filter(b => {
-    return String(b.siteId) === String(siteId);
-  });
+  if (search) {
+    search.value = "";
+  }  
 
-  buildingSelect.innerHTML = `
-    <option value="">בחר מבנה</option>
-    ${buildings.map(b => `<option value="${b.id}">${b.name}</option>`).join("")}
-  `;
+  if (!siteId) {
+    buildingsSection.classList.add("hidden");
+    buildingBox.innerHTML = "";
+    return;
+  }
+
+  buildingsSection.classList.remove("hidden");
+
+  const buildings = appData.buildings.filter(
+    building => String(building.siteId) === String(siteId)
+  );
+
+  if (buildings.length === 0) {
+    buildingBox.innerHTML = `
+      <div class="empty-message">
+        אין מבנים באתר הזה
+      </div>
+    `;
+    return;
+  }
+
+  buildingBox.innerHTML = buildings.map(building => `
+    <label class="checkbox-item">
+      <input
+        type="checkbox"
+        name="logBuildings"
+        value="${building.id}"
+      />
+      <span>${building.name}</span>
+    </label>
+  `).join("");
+}
+
+function selectAllBuildings() {
+  document
+    .querySelectorAll('input[name="logBuildings"]')
+    .forEach(checkbox => {
+      const item = checkbox.closest(".checkbox-item");
+
+      if (item && getComputedStyle(item).display !== "none") {
+        checkbox.checked = true;
+      }
+    });
+}
+
+function clearAllBuildings() {
+  document
+    .querySelectorAll('input[name="logBuildings"]')
+    .forEach(checkbox => {
+      checkbox.checked = false;
+    });
 }
 
 function addWorkLog() {
@@ -459,11 +577,15 @@ function addWorkLog() {
   const employeeIds = JSON.stringify(selectedEmployees);
   const employeeCount = selectedEmployees.length;
   const siteId = document.getElementById("logSite").value;
-  const buildingId = document.getElementById("logBuilding").value;
+  const selectedBuildings = Array.from(
+  document.querySelectorAll('input[name="logBuildings"]:checked')
+  ).map(input => input.value);
+
+  const buildingIds = JSON.stringify(selectedBuildings);
   const customerId = document.getElementById("logCustomer").value;
   const notes = document.getElementById("logNotes").value.trim();
 
-  if (!date || employeeCount === 0 || !siteId || !buildingId || !customerId) {
+  if (!date || employeeCount === 0 || !siteId || selectedBuildings.length === 0 || !customerId) {
     alert("נא למלא תאריך, עובד, אתר, מבנה ומזמין");
     return;
   }
@@ -475,7 +597,8 @@ function addWorkLog() {
     employeeIds,
     employeeCount,
     siteId,
-    buildingId,
+    buildingId: selectedBuildings[0],
+    buildingIds,
     customerId,
     notes
   };
@@ -486,6 +609,37 @@ function addWorkLog() {
   renderWorkLogPage();
   
 }
+
+function getBuildingIds(log) {
+  if (!log.buildingIds) {
+    return log.buildingId ? [String(log.buildingId)] : [];
+  }
+
+  const value = String(log.buildingIds).trim();
+
+  try {
+    const parsed = JSON.parse(value);
+
+    if (Array.isArray(parsed)) {
+      return parsed.map(id => String(id).trim()).filter(Boolean);
+    }
+  } catch (error) {
+    // תמיכה ברשומות ישנות
+  }
+
+  return value
+    .split(",")
+    .map(id => id.trim())
+    .filter(Boolean);
+}
+
+function getBuildingNames(log) {
+  return getBuildingIds(log)
+    .map(id => getName(appData.buildings, id))
+    .filter(Boolean)
+    .join(", ");
+}
+
 function updateEmployeeCountText() {
 
   const count = document.querySelectorAll('input[name="logEmployees"]:checked').length;
@@ -513,7 +667,7 @@ function renderReportsPage() {
       <input id="reportTo" type="date" />
 
       <label>סוג עובד</label>
-      <select id="reportEmployeeType">
+      <select id="reportEmployeeType" onchange="updateReportEmployeeOptions()">
         <option value="">כל העובדים</option>
         <option value="internal">עובדים שלי</option>
         <option value="external">עובדים חיצוניים</option>
@@ -522,7 +676,9 @@ function renderReportsPage() {
       <label>עובד</label>
       <select id="reportEmployee">
         <option value="">כל העובדים</option>
-        ${appData.employees.map(e => `<option value="${e.id}">${e.name}</option>`).join("")}
+        ${appData.employees.map(e => `
+          <option value="${e.id}">${e.name}</option>
+        `).join("")}
       </select>
 
       <label>אתר עבודה</label>
@@ -544,6 +700,27 @@ function renderReportsPage() {
     <div id="reportResult" class="card" style="margin-top:20px;">
       <p>בחר סינון ולחץ הצג דוח.</p>
     </div>
+  `;
+}
+
+function updateReportEmployeeOptions() {
+  const selectedType =
+    document.getElementById("reportEmployeeType").value;
+
+  const employeeSelect =
+    document.getElementById("reportEmployee");
+
+  const filteredEmployees = selectedType
+    ? appData.employees.filter(employee => employee.type === selectedType)
+    : appData.employees;
+
+  employeeSelect.innerHTML = `
+    <option value="">כל העובדים</option>
+    ${filteredEmployees.map(employee => `
+      <option value="${employee.id}">
+        ${employee.name}
+      </option>
+    `).join("")}
   `;
 }
 
@@ -604,7 +781,7 @@ function generateReport() {
                 <td>${employeeNames}</td>
                 <td>${employeeCount}</td>
                 <td>${getName(appData.sites, log.siteId)}</td>
-                <td>${getName(appData.buildings, log.buildingId)}</td>
+                <td>${getBuildingNames(log)}</td>
                 <td>${getName(appData.customers, log.customerId)}</td>
                 <td>${log.notes || ""}</td>
               </tr>
