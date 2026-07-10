@@ -5,20 +5,42 @@ function createWorkLogPDF(filteredLogs) {
   }
 
   const printWindow = window.open("", "_blank");
+
   if (!printWindow) {
-  alert("הדפדפן חסם את פתיחת ה-PDF. צריך לאשר Popups לאתר הזה.");
-  return;
-}
+    alert("הדפדפן חסם את פתיחת ה-PDF. צריך לאשר חלונות קופצים לאתר הזה.");
+    return;
+  }
+
+  const formatDate = (dateValue) => {
+    return String(dateValue || "").split("T")[0];
+  };
+
   const rows = filteredLogs.map(log => {
-    const employee = appData.employees.find(e => e.id === log.employeeId);
-    const site = appData.sites.find(s => s.id === log.siteId);
-    const building = appData.buildings.find(b => b.id === log.buildingId);
-    const customer = appData.customers.find(c => c.id === log.customerId);
+    const reportEmployees = getReportEmployees(log);
+
+    const employeeNames = reportEmployees
+      .map(employee => employee.name)
+      .join(", ");
+
+    const employeeCount = reportEmployees.length;
+
+    const site = appData.sites.find(
+      site => String(site.id) === String(log.siteId)
+    );
+
+    const building = appData.buildings.find(
+      building => String(building.id) === String(log.buildingId)
+    );
+
+    const customer = appData.customers.find(
+      customer => String(customer.id) === String(log.customerId)
+    );
 
     return `
       <tr>
-        <td>${log.date}</td>
-        <td>${employee ? employee.name : ""}</td>
+        <td dir="ltr">${formatDate(log.date)}</td>
+        <td>${employeeNames}</td>
+        <td>${employeeCount}</td>
         <td>${site ? site.name : ""}</td>
         <td>${building ? building.name : ""}</td>
         <td>${customer ? customer.name : ""}</td>
@@ -27,12 +49,21 @@ function createWorkLogPDF(filteredLogs) {
     `;
   }).join("");
 
+  const reportDates = filteredLogs
+    .map(log => formatDate(log.date))
+    .filter(Boolean)
+    .sort();
+
+  const fromDate = reportDates[0] || "";
+  const toDate = reportDates[reportDates.length - 1] || "";
+
   printWindow.document.write(`
     <!DOCTYPE html>
     <html lang="he" dir="rtl">
     <head>
       <meta charset="UTF-8">
       <title>דוח יומן עבודה</title>
+
       <style>
         body {
           font-family: Arial, sans-serif;
@@ -63,40 +94,63 @@ function createWorkLogPDF(filteredLogs) {
           color: white;
         }
 
-        th, td {
+        th,
+        td {
           border: 1px solid #999;
           padding: 10px;
           text-align: center;
           font-size: 14px;
+          vertical-align: middle;
         }
 
         @media print {
+          body {
+            padding: 10px;
+          }
+
           button {
             display: none;
+          }
+
+          table {
+            page-break-inside: auto;
+          }
+
+          tr {
+            page-break-inside: avoid;
+            page-break-after: auto;
+          }
+
+          thead {
+            display: table-header-group;
           }
         }
       </style>
     </head>
+
     <body>
       <h1>דוח יומן עבודה</h1>
+
       <div class="summary">
-      תאריכי הדוח:
-      ${filteredLogs[filteredLogs.length - 1].date}
-      עד
-      ${filteredLogs[0].date}
+        תאריכי הדוח:
+        <span dir="ltr">${fromDate}</span>
+        עד
+        <span dir="ltr">${toDate}</span>
       </div>
 
       <table>
         <thead>
           <tr>
             <th>תאריך</th>
-            <th>עובד</th>
+            <th>עובדים</th>
+            <th>סה״כ עובדים</th>
             <th>אתר</th>
             <th>מבנה</th>
             <th>מזמין</th>
             <th>הערות</th>
           </tr>
         </thead>
+
         <tbody>
           ${rows}
         </tbody>

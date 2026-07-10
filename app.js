@@ -25,8 +25,67 @@ function showPage(page) {
 }
 
 function getName(list, id) {
-  const item = list.find(x => x.id === id);
+  const item = list.find(x => String(x.id) === String(id));
   return item ? item.name : "";
+}
+
+function getEmployeeNames(log) {
+  return getEmployeeIds(log)
+    .map(id => {
+      const employee = appData.employees.find(
+        e => String(e.id) === String(id)
+      );
+
+      return employee ? employee.name : "";
+    })
+    .filter(Boolean)
+    .join(", ");
+}
+
+function getEmployeeIds(log) {
+  if (!log.employeeIds) {
+    return log.employeeId ? [String(log.employeeId)] : [];
+  }
+
+  const value = String(log.employeeIds).trim();
+
+  try {
+    const parsed = JSON.parse(value);
+
+    if (Array.isArray(parsed)) {
+      return parsed.map(id => String(id).trim()).filter(Boolean);
+    }
+  } catch (error) {
+    // תמיכה ברשומות הישנות שנשמרו עם פסיקים
+  }
+
+  return value
+    .split(",")
+    .map(id => id.trim())
+    .filter(Boolean);
+}
+
+function getReportEmployees(log) {
+  const selectedType =
+    document.getElementById("reportEmployeeType")?.value || "";
+
+  const selectedEmployeeId =
+    document.getElementById("reportEmployee")?.value || "";
+
+  const ids = getEmployeeIds(log);
+
+  return appData.employees.filter(employee => {
+    const existsInLog = ids.includes(String(employee.id));
+
+    const matchesType =
+      !selectedType || employee.type === selectedType;
+
+    const matchesEmployee =
+      !selectedEmployeeId ||
+      String(employee.id) === String(selectedEmployeeId);
+
+    return existsInLog && matchesType && matchesEmployee;
+  });
 }
 
 function renderDashboard() {
@@ -273,11 +332,23 @@ function renderWorkLogPage() {
       <label>תאריך</label>
       <input id="logDate" type="date" />
 
-      <label>עובד</label>
-      <select id="logEmployee">
-        <option value="">בחר עובד</option>
-        ${appData.employees.map(e => `<option value="${e.id}">${e.name}</option>`).join("")}
-      </select>
+      <h4>בחירת עובדים</h4>
+      <input
+          id="employeeSearch"
+          type="text"
+          placeholder="🔍 חפש עובד..."
+          onkeyup="filterEmployees()"
+      />
+      <div id="logEmployeesBox" class="checkbox-list">
+        ${appData.employees.map(e => `
+          <label class="checkbox-item">
+            <input type="checkbox" name="logEmployees" value="${e.id}" />
+            <span>${e.name}</span>
+          </label>
+        `).join("")}
+      </div>
+
+<p id="employeeCountText">סה״כ עובדים: 0</p>
 
       <label>אתר עבודה</label>
       <select id="logSite" onchange="updateBuildingOptions()">
@@ -310,8 +381,8 @@ function renderWorkLogPage() {
           <thead>
             <tr>
               <th>תאריך</th>
-              <th>עובד</th>
-              <th>סוג עובד</th>
+              <th>עובדים</th>
+              <th>סה״כ עובדים</th>
               <th>אתר</th>
               <th>מבנה</th>
               <th>מזמין</th>
@@ -321,12 +392,12 @@ function renderWorkLogPage() {
           </thead>
           <tbody>
             ${appData.workLogs.map(log => {
-              const employee = appData.employees.find(e => e.id === log.employeeId);
+              const employeeNames = getEmployeeNames(log);
               return `
                 <tr>
                   <td>${String(log.date).split("T")[0]}</td>
-                  <td>${employee ? employee.name : ""}</td>
-                  <td>${employee?.type === "external" ? "עובד חיצוני" : "עובד שלי"}</td>
+                  <td>${employeeNames}</td>
+                  <td>${log.employeeCount || 1}</td>
                   <td>${getName(appData.sites, log.siteId)}</td>
                   <td>${getName(appData.buildings, log.buildingId)}</td>
                   <td>${getName(appData.customers, log.customerId)}</td>
@@ -342,12 +413,36 @@ function renderWorkLogPage() {
   `;
 
   document.getElementById("logDate").value = new Date().toISOString().split("T")[0];
+  document.querySelectorAll('input[name="logEmployees"]').forEach(input => {
+    input.addEventListener("change", updateEmployeeCountText);
+  });
+
+  updateEmployeeCountText();
+}
+
+function filterEmployees() {
+
+    const text =
+        document.getElementById("employeeSearch").value.toLowerCase();
+
+    document.querySelectorAll(".checkbox-item").forEach(item => {
+
+        const name = item.innerText.toLowerCase();
+
+        item.style.display =
+            name.includes(text) ? "flex" : "none";
+
+    });
+
 }
 
 function updateBuildingOptions() {
   const siteId = document.getElementById("logSite").value;
   const buildingSelect = document.getElementById("logBuilding");
-  const buildings = appData.buildings.filter(b => b.siteId === siteId);
+
+  const buildings = appData.buildings.filter(b => {
+    return String(b.siteId) === String(siteId);
+  });
 
   buildingSelect.innerHTML = `
     <option value="">בחר מבנה</option>
@@ -357,13 +452,18 @@ function updateBuildingOptions() {
 
 function addWorkLog() {
   const date = document.getElementById("logDate").value;
-  const employeeId = document.getElementById("logEmployee").value;
+  const selectedEmployees = Array.from(
+    document.querySelectorAll('input[name="logEmployees"]:checked')
+  ).map(input => input.value);
+
+  const employeeIds = JSON.stringify(selectedEmployees);
+  const employeeCount = selectedEmployees.length;
   const siteId = document.getElementById("logSite").value;
   const buildingId = document.getElementById("logBuilding").value;
   const customerId = document.getElementById("logCustomer").value;
   const notes = document.getElementById("logNotes").value.trim();
 
-  if (!date || !employeeId || !siteId || !buildingId || !customerId) {
+  if (!date || employeeCount === 0 || !siteId || !buildingId || !customerId) {
     alert("נא למלא תאריך, עובד, אתר, מבנה ומזמין");
     return;
   }
@@ -371,7 +471,9 @@ function addWorkLog() {
   const workLog = {
     id: generateId(),
     date,
-    employeeId,
+    employeeId: selectedEmployees[0],
+    employeeIds,
+    employeeCount,
     siteId,
     buildingId,
     customerId,
@@ -382,8 +484,21 @@ function addWorkLog() {
   saveData();
 
   renderWorkLogPage();
+  
 }
+function updateEmployeeCountText() {
 
+  const count = document.querySelectorAll('input[name="logEmployees"]:checked').length;
+
+  const el = document.getElementById("employeeCountText");
+
+  if (el) {
+
+    el.innerText = `סה״כ עובדים: ${count}`;
+
+  }
+
+}
 function renderReportsPage() {
   pageTitle.innerText = "דוחות PDF";
 
@@ -435,24 +550,23 @@ function renderReportsPage() {
 function filterReportLogs() {
   const from = document.getElementById("reportFrom").value;
   const to = document.getElementById("reportTo").value;
-  const employeeType = document.getElementById("reportEmployeeType").value;
-  const employeeId = document.getElementById("reportEmployee").value;
   const siteId = document.getElementById("reportSite").value;
   const customerId = document.getElementById("reportCustomer").value;
 
   return appData.workLogs.filter(log => {
-    const employee = appData.employees.find(e => e.id === log.employeeId);
+    const logDate = String(log.date).split("T")[0];
+    const reportEmployees = getReportEmployees(log);
 
     return (
-      (!from || log.date >= from) &&
-      (!to || log.date <= to) &&
-      (!employeeType || employee?.type === employeeType) &&
-      (!employeeId || log.employeeId === employeeId) &&
-      (!siteId || log.siteId === siteId) &&
-      (!customerId || log.customerId === customerId)
+      (!from || logDate >= from) &&
+      (!to || logDate <= to) &&
+      (!siteId || String(log.siteId) === String(siteId)) &&
+      (!customerId || String(log.customerId) === String(customerId)) &&
+      reportEmployees.length > 0
     );
   });
 }
+
 
 function generateReport() {
   const filtered = filterReportLogs();
@@ -467,7 +581,8 @@ function generateReport() {
         <thead>
           <tr>
             <th>תאריך</th>
-            <th>עובד</th>
+            <th>עובדים</th>
+            <th>סה״כ עובדים</th>
             <th>אתר</th>
             <th>מבנה</th>
             <th>מזמין</th>
@@ -476,12 +591,18 @@ function generateReport() {
         </thead>
         <tbody>
           ${filtered.map(log => {
-            const employee = appData.employees.find(e => e.id === log.employeeId);
+            const reportEmployees = getReportEmployees(log);
+            const employeeNames = reportEmployees
+              .map(employee => employee.name)
+              .join(", ");
+
+            const employeeCount = reportEmployees.length;
 
             return `
               <tr>
                 <td>${String(log.date).split("T")[0]}</td>
-                <td>${employee ? employee.name : ""}</td>
+                <td>${employeeNames}</td>
+                <td>${employeeCount}</td>
                 <td>${getName(appData.sites, log.siteId)}</td>
                 <td>${getName(appData.buildings, log.buildingId)}</td>
                 <td>${getName(appData.customers, log.customerId)}</td>
