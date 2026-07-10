@@ -509,6 +509,28 @@ function getMissingRatesForLogs(logs) {
         const date =
           normalizeDate(log.date);
 
+        const fullEmployee =
+          appData.employees.find(item =>
+            String(item.id) ===
+            String(employee.employeeId)
+          );
+
+        let affiliationName =
+          "שיוך לא ידוע";
+
+        if (fullEmployee) {
+          if (fullEmployee.type === "internal") {
+            affiliationName =
+              "עובד שלי";
+          } else {
+            affiliationName =
+              getName(
+                appData.subcontractors,
+                fullEmployee.subcontractorId
+              ) || "ללא קבלן";
+          }
+        }
+
         const key = [
           employee.employeeId,
           log.siteId,
@@ -519,6 +541,8 @@ function getMissingRatesForLogs(logs) {
           missingMap.set(key, {
             employeeName:
               employee.employeeName,
+
+            affiliationName,
 
             siteName:
               getName(
@@ -699,6 +723,7 @@ function refreshDashboard() {
               <thead>
                 <tr>
                   <th>עובד</th>
+                  <th>שיוך / קבלן</th>
                   <th>אתר</th>
                   <th>תאריך</th>
                 </tr>
@@ -709,6 +734,10 @@ function refreshDashboard() {
                   <tr>
                     <td>
                       ${item.employeeName}
+                    </td>
+
+                    <td>
+                      ${item.affiliationName}
                     </td>
 
                     <td>
