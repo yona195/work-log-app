@@ -464,7 +464,7 @@ function calculateProfitBySite(logs) {
 
   logs.forEach(log => {
     const finance =
-      calculateFilteredWorkLogFinance(log);
+      calculateWorkLogFinance(log);
 
     const siteId =
       String(log.siteId || "");
@@ -2130,6 +2130,19 @@ function formatCurrency(value) {
   ).format(number);
 }
 
+function formatExcelDate(dateValue) {
+  if (!dateValue) {
+    return "";
+  }
+
+  const [year, month, day] =
+    String(dateValue)
+      .split("T")[0]
+      .split("-");
+
+  return `${day}-${month}-${year}`;
+}
+
 /* =========================================
    חישובי הכנסות, עלויות ורווח
 ========================================= */
@@ -3139,24 +3152,33 @@ function filterReportLogs() {
 function generateReport() {
   const filteredLogs =
     filterReportLogs();
+
   const reportResult =
     document.getElementById("reportResult");
+
+  if (!reportResult) {
+    return;
+  }
+
   reportResult.innerHTML = `
     <h2>דוח יומן עבודה</h2>
+
     <p>
       סה״כ רשומות:
       ${filteredLogs.length}
     </p>
+
     ${
       filteredLogs.length === 0
-        ? `<p>אין רשומות מתאימות.</p>`
+        ? `
+          <p>אין רשומות מתאימות.</p>
+        `
         : `
           <table>
             <thead>
               <tr>
                 <th>תאריך</th>
                 <th>עובדים</th>
-                <th>שיוך / קבלן</th>
                 <th>סה״כ עובדים</th>
                 <th>אתר</th>
                 <th>מבנה</th>
@@ -3164,45 +3186,53 @@ function generateReport() {
                 <th>הערות</th>
               </tr>
             </thead>
+
             <tbody>
               ${filteredLogs.map(log => {
                 const reportEmployees =
                   getReportEmployees(log);
+
                 const employeeNames =
                   reportEmployees
                     .map(employee => employee.name)
                     .join(", ");
-                const affiliationNames =
-                  getReportAffiliationNames(log);
+
                 return `
                   <tr>
                     <td>
-                      ${String(log.date || "").split("T")[0]}
+                      ${normalizeDate(log.date)}
                     </td>
+
                     <td>
                       ${employeeNames}
                     </td>
-                    <td>
-                      ${affiliationNames}
-                    </td>
+
                     <td>
                       ${reportEmployees.length}
                     </td>
+
                     <td>
-                      ${getName(
-                        appData.sites,
-                        log.siteId
-                      )}
+                      ${
+                        getName(
+                          appData.sites,
+                          log.siteId
+                        )
+                      }
                     </td>
+
                     <td>
                       ${getBuildingNames(log)}
                     </td>
+
                     <td>
-                      ${getName(
-                        appData.customers,
-                        log.customerId
-                      )}
+                      ${
+                        getName(
+                          appData.customers,
+                          log.customerId
+                        )
+                      }
                     </td>
+
                     <td>
                       ${log.notes || ""}
                     </td>
@@ -3302,7 +3332,7 @@ function generateFinancialSummary() {
 
   filteredLogs.forEach(log => {
     const finance =
-      calculateWorkLogFinance(log);
+      calculateFilteredWorkLogFinance(log);
 
     totalRevenue +=
       finance.revenue;
@@ -3437,16 +3467,6 @@ function generateFinancialSummary() {
 
   reportResult.innerHTML = `
     <h2>סיכום כספי</h2>
-
-    <p>
-      סה״כ רשומות:
-      <strong>${filteredLogs.length}</strong>
-    </p>
-
-    <p>
-      סה״כ ימי עובד:
-      <strong>${totalEmployeeDays}</strong>
-    </p>
 
     <div class="cards">
       <div class="card">
@@ -3752,7 +3772,7 @@ async function exportToExcel() {
             {
               rightToLeft: true,
               state: "frozen",
-              ySplit: 1
+              ySplit: 4
             }
           ]
         }
@@ -3760,62 +3780,183 @@ async function exportToExcel() {
 
     worksheet.columns = [
       {
-        header: "תאריך",
         key: "date",
         width: 15
       },
       {
-        header: "עובדים",
         key: "employees",
         width: 38
       },
       {
-        header: "שיוך / קבלן משנה",
-        key: "affiliation",
-        width: 28
-      },
-      {
-        header: "סה״כ עובדים",
         key: "employeeCount",
         width: 15
       },
       {
-        header: "אתר עבודה",
         key: "site",
         width: 22
       },
       {
-        header: "מבנים",
         key: "buildings",
         width: 30
       },
       {
-        header: "מזמין עבודה",
         key: "customer",
         width: 24
       },
       {
-        header: "הערות",
         key: "notes",
         width: 40
       }
     ];
+
+    const reportDates =
+      filteredLogs
+        .map(log => normalizeDate(log.date))
+        .filter(Boolean)
+        .sort();
+
+    const fromDate =
+      reportDates[0] || "";
+
+    const toDate =
+      reportDates[
+        reportDates.length - 1
+      ] || "";
+
+    // כותרת ראשית
+    worksheet.mergeCells("A1:G1");
+
+    const titleCell =
+      worksheet.getCell("A1");
+
+    titleCell.value =
+      "דוח יומן עבודה";
+
+    titleCell.font = {
+      bold: true,
+      size: 20
+    };
+
+    titleCell.alignment = {
+      horizontal: "center",
+      vertical: "middle"
+    };
+
+    worksheet.getRow(1).height = 34;
+
+    // שורת טווח התאריכים
+    worksheet.mergeCells("A2:G2");
+
+    const datesCell =
+      worksheet.getCell("A2");
+
+    datesCell.value =
+      `תאריכי הדוח: ${formatExcelDate(fromDate)} עד ${formatExcelDate(toDate)}`;
+
+    datesCell.font = {
+      bold: true,
+      size: 12
+    };
+
+    datesCell.alignment = {
+      horizontal: "center",
+      vertical: "middle"
+    };
+
+    worksheet.getRow(2).height = 24;
+
+    // שורה ריקה
+    worksheet.getRow(3).height = 10;
+
+    // כותרות הטבלה בשורה 4
+    const headerRow =
+      worksheet.getRow(4);
+
+    headerRow.values = [
+      "תאריך",
+      "עובדים",
+      "סה״כ עובדים",
+      "אתר עבודה",
+      "מבנים",
+      "מזמין עבודה",
+      "הערות"
+    ];
+
+    headerRow.height = 30;
+
+    headerRow.eachCell(cell => {
+      cell.font = {
+        bold: true,
+        color: {
+          argb: "FFFFFFFF"
+        },
+        size: 12
+      };
+
+      cell.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: {
+          argb: "FF2563EB"
+        }
+      };
+
+      cell.alignment = {
+        horizontal: "center",
+        vertical: "middle",
+        wrapText: true
+      };
+
+      cell.border = {
+        top: {
+          style: "thin",
+          color: {
+            argb: "FFD1D5DB"
+          }
+        },
+        bottom: {
+          style: "thin",
+          color: {
+            argb: "FFD1D5DB"
+          }
+        },
+        left: {
+          style: "thin",
+          color: {
+            argb: "FFD1D5DB"
+          }
+        },
+        right: {
+          style: "thin",
+          color: {
+            argb: "FFD1D5DB"
+          }
+        }
+      };
+    });
 
     filteredLogs.forEach(log => {
       const reportEmployees =
         getReportEmployees(log);
 
       worksheet.addRow({
-        date:
-          normalizeDate(log.date),
+        date: (() => {
+          const [year, month, day] =
+            normalizeDate(log.date)
+              .split("-")
+              .map(Number);
+
+          return new Date(
+            year,
+            month - 1,
+            day
+          );
+        })(),
 
         employees:
           reportEmployees
             .map(employee => employee.name)
             .join(", "),
-
-        affiliation:
-          getReportAffiliationNames(log),
 
         employeeCount:
           reportEmployees.length,
@@ -3839,58 +3980,15 @@ async function exportToExcel() {
           log.notes || ""
       });
     });
-
-    const headerRow =
-      worksheet.getRow(1);
-
-    headerRow.height = 30;
-
-    headerRow.eachCell(cell => {
-      cell.font = {
-        bold: true,
-        color: {
-          argb: "FFFFFFFF"
-        },
-        size: 12
-      };
-
-      cell.fill = {
-        type: "pattern",
-        pattern: "solid",
-        fgColor: {
-          argb: "FF2563EB"
-        }
-      };
-
-      cell.alignment = {
-        horizontal: "center",
-        vertical: "middle"
-      };
-
-      cell.border = {
-        top: {
-          style: "thin",
-          color: { argb: "FFD1D5DB" }
-        },
-        bottom: {
-          style: "thin",
-          color: { argb: "FFD1D5DB" }
-        },
-        left: {
-          style: "thin",
-          color: { argb: "FFD1D5DB" }
-        },
-        right: {
-          style: "thin",
-          color: { argb: "FFD1D5DB" }
-        }
-      };
-    });
+    worksheet.getColumn("A").numFmt =
+      "dd-mm-yyyy";
 
     worksheet.eachRow(
-      { includeEmpty: false },
+      {
+        includeEmpty: false
+      },
       (row, rowNumber) => {
-        if (rowNumber === 1) {
+        if (rowNumber <= 4) {
           return;
         }
 
@@ -3906,19 +4004,27 @@ async function exportToExcel() {
           cell.border = {
             top: {
               style: "thin",
-              color: { argb: "FFE5E7EB" }
+              color: {
+                argb: "FFE5E7EB"
+              }
             },
             bottom: {
               style: "thin",
-              color: { argb: "FFE5E7EB" }
+              color: {
+                argb: "FFE5E7EB"
+              }
             },
             left: {
               style: "thin",
-              color: { argb: "FFE5E7EB" }
+              color: {
+                argb: "FFE5E7EB"
+              }
             },
             right: {
               style: "thin",
-              color: { argb: "FFE5E7EB" }
+              color: {
+                argb: "FFE5E7EB"
+              }
             }
           };
 
@@ -3933,7 +4039,14 @@ async function exportToExcel() {
           }
         });
 
-        row.getCell("D").alignment = {
+        // תאריך
+        row.getCell("A").alignment = {
+          horizontal: "center",
+          vertical: "middle"
+        };
+
+        // מספר עובדים
+        row.getCell("C").alignment = {
           horizontal: "center",
           vertical: "middle"
         };
@@ -3941,20 +4054,28 @@ async function exportToExcel() {
     );
 
     worksheet.autoFilter = {
-      from: "A1",
-      to: "H1"
+      from: "A4",
+      to: "G4"
     };
 
-    worksheet.getColumn("A").numFmt =
-      "dd/mm/yyyy";
+    worksheet.pageSetup = {
+      orientation: "landscape",
+      paperSize: 9,
+      fitToPage: true,
+      fitToWidth: 1,
+      fitToHeight: 0,
+      margins: {
+        left: 0.25,
+        right: 0.25,
+        top: 0.5,
+        bottom: 0.5,
+        header: 0.2,
+        footer: 0.2
+      }
+    };
 
     const buffer =
       await workbook.xlsx.writeBuffer();
-
-    const today =
-      new Date()
-        .toISOString()
-        .split("T")[0];
 
     const file =
       new Blob(
@@ -3967,7 +4088,7 @@ async function exportToExcel() {
 
     saveAs(
       file,
-      `יומן_עבודה_${today}.xlsx`
+      `יומן_עבודה_${fromDate}_עד_${toDate}.xlsx`
     );
   } catch (error) {
     console.error(

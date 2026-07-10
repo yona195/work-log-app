@@ -12,7 +12,13 @@
 
   <title>יומן עבודה</title>
 
-  <link rel="stylesheet" href="style.css?v=5" />
+  <!-- אייקונים של Google -->
+  <link
+    rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0"
+  />
+
+  <link rel="stylesheet" href="style.css?v=6" />
 </head>
 
 <body class="loading">
@@ -64,77 +70,148 @@
 
     <!-- תפריט צד -->
     <aside class="sidebar">
-      <h2>יומן עבודה</h2>
 
-      <button
-        class="nav-btn active"
-        type="button"
-        data-page="dashboard"
-      >
-        סקירה כללית
-      </button>
-
-      <button
-        class="nav-btn"
-        type="button"
-        data-page="worklog"
-      >
+      <div class="sidebar-logo">
         יומן עבודה
-      </button>
+      </div>
 
-      <button
-        class="nav-btn"
-        type="button"
-        data-page="reports"
-      >
-        דוחות PDF / Excel
-      </button>
+      <div class="sidebar-section">
 
-      <button
-        class="nav-btn"
-        type="button"
-        data-page="employees"
-      >
-        עובדים וקבלני משנה
-      </button>
-      
-      <button
-        class="nav-btn"
-        type="button"
-        data-page="rates"
-      >
-        תעריפים
-      </button>
+        <div class="sidebar-section-title">
+          עבודה יומית
+        </div>
 
-      <button
-        class="nav-btn"
-        type="button"
-        data-page="sites"
-      >
-        אתרי עבודה
-      </button>
+        <button
+          class="nav-btn active"
+          data-page="dashboard"
+          type="button"
+        >
+          <span class="material-symbols-rounded nav-icon">
+            dashboard
+          </span>
 
-      <button
-        class="nav-btn"
-        type="button"
-        data-page="buildings"
-      >
-        מבנים
-      </button>
+          <span>
+            סקירה כללית
+          </span>
+        </button>
 
-      <button
-        class="nav-btn"
-        type="button"
-        data-page="customers"
-      >
-        מזמיני עבודה
-      </button>
+        <button
+          class="nav-btn"
+          data-page="worklog"
+          type="button"
+        >
+          <span class="material-symbols-rounded nav-icon">
+            event_note
+          </span>
+
+          <span>
+            יומן עבודה
+          </span>
+        </button>
+
+        <button
+          class="nav-btn"
+          data-page="reports"
+          type="button"
+        >
+          <span class="material-symbols-rounded nav-icon">
+            description
+          </span>
+
+          <span>
+            דוחות
+          </span>
+        </button>
+
+      </div>
+
+      <div class="sidebar-divider"></div>
+
+      <div class="sidebar-section">
+
+        <div class="sidebar-section-title">
+          הגדרות
+        </div>
+
+        <button
+          class="nav-btn"
+          data-page="employees"
+          type="button"
+        >
+          <span class="material-symbols-rounded nav-icon">
+            groups
+          </span>
+
+          <span>
+            עובדים
+          </span>
+        </button>
+
+        <button
+          class="nav-btn"
+          data-page="sites"
+          type="button"
+        >
+          <span class="material-symbols-rounded nav-icon">
+            location_city
+          </span>
+
+          <span>
+            אתרי עבודה
+          </span>
+        </button>
+
+        <button
+          class="nav-btn"
+          data-page="buildings"
+          type="button"
+        >
+          <span class="material-symbols-rounded nav-icon">
+            apartment
+          </span>
+
+          <span>
+            מבנים
+          </span>
+        </button>
+
+        <button
+          class="nav-btn"
+          data-page="customers"
+          type="button"
+        >
+          <span class="material-symbols-rounded nav-icon">
+            person
+          </span>
+
+          <span>
+            מזמיני עבודה
+          </span>
+        </button>
+
+        <button
+          class="nav-btn"
+          data-page="rates"
+          type="button"
+        >
+          <span class="material-symbols-rounded nav-icon">
+            payments
+          </span>
+
+          <span>
+            תעריפים
+          </span>
+        </button>
+
+      </div>
+
     </aside>
 
     <!-- תוכן ראשי -->
     <main class="main">
 
       <header class="topbar">
+
         <h1 id="pageTitle">
           סקירה כללית
         </h1>
@@ -157,11 +234,13 @@
         >
           💾 שמור לענן
         </button>
+
       </header>
 
       <section id="content"></section>
 
     </main>
+
   </div>
 
   <!-- ספריות PDF -->
@@ -173,18 +252,24 @@
     src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"
   ></script>
 
-  <!-- ספריית Excel -->
+  <!-- ספריות Excel -->
+  <script
+    src="https://cdn.jsdelivr.net/npm/exceljs/dist/exceljs.min.js"
+  ></script>
 
-  <script src="https://cdn.jsdelivr.net/npm/exceljs/dist/exceljs.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/file-saver/dist/FileSaver.min.js"></script>
+  <script
+    src="https://cdn.jsdelivr.net/npm/file-saver/dist/FileSaver.min.js"
+  ></script>
 
   <!-- ספריית גרפים -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  
+  <script
+    src="https://cdn.jsdelivr.net/npm/chart.js"
+  ></script>
+
   <!-- קבצי המערכת -->
-  <script src="data.js?v=5"></script>
-  <script src="pdf.js?v=5"></script>
-  <script src="app.js?v=5"></script>
+  <script src="data.js?v=6"></script>
+  <script src="pdf.js?v=6"></script>
+  <script src="app.js?v=6"></script>
 
 </body>
 </html>

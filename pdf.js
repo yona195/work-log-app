@@ -14,7 +14,16 @@ function createWorkLogPDF(filteredLogs) {
   }
 
   const formatDate = (dateValue) => {
-    return String(dateValue || "").split("T")[0];
+    if (!dateValue) {
+      return "";
+    }
+
+    const [year, month, day] =
+      String(dateValue)
+        .split("T")[0]
+        .split("-");
+
+    return `${day}-${month}-${year}`;
   };
 
   const rows = filteredLogs.map(log => {
@@ -25,9 +34,6 @@ function createWorkLogPDF(filteredLogs) {
       reportEmployees
         .map(employee => employee.name)
         .join(", ");
-
-    const affiliationNames =
-      getReportAffiliationNames(log);
 
     const employeeCount =
       reportEmployees.length;
@@ -52,10 +58,6 @@ function createWorkLogPDF(filteredLogs) {
 
         <td>
           ${employeeNames}
-        </td>
-
-        <td>
-          ${affiliationNames}
         </td>
 
         <td>
@@ -199,7 +201,6 @@ function createWorkLogPDF(filteredLogs) {
           <tr>
             <th>תאריך</th>
             <th>עובדים</th>
-            <th>שיוך / קבלן</th>
             <th>סה״כ עובדים</th>
             <th>אתר</th>
             <th>מבנה</th>
