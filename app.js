@@ -798,45 +798,68 @@ function downloadReportPDF() {
   createWorkLogPDF(filtered);
 }
 
-const menuToggle = document.getElementById("menuToggle");
-const sidebar = document.querySelector(".sidebar");
-const menuOverlay = document.getElementById("menuOverlay");
-const navButtons = document.querySelectorAll(".nav-btn");
+/* =========================================
+   תפריט המבורגר למובייל
+========================================= */
 
-function openMobileMenu() {
-    sidebar.classList.add("open");
-    menuOverlay.classList.add("open");
-    menuToggle.textContent = "✕";
-}
+(() => {
+  const mobileMenuToggle = document.getElementById("menuToggle");
+  const mobileSidebar = document.querySelector(".sidebar");
+  const mobileMenuOverlay = document.getElementById("menuOverlay");
+  const mobileNavButtons = document.querySelectorAll(".sidebar .nav-btn");
 
-function closeMobileMenu() {
-    sidebar.classList.remove("open");
-    menuOverlay.classList.remove("open");
-    menuToggle.textContent = "☰";
-}
+  if (!mobileMenuToggle || !mobileSidebar || !mobileMenuOverlay) {
+    console.error("רכיבי תפריט ההמבורגר לא נמצאו ב-HTML");
+    return;
+  }
 
-menuToggle.addEventListener("click", () => {
-    const isOpen = sidebar.classList.contains("open");
+  function openMobileMenu() {
+    mobileSidebar.classList.add("open");
+    mobileMenuOverlay.classList.add("open");
+
+    mobileMenuToggle.textContent = "✕";
+    mobileMenuToggle.setAttribute("aria-label", "סגירת תפריט");
+    mobileMenuToggle.setAttribute("aria-expanded", "true");
+  }
+
+  function closeMobileMenu() {
+    mobileSidebar.classList.remove("open");
+    mobileMenuOverlay.classList.remove("open");
+
+    mobileMenuToggle.textContent = "☰";
+    mobileMenuToggle.setAttribute("aria-label", "פתיחת תפריט");
+    mobileMenuToggle.setAttribute("aria-expanded", "false");
+  }
+
+  mobileMenuToggle.addEventListener("click", () => {
+    const isOpen = mobileSidebar.classList.contains("open");
 
     if (isOpen) {
-        closeMobileMenu();
+      closeMobileMenu();
     } else {
-        openMobileMenu();
+      openMobileMenu();
     }
-});
+  });
 
-menuOverlay.addEventListener("click", closeMobileMenu);
+  mobileMenuOverlay.addEventListener("click", closeMobileMenu);
 
-navButtons.forEach(button => {
+  mobileNavButtons.forEach((button) => {
     button.addEventListener("click", () => {
-        if (window.innerWidth <= 900) {
-            closeMobileMenu();
-        }
-    });
-});
-
-window.addEventListener("resize", () => {
-    if (window.innerWidth > 900) {
+      if (window.innerWidth <= 900) {
         closeMobileMenu();
+      }
+    });
+  });
+
+  window.addEventListener("resize", () => {
+    if (window.innerWidth > 900) {
+      closeMobileMenu();
     }
-});
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      closeMobileMenu();
+    }
+  });
+})();

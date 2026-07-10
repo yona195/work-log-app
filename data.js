@@ -1,7 +1,11 @@
-const API_URL = "https://script.google.com/macros/s/AKfycbz5zDU5ttTDDnGIKDJayHxu4W5pXh5VLw7SNHYj-uA-9AEFqevg7TXoEYtOPI6pL974/exec";
+const API_URL =
+  "https://script.google.com/macros/s/AKfycbz5zDU5ttTDDnGIKDJayHxu4W5pXh5VLw7SNHYj-uA-9AEFqevg7TXoEYtOPI6pL974/exec";
 
 const STORAGE_KEY = "work_log_app_data";
 const DIRTY_KEY = "work_log_has_unsaved_changes";
+
+let cloudDataLoaded = false;
+let cloudDataLoading = false;
 
 let appData = {
   employees: [],
@@ -11,18 +15,24 @@ let appData = {
   workLogs: []
 };
 
+
+/* =========================================
+   שמירה מקומית
+========================================= */
+
 function saveData() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
   markUnsaved();
 }
 
-async function loadData() {
-  await loadFromCloud();
-}
-
 function generateId() {
   return Date.now().toString();
 }
+
+
+/* =========================================
+   מצב שמירה
+========================================= */
 
 function hasUnsavedChanges() {
   return localStorage.getItem(DIRTY_KEY) === "true";
@@ -39,43 +49,182 @@ function markSaved() {
 }
 
 function updateSyncStatus() {
-  const el = document.getElementById("syncStatus");
-  if (!el) return;
+  const statusElement = document.getElementById("syncStatus");
 
-  el.innerText = hasUnsavedChanges()
+  if (!statusElement) {
+    return;
+  }
+
+  if (cloudDataLoading) {
+    statusElement.innerText = "🔄 טוען נתונים מהענן...";
+    return;
+  }
+
+  if (!cloudDataLoaded) {
+    statusElement.innerText = "🔴 הנתונים מהענן לא נטענו";
+    return;
+  }
+
+  statusElement.innerText = hasUnsavedChanges()
     ? "🟡 יש שינויים שלא נשמרו לענן"
     : "🟢 שמור בענן";
 }
 
-async function saveToCloud() {
-  await fetch(API_URL, {
-    method: "POST",
-    body: JSON.stringify({
-      action: "saveAll",
-      data: appData
-    })
-  });
 
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
-  markSaved();
-  alert("הנתונים נשמרו ל-Google Sheets");
-}
+/* =========================================
+   מסך טעינה
+========================================= */
 
-async function loadFromCloud() {
-  const response = await fetch(`${API_URL}?action=getAll`);
-  appData = await response.json();
+function showLoadingScreen(message = "טוען נתונים מהענן...") {
+  const loadingScreen = document.getElementById("loadingScreen");
+  const loadingText = document.getElementById("loadingText");
 
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
-  markSaved();
+  document.body.classList.add("loading");
 
-  if (typeof renderDashboard === "function") {
-    renderDashboard();
+  if (loadingText) {
+    loadingText.innerText = message;
+  }
+
+  if (loadingScreen) {
+    loadingScreen.classList.remove("hidden");
   }
 }
 
-window.addEventListener("beforeunload", function (e) {
+function hideLoadingScreen() {
+  const loadingScreen = document.getElementById("loadingScreen");
+
+  if (loadingScreen) {
+    loadingScreen.classList.add("hidden");
+  }
+
+  document.body.classList.remove("loading");
+}
+
+/* =========================================
+   טעינת הנתונים
+========================================= */
+
+async function loadData() {
+  await loadFromCloud();
+}
+
+async function loadFromCloud() {
+  cloudDataLoading = true;
+  cloudDataLoaded = false;
+
+  showLoadingScreen("טוען נתונים מהענן...");
+  updateSyncStatus();
+
+  try {
+    const response = await fetch(`${API_URL}?action=getAll`);
+
+    if (!response.ok) {
+      throw new Error(`שגיאת שרת: ${response.status}`);
+    }
+
+    const cloudData = await response.json();
+
+    const isValidData =
+      cloudData &&
+      Array.isArray(cloudData.employees) &&
+      Array.isArray(cloudData.sites) &&
+      Array.isArray(cloudData.buildings) &&
+      Array.isArray(cloudData.customers) &&
+      Array.isArray(cloudData.workLogs);
+
+    if (!isValidData) {
+      throw new Error("מבנה הנתונים שהתקבל מהענן אינו תקין");
+    }
+
+    appData = cloudData;
+    cloudDataLoaded = true;
+
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
+    markSaved();
+
+    if (typeof renderDashboard === "function") {
+      renderDashboard();
+    }
+
+    hideLoadingScreen();
+  } catch (error) {
+    console.error("טעינת הנתונים מהענן נכשלה:", error);
+
+    cloudDataLoaded = false;
+
+    showLoadingScreen(
+      "לא ניתן לטעון את הנתונים. בדוק את החיבור לאינטרנט ורענן את הדף."
+    );
+
+    alert(
+      "טעינת הנתונים מהענן נכשלה. השמירה לענן נחסמה כדי למנוע מחיקה."
+    );
+  } finally {
+    cloudDataLoading = false;
+    updateSyncStatus();
+  }
+}
+
+
+/* =========================================
+   שמירה לענן
+========================================= */
+
+async function saveToCloud() {
+  if (cloudDataLoading) {
+    alert("הנתונים עדיין נטענים. המתן לסיום הטעינה.");
+    return;
+  }
+
+  if (!cloudDataLoaded) {
+    alert(
+      "הנתונים מהענן לא נטענו. השמירה נחסמה כדי למנוע מחיקה."
+    );
+    return;
+  }
+
+  const confirmed = confirm(
+    "האם לשמור את הנתונים הנוכחיים ל-Google Sheets?"
+  );
+
+  if (!confirmed) {
+    return;
+  }
+
+  try {
+    const response = await fetch(API_URL, {
+      method: "POST",
+      body: JSON.stringify({
+        action: "saveAll",
+        data: appData
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`שגיאת שרת: ${response.status}`);
+    }
+
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
+    markSaved();
+
+    alert("הנתונים נשמרו ל-Google Sheets");
+  } catch (error) {
+    console.error("שמירת הנתונים לענן נכשלה:", error);
+
+    alert(
+      "השמירה לענן נכשלה. הנתונים לא נשלחו ל-Google Sheets."
+    );
+  }
+}
+
+
+/* =========================================
+   אזהרה ביציאה
+========================================= */
+
+window.addEventListener("beforeunload", function (event) {
   if (hasUnsavedChanges()) {
-    e.preventDefault();
-    e.returnValue = "";
+    event.preventDefault();
+    event.returnValue = "";
   }
 });
