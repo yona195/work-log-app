@@ -464,7 +464,7 @@ function calculateProfitBySite(logs) {
 
   logs.forEach(log => {
     const finance =
-      calculateWorkLogFinance(log);
+      calculateFilteredWorkLogFinance(log);
 
     const siteId =
       String(log.siteId || "");
@@ -1094,7 +1094,7 @@ function renderEmployeesPage() {
   const totalEmployees = appData.employees.length;
 
   content.innerHTML = `
-  
+
     <div class="card" style="margin-top:20px;">
       <h3>הוספת עובד</h3>
 
@@ -3002,7 +3002,14 @@ function renderReportsPage() {
           </option>
         `).join("")}
       </select>
-      <div style="margin-top:20px;">
+      <div
+        style="
+          margin-top:20px;
+          display:flex;
+          gap:10px;
+          flex-wrap:wrap;
+        "
+      >
         <button
           class="primary-btn"
           type="button"
@@ -3010,23 +3017,31 @@ function renderReportsPage() {
         >
           הצג דוח
         </button>
+
+        <button
+          class="primary-btn"
+          type="button"
+          onclick="generateFinancialSummary()"
+        >
+          סיכום כספי
+        </button>
+
         <button
           class="primary-btn"
           type="button"
           onclick="downloadReportPDF()"
-          style="margin-right:10px;"
         >
           הפק PDF
         </button>
+
         <button
           class="primary-btn"
           type="button"
           onclick="exportToExcel()"
-          style="margin-right:10px;"
         >
           ייצוא לאקסל
         </button>
-      </div>
+      </div>    
     </div>
     <div
       id="reportResult"
@@ -3197,6 +3212,435 @@ function generateReport() {
             </tbody>
           </table>
         `
+    }
+  `;
+}
+function calculateFilteredWorkLogFinance(log) {
+  const result = {
+    revenue: 0,
+    cost: 0,
+    profit: 0,
+    employeeDays: 0,
+    calculatedEmployees: [],
+    missingRateEmployees: []
+  };
+
+  const reportEmployees =
+    getReportEmployees(log);
+
+  reportEmployees.forEach(employee => {
+    const rate =
+      getApplicableRate(
+        employee,
+        log.siteId,
+        log.date
+      );
+
+    if (!rate) {
+      result.missingRateEmployees.push({
+        employeeId: employee.id,
+        employeeName: employee.name
+      });
+
+      return;
+    }
+
+    const revenue =
+      Number(rate.revenuePerWorker) || 0;
+
+    const cost =
+      Number(rate.costPerWorker) || 0;
+
+    const profit =
+      revenue - cost;
+
+    result.revenue += revenue;
+    result.cost += cost;
+    result.profit += profit;
+    result.employeeDays += 1;
+
+    result.calculatedEmployees.push({
+      employeeId: employee.id,
+      employeeName: employee.name,
+      rateId: rate.id,
+      revenue,
+      cost,
+      profit
+    });
+  });
+
+  return result;
+}
+function generateFinancialSummary() {
+  const filteredLogs =
+    filterReportLogs();
+
+  const reportResult =
+    document.getElementById("reportResult");
+
+  if (!reportResult) {
+    return;
+  }
+
+  if (filteredLogs.length === 0) {
+    reportResult.innerHTML = `
+      <h2>סיכום כספי</h2>
+      <p>אין רשומות מתאימות לסינון שנבחר.</p>
+    `;
+
+    return;
+  }
+
+  let totalRevenue = 0;
+  let totalCost = 0;
+  let totalProfit = 0;
+  let totalEmployeeDays = 0;
+
+  const workforceGroups = {};
+  const siteGroups = {};
+  const missingRates = [];
+
+  filteredLogs.forEach(log => {
+    const finance =
+      calculateWorkLogFinance(log);
+
+    totalRevenue +=
+      finance.revenue;
+
+    totalCost +=
+      finance.cost;
+
+    totalProfit +=
+      finance.profit;
+
+    totalEmployeeDays +=
+      finance.employeeDays;
+
+    const siteId =
+      String(log.siteId || "");
+
+    const siteName =
+      getName(
+        appData.sites,
+        log.siteId
+      ) || "אתר לא ידוע";
+
+    if (!siteGroups[siteId]) {
+      siteGroups[siteId] = {
+        name: siteName,
+        revenue: 0,
+        cost: 0,
+        profit: 0
+      };
+    }
+
+    siteGroups[siteId].revenue +=
+      finance.revenue;
+
+    siteGroups[siteId].cost +=
+      finance.cost;
+
+    siteGroups[siteId].profit +=
+      finance.profit;
+
+    finance.calculatedEmployees.forEach(
+      calculatedEmployee => {
+        const employee =
+          appData.employees.find(item =>
+            String(item.id) ===
+            String(
+              calculatedEmployee.employeeId
+            )
+          );
+
+        if (!employee) {
+          return;
+        }
+
+        let groupKey = "";
+        let groupName = "";
+
+        if (employee.type === "internal") {
+          groupKey = "internal";
+          groupName = "העובדים שלי";
+        } else {
+          groupKey =
+            `subcontractor-${employee.subcontractorId}`;
+
+          groupName =
+            getName(
+              appData.subcontractors,
+              employee.subcontractorId
+            ) || "קבלן לא ידוע";
+        }
+
+        if (!workforceGroups[groupKey]) {
+          workforceGroups[groupKey] = {
+            name: groupName,
+            revenue: 0,
+            cost: 0,
+            profit: 0
+          };
+        }
+
+        workforceGroups[groupKey].revenue +=
+          calculatedEmployee.revenue;
+
+        workforceGroups[groupKey].cost +=
+          calculatedEmployee.cost;
+
+        workforceGroups[groupKey].profit +=
+          calculatedEmployee.profit;
+      }
+    );
+
+    finance.missingRateEmployees.forEach(
+      missingEmployee => {
+        const employee =
+          appData.employees.find(item =>
+            String(item.id) ===
+            String(
+              missingEmployee.employeeId
+            )
+          );
+
+        missingRates.push({
+          employeeName:
+            missingEmployee.employeeName,
+
+          affiliationName:
+            employee
+              ? getEmployeeAffiliationName(
+                  employee
+                )
+              : "שיוך לא ידוע",
+
+          siteName,
+
+          date:
+            normalizeDate(log.date)
+        });
+      }
+    );
+  });
+
+  const workforce =
+    Object.values(workforceGroups);
+
+  const sites =
+    Object.values(siteGroups);
+
+  const resultTitle =
+    totalProfit >= 0
+      ? "רווח"
+      : "הפסד";
+
+  reportResult.innerHTML = `
+    <h2>סיכום כספי</h2>
+
+    <p>
+      סה״כ רשומות:
+      <strong>${filteredLogs.length}</strong>
+    </p>
+
+    <p>
+      סה״כ ימי עובד:
+      <strong>${totalEmployeeDays}</strong>
+    </p>
+
+    <div class="cards">
+      <div class="card">
+        <h3>הכנסות</h3>
+
+        <p>
+          ${formatCurrency(totalRevenue)}
+        </p>
+      </div>
+
+      <div class="card">
+        <h3>הוצאות</h3>
+
+        <p>
+          ${formatCurrency(totalCost)}
+        </p>
+      </div>
+
+      <div class="card">
+        <h3>${resultTitle}</h3>
+
+        <p>
+          ${formatCurrency(totalProfit)}
+        </p>
+      </div>
+    </div>
+
+    <div
+      class="card"
+      style="margin-top:20px;"
+    >
+      <h3>
+        סיכום לפי כוח אדם
+      </h3>
+
+      ${
+        workforce.length === 0
+          ? `
+            <p>
+              אין נתונים כספיים מתאימים.
+            </p>
+          `
+          : `
+            <table>
+              <thead>
+                <tr>
+                  <th>עובדים / קבלן</th>
+                  <th>הכנסות</th>
+                  <th>הוצאות</th>
+                  <th>רווח / הפסד</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                ${workforce.map(group => `
+                  <tr>
+                    <td>
+                      ${group.name}
+                    </td>
+
+                    <td>
+                      ${formatCurrency(
+                        group.revenue
+                      )}
+                    </td>
+
+                    <td>
+                      ${formatCurrency(
+                        group.cost
+                      )}
+                    </td>
+
+                    <td>
+                      ${formatCurrency(
+                        group.profit
+                      )}
+                    </td>
+                  </tr>
+                `).join("")}
+              </tbody>
+            </table>
+          `
+      }
+    </div>
+
+    <div
+      class="card"
+      style="margin-top:20px;"
+    >
+      <h3>
+        סיכום לפי אתר עבודה
+      </h3>
+
+      ${
+        sites.length === 0
+          ? `
+            <p>
+              אין נתונים לפי אתרים.
+            </p>
+          `
+          : `
+            <table>
+              <thead>
+                <tr>
+                  <th>אתר</th>
+                  <th>הכנסות</th>
+                  <th>הוצאות</th>
+                  <th>רווח / הפסד</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                ${sites.map(site => `
+                  <tr>
+                    <td>
+                      ${site.name}
+                    </td>
+
+                    <td>
+                      ${formatCurrency(
+                        site.revenue
+                      )}
+                    </td>
+
+                    <td>
+                      ${formatCurrency(
+                        site.cost
+                      )}
+                    </td>
+
+                    <td>
+                      ${formatCurrency(
+                        site.profit
+                      )}
+                    </td>
+                  </tr>
+                `).join("")}
+              </tbody>
+            </table>
+          `
+      }
+    </div>
+
+    ${
+      missingRates.length > 0
+        ? `
+          <div
+            class="card missing-rates-card"
+            style="margin-top:20px;"
+          >
+            <h3>
+              ⚠️ חסרים תעריפים
+            </h3>
+
+            <p>
+              העובדים הבאים לא נכללו
+              במלואם בסיכום:
+            </p>
+
+            <table>
+              <thead>
+                <tr>
+                  <th>עובד</th>
+                  <th>שיוך / קבלן</th>
+                  <th>אתר</th>
+                  <th>תאריך</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                ${missingRates.map(item => `
+                  <tr>
+                    <td>
+                      ${item.employeeName}
+                    </td>
+
+                    <td>
+                      ${item.affiliationName}
+                    </td>
+
+                    <td>
+                      ${item.siteName}
+                    </td>
+
+                    <td dir="ltr">
+                      ${item.date}
+                    </td>
+                  </tr>
+                `).join("")}
+              </tbody>
+            </table>
+          </div>
+        `
+        : ""
     }
   `;
 }
