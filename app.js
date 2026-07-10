@@ -1094,28 +1094,7 @@ function renderEmployeesPage() {
   const totalEmployees = appData.employees.length;
 
   content.innerHTML = `
-    <div class="cards">
-      <div class="card">
-        <h3>עובדים שלי</h3>
-        <p>${internalEmployees.length}</p>
-      </div>
-
-      <div class="card">
-        <h3>עובדי קבלן</h3>
-        <p>${subcontractorEmployees.length}</p>
-      </div>
-
-      <div class="card">
-        <h3>סה״כ עובדים</h3>
-        <p>${totalEmployees}</p>
-      </div>
-
-      <div class="card">
-        <h3>קבלני משנה</h3>
-        <p>${appData.subcontractors.length}</p>
-      </div>
-    </div>
-
+  
     <div class="card" style="margin-top:20px;">
       <h3>הוספת עובד</h3>
 
