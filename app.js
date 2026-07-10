@@ -798,3 +798,45 @@ function downloadReportPDF() {
   createWorkLogPDF(filtered);
 }
 
+const menuToggle = document.getElementById("menuToggle");
+const sidebar = document.querySelector(".sidebar");
+const menuOverlay = document.getElementById("menuOverlay");
+const navButtons = document.querySelectorAll(".nav-btn");
+
+function openMobileMenu() {
+    sidebar.classList.add("open");
+    menuOverlay.classList.add("open");
+    menuToggle.textContent = "✕";
+}
+
+function closeMobileMenu() {
+    sidebar.classList.remove("open");
+    menuOverlay.classList.remove("open");
+    menuToggle.textContent = "☰";
+}
+
+menuToggle.addEventListener("click", () => {
+    const isOpen = sidebar.classList.contains("open");
+
+    if (isOpen) {
+        closeMobileMenu();
+    } else {
+        openMobileMenu();
+    }
+});
+
+menuOverlay.addEventListener("click", closeMobileMenu);
+
+navButtons.forEach(button => {
+    button.addEventListener("click", () => {
+        if (window.innerWidth <= 900) {
+            closeMobileMenu();
+        }
+    });
+});
+
+window.addEventListener("resize", () => {
+    if (window.innerWidth > 900) {
+        closeMobileMenu();
+    }
+});
