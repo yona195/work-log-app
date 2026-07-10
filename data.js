@@ -65,19 +65,19 @@ function updateSyncStatus() {
 
   if (cloudDataLoading) {
     statusElement.innerText =
-      "🔄 טוען נתונים מהענן...";
+      "🔄 טוען נתונים ...";
     return;
   }
 
   if (!cloudDataLoaded) {
     statusElement.innerText =
-      "🔴 הנתונים מהענן לא נטענו";
+      "🔴 טעינת נתונים נכשלה";
     return;
   }
 
   statusElement.innerText = hasUnsavedChanges()
-    ? "🟡 יש שינויים שלא נשמרו לענן"
-    : "🟢 שמור בענן";
+    ? "🟡 לא מסונכרן"
+    : "🟢 מסונכרן";
 }
 
 
@@ -86,7 +86,7 @@ function updateSyncStatus() {
 ========================================= */
 
 function showLoadingScreen(
-  message = "טוען נתונים מהענן..."
+  message = "טוען נתונים ..."
 ) {
   const loadingScreen =
     document.getElementById("loadingScreen");
@@ -130,7 +130,7 @@ async function loadFromCloud() {
   cloudDataLoaded = false;
 
   showLoadingScreen(
-    "טוען נתונים מהענן..."
+    "טוען נתונים ..."
   );
 
   updateSyncStatus();
@@ -215,7 +215,7 @@ async function loadFromCloud() {
     hideLoadingScreen();
   } catch (error) {
     console.error(
-      "טעינת הנתונים מהענן נכשלה:",
+      "טעינת הנתונים נכשלה:",
       error
     );
 
@@ -293,12 +293,12 @@ async function saveToCloud() {
     );
   } catch (error) {
     console.error(
-      "שמירת הנתונים לענן נכשלה:",
+      "שמירת הנתונים נכשלה:",
       error
     );
 
     alert(
-      "השמירה לענן נכשלה. הנתונים לא נשלחו ל-Google Sheets."
+      "השמירה נכשלה. הנתונים לא נשלחו-Google Sheets."
     );
   }
 }

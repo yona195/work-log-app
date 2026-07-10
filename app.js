@@ -1080,7 +1080,7 @@ function addSimpleItem(type) {
 }
 
 function renderEmployeesPage() {
-  pageTitle.innerText = "עובדים וקבלני משנה";
+  pageTitle.innerText = "עובדים";
 
   const internalEmployees = appData.employees.filter(employee =>
     employee.type === "internal"
@@ -2945,7 +2945,7 @@ function updateEmployeeCountText() {
 }
 
 function renderReportsPage() {
-  pageTitle.innerText = "דוחות PDF / Excel";
+  pageTitle.innerText = "דוחות";
   content.innerHTML = `
     <div class="card">
       <h3>סינון דוח</h3>

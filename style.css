@@ -1370,3 +1370,21 @@ body.loading .menu-overlay {
         border-right-width: 4px;
     }
 }
+@media (min-width: 901px) {
+
+    .sync-actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-top: 14px;
+    }
+
+    .sync-actions .sync-status {
+        margin: 0;
+    }
+
+    .sync-actions .primary-btn {
+        width: auto;
+    }
+
+}
