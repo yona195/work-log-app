@@ -802,3 +802,50 @@ body.loading .menu-overlay {
         font-size: 15px;
     }
 }
+
+/* =========================================
+   סקירה כספית וגרפים
+========================================= */
+
+.dashboard-filter {
+    max-width: 700px;
+}
+
+.chart-container {
+    position: relative;
+    width: 100%;
+    height: 380px;
+    margin-top: 20px;
+}
+
+.dashboard-empty-text {
+    font-size: 16px !important;
+    font-weight: normal !important;
+    color: #6b7280;
+}
+
+.missing-rates-card {
+    border-right: 5px solid #f59e0b;
+}
+
+.missing-rates-card h3 {
+    color: #b45309;
+}
+
+.missing-rates-intro {
+    font-size: 16px !important;
+    font-weight: normal !important;
+    margin-bottom: 15px;
+}
+
+@media (max-width: 900px) {
+    .chart-container {
+        height: 320px;
+    }
+}
+
+@media (max-width: 480px) {
+    .chart-container {
+        height: 280px;
+    }
+}

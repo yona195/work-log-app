@@ -13,9 +13,9 @@ let appData = {
   sites: [],
   buildings: [],
   customers: [],
+  rates: [],
   workLogs: []
 };
-
 
 /* =========================================
    שמירה מקומית
@@ -31,7 +31,9 @@ function saveData() {
 }
 
 function generateId() {
-  return Date.now().toString();
+  return `${Date.now()}-${Math.random()
+    .toString(36)
+    .slice(2, 9)}`;
 }
 
 
@@ -179,9 +181,7 @@ async function loadFromCloud() {
         cloudData.employees,
 
       subcontractors:
-        Array.isArray(
-          cloudData.subcontractors
-        )
+        Array.isArray(cloudData.subcontractors)
           ? cloudData.subcontractors
           : [],
 
@@ -194,10 +194,15 @@ async function loadFromCloud() {
       customers:
         cloudData.customers,
 
+      rates:
+        Array.isArray(cloudData.rates)
+          ? cloudData.rates
+          : [],
+
       workLogs:
         cloudData.workLogs
     };
-
+    
     cloudDataLoaded = true;
 
     localStorage.setItem(

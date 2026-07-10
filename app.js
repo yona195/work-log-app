@@ -12,6 +12,7 @@ loadData()
 const content = document.getElementById("content");
 const pageTitle = document.getElementById("pageTitle");
 const navButtons = document.querySelectorAll(".nav-btn");
+let dashboardCharts = [];
 
 navButtons.forEach((btn) => {
   btn.addEventListener("click", () => {
@@ -36,6 +37,10 @@ function showPage(page) {
 
   if (page === "employees") {
     renderEmployeesPage();
+  }
+
+  if (page === "rates") {
+    renderRatesPage();
   }
 
   if (page === "sites") {
@@ -177,41 +182,755 @@ function getReportAffiliationNames(log) {
 function renderDashboard() {
   pageTitle.innerText = "סקירה כללית";
 
+  const currentMonth =
+    getCurrentMonthRange();
+
   content.innerHTML = `
-    <div class="cards">
-      <div class="card">
-        <h3>עובדים</h3>
-        <p>${appData.employees.length}</p>
+    <div class="card dashboard-filter">
+      <h3>תקופת הסקירה</h3>
+
+      <label>בחר תקופה</label>
+
+      <select
+        id="dashboardPeriod"
+        onchange="updateDashboardPeriodFields()"
+      >
+        <option value="current-month">
+          החודש הנוכחי
+        </option>
+
+        <option value="previous-month">
+          החודש הקודם
+        </option>
+
+        <option value="current-year">
+          השנה הנוכחית
+        </option>
+
+        <option value="custom">
+          טווח תאריכים
+        </option>
+      </select>
+
+      <div
+        id="dashboardCustomDates"
+        class="hidden"
+      >
+        <label>מתאריך</label>
+
+        <input
+          id="dashboardFrom"
+          type="date"
+          value="${currentMonth.from}"
+        />
+
+        <label>עד תאריך</label>
+
+        <input
+          id="dashboardTo"
+          type="date"
+          value="${currentMonth.to}"
+        />
       </div>
 
-      <div class="card">
-        <h3>קבלני משנה</h3>
-        <p>${appData.subcontractors.length}</p>
-      </div>
-
-      <div class="card">
-        <h3>אתרי עבודה</h3>
-        <p>${appData.sites.length}</p>
-      </div>
-
-      <div class="card">
-        <h3>מבנים</h3>
-        <p>${appData.buildings.length}</p>
-      </div>
-
-      <div class="card">
-        <h3>מזמיני עבודה</h3>
-        <p>${appData.customers.length}</p>
-      </div>
-
-      <div class="card">
-        <h3>רשומות יומן</h3>
-        <p>${appData.workLogs.length}</p>
-      </div>
+      <button
+        type="button"
+        class="primary-btn"
+        onclick="refreshDashboard()"
+      >
+        הצג נתונים
+      </button>
     </div>
+
+    <div
+      id="dashboardResults"
+      style="margin-top:20px;"
+    ></div>
   `;
+
+  refreshDashboard();
 }
 
+function updateDashboardPeriodFields() {
+  const selectedPeriod =
+    document.getElementById(
+      "dashboardPeriod"
+    )?.value || "current-month";
+
+  const customDates =
+    document.getElementById(
+      "dashboardCustomDates"
+    );
+
+  if (!customDates) {
+    return;
+  }
+
+  if (selectedPeriod === "custom") {
+    customDates.classList.remove("hidden");
+  } else {
+    customDates.classList.add("hidden");
+  }
+}
+
+function getDashboardPeriodRange() {
+  const selectedPeriod =
+    document.getElementById(
+      "dashboardPeriod"
+    )?.value || "current-month";
+
+  const now = new Date();
+
+  const formatLocalDate = date => {
+    const year =
+      date.getFullYear();
+
+    const month =
+      String(
+        date.getMonth() + 1
+      ).padStart(2, "0");
+
+    const day =
+      String(
+        date.getDate()
+      ).padStart(2, "0");
+
+    return `${year}-${month}-${day}`;
+  };
+
+  if (selectedPeriod === "previous-month") {
+    const firstDay =
+      new Date(
+        now.getFullYear(),
+        now.getMonth() - 1,
+        1
+      );
+
+    const lastDay =
+      new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        0
+      );
+
+    return {
+      from: formatLocalDate(firstDay),
+      to: formatLocalDate(lastDay),
+      label: "החודש הקודם"
+    };
+  }
+
+  if (selectedPeriod === "current-year") {
+    const year =
+      now.getFullYear();
+
+    return {
+      from: `${year}-01-01`,
+      to: `${year}-12-31`,
+      label: `שנת ${year}`
+    };
+  }
+
+  if (selectedPeriod === "custom") {
+    const from =
+      document.getElementById(
+        "dashboardFrom"
+      )?.value || "";
+
+    const to =
+      document.getElementById(
+        "dashboardTo"
+      )?.value || "";
+
+    return {
+      from,
+      to,
+      label:
+        from && to
+          ? `${from} עד ${to}`
+          : "טווח מותאם"
+    };
+  }
+
+  const currentMonth =
+    getCurrentMonthRange();
+
+  return {
+    from: currentMonth.from,
+    to: currentMonth.to,
+    label: "החודש הנוכחי"
+  };
+}
+
+function getLogsForPeriod(
+  fromDate,
+  toDate
+) {
+  const logs =
+    Array.isArray(appData.workLogs)
+      ? appData.workLogs
+      : [];
+
+  return logs.filter(log => {
+    const logDate =
+      normalizeDate(log.date);
+
+    return (
+      (!fromDate || logDate >= fromDate) &&
+      (!toDate || logDate <= toDate)
+    );
+  });
+}
+
+function calculateFinanceByWorkforce(
+  logs
+) {
+  const groups = {};
+
+  logs.forEach(log => {
+    const employeeIds =
+      getEmployeeIds(log);
+
+    employeeIds.forEach(employeeId => {
+      const employee =
+        appData.employees.find(item =>
+          String(item.id) ===
+          String(employeeId)
+        );
+
+      if (!employee) {
+        return;
+      }
+
+      const rate =
+        getApplicableRate(
+          employee,
+          log.siteId,
+          log.date
+        );
+
+      if (!rate) {
+        return;
+      }
+
+      let groupKey = "";
+      let groupName = "";
+
+      if (employee.type === "internal") {
+        groupKey = "internal";
+        groupName = "העובדים שלי";
+      } else {
+        groupKey =
+          `subcontractor-${employee.subcontractorId}`;
+
+        groupName =
+          getName(
+            appData.subcontractors,
+            employee.subcontractorId
+          ) || "קבלן לא ידוע";
+      }
+
+      if (!groups[groupKey]) {
+        groups[groupKey] = {
+          name: groupName,
+          revenue: 0,
+          cost: 0,
+          profit: 0
+        };
+      }
+
+      const revenue =
+        Number(
+          rate.revenuePerWorker
+        ) || 0;
+
+      const cost =
+        Number(
+          rate.costPerWorker
+        ) || 0;
+
+      groups[groupKey].revenue += revenue;
+      groups[groupKey].cost += cost;
+      groups[groupKey].profit +=
+        revenue - cost;
+    });
+  });
+
+  return Object.values(groups);
+}
+
+function calculateProfitBySite(logs) {
+  const sites = {};
+
+  logs.forEach(log => {
+    const finance =
+      calculateWorkLogFinance(log);
+
+    const siteId =
+      String(log.siteId || "");
+
+    const siteName =
+      getName(
+        appData.sites,
+        log.siteId
+      ) || "אתר לא ידוע";
+
+    if (!sites[siteId]) {
+      sites[siteId] = {
+        name: siteName,
+        revenue: 0,
+        cost: 0,
+        profit: 0
+      };
+    }
+
+    sites[siteId].revenue +=
+      finance.revenue;
+
+    sites[siteId].cost +=
+      finance.cost;
+
+    sites[siteId].profit +=
+      finance.profit;
+  });
+
+  return Object.values(sites);
+}
+
+function getMissingRatesForLogs(logs) {
+  const missingMap = new Map();
+
+  logs.forEach(log => {
+    const finance =
+      calculateWorkLogFinance(log);
+
+    finance.missingRateEmployees.forEach(
+      employee => {
+        const date =
+          normalizeDate(log.date);
+
+        const key = [
+          employee.employeeId,
+          log.siteId,
+          date
+        ].join("-");
+
+        if (!missingMap.has(key)) {
+          missingMap.set(key, {
+            employeeName:
+              employee.employeeName,
+
+            siteName:
+              getName(
+                appData.sites,
+                log.siteId
+              ) || "אתר לא ידוע",
+
+            date
+          });
+        }
+      }
+    );
+  });
+
+  return Array.from(
+    missingMap.values()
+  );
+}
+
+function destroyDashboardCharts() {
+  dashboardCharts.forEach(chart => {
+    if (chart) {
+      chart.destroy();
+    }
+  });
+
+  dashboardCharts = [];
+}
+
+function refreshDashboard() {
+  const results =
+    document.getElementById(
+      "dashboardResults"
+    );
+
+  if (!results) {
+    return;
+  }
+
+  const period =
+    getDashboardPeriodRange();
+
+  if (
+    period.from &&
+    period.to &&
+    period.from > period.to
+  ) {
+    alert(
+      "תאריך ההתחלה לא יכול להיות מאוחר מתאריך הסיום"
+    );
+    return;
+  }
+
+  const logs =
+    getLogsForPeriod(
+      period.from,
+      period.to
+    );
+
+  const totals =
+    calculateFinanceForPeriod(
+      period.from,
+      period.to
+    );
+
+  const workforce =
+    calculateFinanceByWorkforce(logs);
+
+  const sites =
+    calculateProfitBySite(logs);
+
+  const missingRates =
+    getMissingRatesForLogs(logs);
+
+  destroyDashboardCharts();
+
+  results.innerHTML = `
+    <div class="card">
+      <h3>
+        סיכום כספי -
+        ${period.label}
+      </h3>
+
+      <div class="cards">
+        <div class="card">
+          <h3>הכנסות</h3>
+
+          <p>
+            ${formatCurrency(totals.revenue)}
+          </p>
+        </div>
+
+        <div class="card">
+          <h3>הוצאות</h3>
+
+          <p>
+            ${formatCurrency(totals.cost)}
+          </p>
+        </div>
+
+        <div class="card">
+          <h3>רווח</h3>
+
+          <p>
+            ${formatCurrency(totals.profit)}
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div
+      class="card"
+      style="margin-top:20px;"
+    >
+      <h3>
+        הכנסות מול הוצאות לפי כוח אדם
+      </h3>
+
+      ${
+        workforce.length === 0
+          ? `
+            <p class="dashboard-empty-text">
+              אין נתונים מתאימים בתקופה שנבחרה.
+            </p>
+          `
+          : `
+            <div class="chart-container">
+              <canvas
+                id="workforceFinanceChart"
+              ></canvas>
+            </div>
+          `
+      }
+    </div>
+
+    <div
+      class="card"
+      style="margin-top:20px;"
+    >
+      <h3>
+        רווח לפי אתר עבודה
+      </h3>
+
+      ${
+        sites.length === 0
+          ? `
+            <p class="dashboard-empty-text">
+              אין נתונים מתאימים בתקופה שנבחרה.
+            </p>
+          `
+          : `
+            <div class="chart-container">
+              <canvas
+                id="siteProfitChart"
+              ></canvas>
+            </div>
+          `
+      }
+    </div>
+
+    ${
+      missingRates.length > 0
+        ? `
+          <div
+            class="card missing-rates-card"
+            style="margin-top:20px;"
+          >
+            <h3>
+              ⚠️ חסרים תעריפים
+            </h3>
+
+            <p class="missing-rates-intro">
+              העובדים הבאים לא נכללו במלואם
+              בחישוב הכספי:
+            </p>
+
+            <table>
+              <thead>
+                <tr>
+                  <th>עובד</th>
+                  <th>אתר</th>
+                  <th>תאריך</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                ${missingRates.map(item => `
+                  <tr>
+                    <td>
+                      ${item.employeeName}
+                    </td>
+
+                    <td>
+                      ${item.siteName}
+                    </td>
+
+                    <td dir="ltr">
+                      ${item.date}
+                    </td>
+                  </tr>
+                `).join("")}
+              </tbody>
+            </table>
+          </div>
+        `
+        : ""
+    }
+  `;
+
+  renderWorkforceFinanceChart(
+    workforce
+  );
+
+  renderSiteProfitChart(
+    sites
+  );
+}
+
+function renderWorkforceFinanceChart(
+  groups
+) {
+  const canvas =
+    document.getElementById(
+      "workforceFinanceChart"
+    );
+
+  if (
+    !canvas ||
+    typeof Chart === "undefined" ||
+    groups.length === 0
+  ) {
+    return;
+  }
+
+  const chart = new Chart(canvas, {
+    type: "bar",
+
+    data: {
+      labels:
+        groups.map(group =>
+          group.name
+        ),
+
+      datasets: [
+        {
+          label: "הכנסות",
+          data:
+            groups.map(group =>
+              group.revenue
+            ),
+
+          backgroundColor:
+            "rgba(37, 99, 235, 0.75)"
+        },
+
+        {
+          label: "הוצאות",
+          data:
+            groups.map(group =>
+              group.cost
+            ),
+
+          backgroundColor:
+            "rgba(239, 68, 68, 0.75)"
+        }
+      ]
+    },
+
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+
+      plugins: {
+        legend: {
+          position: "bottom"
+        },
+
+        tooltip: {
+          callbacks: {
+            label(context) {
+              return `${
+                context.dataset.label
+              }: ${
+                formatCurrency(
+                  context.raw
+                )
+              }`;
+            }
+          }
+        }
+      },
+
+      scales: {
+        y: {
+          beginAtZero: true,
+
+          ticks: {
+            callback(value) {
+              return formatCurrency(value);
+            }
+          }
+        }
+      }
+    }
+  });
+
+  dashboardCharts.push(chart);
+}
+
+function renderSiteProfitChart(sites) {
+  const canvas =
+    document.getElementById(
+      "siteProfitChart"
+    );
+
+  if (
+    !canvas ||
+    typeof Chart === "undefined" ||
+    sites.length === 0
+  ) {
+    return;
+  }
+
+  const chartColors = [
+    "rgba(37, 99, 235, 0.8)",
+    "rgba(34, 197, 94, 0.8)",
+    "rgba(245, 158, 11, 0.8)",
+    "rgba(168, 85, 247, 0.8)",
+    "rgba(239, 68, 68, 0.8)",
+    "rgba(14, 165, 233, 0.8)",
+    "rgba(236, 72, 153, 0.8)",
+    "rgba(100, 116, 139, 0.8)"
+  ];
+
+  const chart = new Chart(canvas, {
+    type: "bar",
+
+    data: {
+      labels:
+        sites.map(site =>
+          site.name
+        ),
+
+      datasets: [
+        {
+          label: "רווח",
+
+          data:
+            sites.map(site =>
+              site.profit
+            ),
+
+          backgroundColor:
+            sites.map((site, index) => {
+              if (site.profit < 0) {
+                return "rgba(239, 68, 68, 0.8)";
+              }
+
+              return chartColors[
+                index % chartColors.length
+              ];
+            }),
+
+          borderWidth: 1
+        }
+      ]
+    },
+
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+
+      plugins: {
+        legend: {
+          display: false
+        },
+
+        tooltip: {
+          callbacks: {
+            label(context) {
+              return `רווח: ${formatCurrency(
+                context.raw
+              )}`;
+            }
+          }
+        }
+      },
+
+      scales: {
+        x: {
+          ticks: {
+            font: {
+              size: 14
+            }
+          }
+        },
+
+        y: {
+          beginAtZero: true,
+
+          ticks: {
+            callback(value) {
+              return formatCurrency(value);
+            }
+          }
+        }
+      }
+    }
+  });
+
+  dashboardCharts.push(chart);
+}
 
 function addSubcontractor() {
   const input =
@@ -745,6 +1464,927 @@ function addBuilding() {
   saveData();
 
   renderBuildingsPage();
+}
+
+/* =========================================
+   תעריפים
+========================================= */
+
+function renderRatesPage() {
+  pageTitle.innerText = "תעריפים";
+
+  if (!Array.isArray(appData.rates)) {
+    appData.rates = [];
+  }
+
+  const sortedRates = [...appData.rates].sort((a, b) => {
+    const siteA =
+      getName(appData.sites, a.siteId);
+
+    const siteB =
+      getName(appData.sites, b.siteId);
+
+    const siteCompare =
+      siteA.localeCompare(siteB, "he");
+
+    if (siteCompare !== 0) {
+      return siteCompare;
+    }
+
+    return String(a.effectiveFrom || "")
+      .localeCompare(
+        String(b.effectiveFrom || "")
+      );
+  });
+
+  content.innerHTML = `
+    <div class="card">
+      <h3>הוספת תעריף</h3>
+
+      <label>בחר אתרי עבודה</label>
+
+      <div
+        id="rateSitesBox"
+        class="checkbox-list"
+      >
+        ${
+          appData.sites.length === 0
+            ? `
+              <p class="empty-message">
+                אין אתרי עבודה
+              </p>
+            `
+            : appData.sites.map(site => `
+                <label class="checkbox-item">
+                  <input
+                    type="checkbox"
+                    name="rateSites"
+                    value="${site.id}"
+                  />
+
+                  <span>
+                    ${site.name}
+                  </span>
+                </label>
+              `).join("")
+        }
+      </div>
+
+      <div class="employee-actions">
+        <button
+          type="button"
+          class="secondary-btn"
+          onclick="selectAllRateSites()"
+        >
+          בחר את כל האתרים
+        </button>
+
+        <button
+          type="button"
+          class="secondary-btn"
+          onclick="clearAllRateSites()"
+        >
+          נקה את כל האתרים
+        </button>
+      </div>
+
+      <label>סוג תעריף</label>
+
+      <select
+        id="rateType"
+        onchange="updateRateTargetOptions()"
+      >
+        <option value="subcontractor">
+          קבלן משנה
+        </option>
+
+        <option value="employee">
+          עובד שלי
+        </option>
+      </select>
+
+      <label id="rateTargetLabel">
+        בחר קבלני משנה
+      </label>
+
+      <div
+        id="rateTargetsBox"
+        class="checkbox-list"
+      ></div>
+
+      <div class="employee-actions">
+        <button
+          type="button"
+          class="secondary-btn"
+          onclick="selectAllRateTargets()"
+        >
+          בחר הכל
+        </button>
+
+        <button
+          type="button"
+          class="secondary-btn"
+          onclick="clearAllRateTargets()"
+        >
+          נקה הכל
+        </button>
+      </div>
+
+      <label>הכנסה לעובד ליום</label>
+
+      <input
+        id="rateRevenue"
+        type="number"
+        min="0"
+        step="0.01"
+        inputmode="decimal"
+        placeholder="כמה אתה מקבל עבור העובד"
+      />
+
+      <label>עלות לעובד ליום</label>
+
+      <input
+        id="rateCost"
+        type="number"
+        min="0"
+        step="0.01"
+        inputmode="decimal"
+        placeholder="כמה העובד או הקבלן עולה לך"
+      />
+
+      <label>תאריך תחילת התעריף</label>
+
+      <input
+        id="rateEffectiveFrom"
+        type="date"
+      />
+
+      <button
+        class="primary-btn"
+        type="button"
+        onclick="addRate()"
+      >
+        הוסף תעריפים
+      </button>
+    </div>
+
+    <div
+      class="card"
+      style="margin-top:20px;"
+    >
+      <h3>
+        תעריפים קיימים -
+        סה״כ ${appData.rates.length}
+      </h3>
+
+      ${
+        sortedRates.length === 0
+          ? `
+            <p>
+              עדיין לא הוגדרו תעריפים.
+            </p>
+          `
+          : `
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>אתר</th>
+                  <th>סוג</th>
+                  <th>עובד / קבלן</th>
+                  <th>הכנסה</th>
+                  <th>עלות</th>
+                  <th>רווח</th>
+                  <th>בתוקף מתאריך</th>
+                  <th>פעולות</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                ${sortedRates.map((rate, index) => {
+                  const revenue =
+                    Number(rate.revenuePerWorker) || 0;
+
+                  const cost =
+                    Number(rate.costPerWorker) || 0;
+
+                  const profit =
+                    revenue - cost;
+
+                  const isEmployeeRate =
+                    rate.rateType === "employee";
+
+                  const targetName =
+                    isEmployeeRate
+                      ? getName(
+                          appData.employees,
+                          rate.employeeId
+                        )
+                      : getName(
+                          appData.subcontractors,
+                          rate.subcontractorId
+                        );
+
+                  return `
+                    <tr>
+                      <td>
+                        ${index + 1}
+                      </td>
+
+                      <td>
+                        ${
+                          getName(
+                            appData.sites,
+                            rate.siteId
+                          ) || "אתר לא נמצא"
+                        }
+                      </td>
+
+                      <td>
+                        ${
+                          isEmployeeRate
+                            ? "עובד שלי"
+                            : "קבלן משנה"
+                        }
+                      </td>
+
+                      <td>
+                        ${
+                          targetName ||
+                          "לא נמצא"
+                        }
+                      </td>
+
+                      <td>
+                        ${formatCurrency(revenue)}
+                      </td>
+
+                      <td>
+                        ${formatCurrency(cost)}
+                      </td>
+
+                      <td>
+                        ${formatCurrency(profit)}
+                      </td>
+
+                      <td dir="ltr">
+                        ${
+                          normalizeDate(
+                            rate.effectiveFrom
+                          )
+                        }
+                      </td>
+
+                      <td>
+                        <button
+                          type="button"
+                          onclick="deleteRate('${rate.id}')"
+                        >
+                          מחק
+                        </button>
+                      </td>
+                    </tr>
+                  `;
+                }).join("")}
+              </tbody>
+            </table>
+          `
+      }
+    </div>
+  `;
+
+  updateRateTargetOptions();
+
+  const dateInput =
+    document.getElementById(
+      "rateEffectiveFrom"
+    );
+
+  if (dateInput) {
+    dateInput.value =
+      new Date()
+        .toISOString()
+        .split("T")[0];
+  }
+}
+
+function selectAllRateSites() {
+  document
+    .querySelectorAll(
+      'input[name="rateSites"]'
+    )
+    .forEach(input => {
+      input.checked = true;
+    });
+}
+
+function clearAllRateSites() {
+  document
+    .querySelectorAll(
+      'input[name="rateSites"]'
+    )
+    .forEach(input => {
+      input.checked = false;
+    });
+}
+
+function selectAllRateTargets() {
+  document
+    .querySelectorAll(
+      'input[name="rateTargets"]'
+    )
+    .forEach(input => {
+      input.checked = true;
+    });
+}
+
+function clearAllRateTargets() {
+  document
+    .querySelectorAll(
+      'input[name="rateTargets"]'
+    )
+    .forEach(input => {
+      input.checked = false;
+    });
+}
+
+function updateRateTargetOptions() {
+  const rateType =
+    document.getElementById("rateType")?.value || "";
+
+  const targetLabel =
+    document.getElementById("rateTargetLabel");
+
+  const targetsBox =
+    document.getElementById("rateTargetsBox");
+
+  if (!targetLabel || !targetsBox) {
+    return;
+  }
+
+  if (rateType === "employee") {
+    const internalEmployees =
+      appData.employees.filter(employee =>
+        employee.type === "internal"
+      );
+
+    targetLabel.innerText = "בחר עובדים";
+
+    targetsBox.innerHTML = internalEmployees.length === 0
+      ? `<p class="empty-message">אין עובדים פנימיים</p>`
+      : internalEmployees.map(employee => `
+          <label class="checkbox-item">
+            <input
+              type="checkbox"
+              name="rateTargets"
+              value="${employee.id}"
+            />
+
+            <span>${employee.name}</span>
+          </label>
+        `).join("");
+
+    return;
+  }
+
+  targetLabel.innerText = "בחר קבלני משנה";
+
+  targetsBox.innerHTML =
+    appData.subcontractors.length === 0
+      ? `<p class="empty-message">אין קבלני משנה</p>`
+      : appData.subcontractors.map(subcontractor => `
+          <label class="checkbox-item">
+            <input
+              type="checkbox"
+              name="rateTargets"
+              value="${subcontractor.id}"
+            />
+
+            <span>${subcontractor.name}</span>
+          </label>
+        `).join("");
+}
+
+function addRate() {
+  const selectedSiteIds =
+    Array.from(
+      document.querySelectorAll(
+        'input[name="rateSites"]:checked'
+      )
+    ).map(input => input.value);
+
+  const rateType =
+    document.getElementById("rateType")?.value || "";
+
+  const selectedTargetIds =
+    Array.from(
+      document.querySelectorAll(
+        'input[name="rateTargets"]:checked'
+      )
+    ).map(input => input.value);
+
+  const revenueValue =
+    document.getElementById("rateRevenue")?.value || "";
+
+  const costValue =
+    document.getElementById("rateCost")?.value || "";
+
+  const effectiveFrom =
+    document.getElementById(
+      "rateEffectiveFrom"
+    )?.value || "";
+
+  const revenuePerWorker =
+    Number(revenueValue);
+
+  const costPerWorker =
+    Number(costValue);
+
+  if (selectedSiteIds.length === 0) {
+    alert("נא לבחור לפחות אתר עבודה אחד");
+    return;
+  }
+
+  if (
+    rateType !== "employee" &&
+    rateType !== "subcontractor"
+  ) {
+    alert("נא לבחור סוג תעריף");
+    return;
+  }
+
+  if (selectedTargetIds.length === 0) {
+    alert(
+      rateType === "employee"
+        ? "נא לבחור לפחות עובד אחד"
+        : "נא לבחור לפחות קבלן משנה אחד"
+    );
+
+    return;
+  }
+
+  if (
+    revenueValue === "" ||
+    !Number.isFinite(revenuePerWorker) ||
+    revenuePerWorker < 0
+  ) {
+    alert("נא להזין הכנסה תקינה");
+    return;
+  }
+
+  if (
+    costValue === "" ||
+    !Number.isFinite(costPerWorker) ||
+    costPerWorker < 0
+  ) {
+    alert("נא להזין עלות תקינה");
+    return;
+  }
+
+  if (!effectiveFrom) {
+    alert("נא לבחור תאריך תחילת תעריף");
+    return;
+  }
+
+  if (!Array.isArray(appData.rates)) {
+    appData.rates = [];
+  }
+
+  let addedCount = 0;
+  let skippedCount = 0;
+
+  selectedSiteIds.forEach(siteId => {
+    selectedTargetIds.forEach(targetId => {
+      const duplicateRate =
+        appData.rates.some(rate => {
+          const sameBaseData =
+            String(rate.siteId) === String(siteId) &&
+            String(rate.rateType) === String(rateType) &&
+            normalizeDate(rate.effectiveFrom) ===
+              effectiveFrom;
+
+          if (!sameBaseData) {
+            return false;
+          }
+
+          if (rateType === "employee") {
+            return (
+              String(rate.employeeId || "") ===
+              String(targetId)
+            );
+          }
+
+          return (
+            String(rate.subcontractorId || "") ===
+            String(targetId)
+          );
+        });
+
+      if (duplicateRate) {
+        skippedCount += 1;
+        return;
+      }
+
+      appData.rates.push({
+        id: generateId(),
+
+        siteId,
+        rateType,
+
+        subcontractorId:
+          rateType === "subcontractor"
+            ? targetId
+            : "",
+
+        employeeId:
+          rateType === "employee"
+            ? targetId
+            : "",
+
+        revenuePerWorker,
+        costPerWorker,
+        effectiveFrom
+      });
+
+      addedCount += 1;
+    });
+  });
+
+  if (addedCount === 0) {
+    alert(
+      "לא נוספו תעריפים. כל השילובים שנבחרו כבר קיימים."
+    );
+    return;
+  }
+
+  saveData();
+  renderRatesPage();
+
+  if (skippedCount > 0) {
+    alert(
+      `נוספו ${addedCount} תעריפים. ${skippedCount} שילובים כבר היו קיימים ולא נוספו שוב.`
+    );
+  } else {
+    alert(
+      `נוספו בהצלחה ${addedCount} תעריפים.`
+    );
+  }
+}
+
+function deleteRate(id) {
+  if (!Array.isArray(appData.rates)) {
+    appData.rates = [];
+  }
+
+  const rate =
+    appData.rates.find(item =>
+      String(item.id) === String(id)
+    );
+
+  if (!rate) {
+    alert("התעריף לא נמצא");
+    return;
+  }
+
+  const siteName =
+    getName(
+      appData.sites,
+      rate.siteId
+    ) || "האתר";
+
+  const targetName =
+    rate.rateType === "employee"
+      ? getName(
+          appData.employees,
+          rate.employeeId
+        )
+      : getName(
+          appData.subcontractors,
+          rate.subcontractorId
+        );
+
+  const confirmed = confirm(
+    `האם למחוק את התעריף של ${
+      targetName || "העובד או הקבלן"
+    } באתר ${siteName}?`
+  );
+
+  if (!confirmed) {
+    return;
+  }
+
+  appData.rates =
+    appData.rates.filter(item =>
+      String(item.id) !== String(id)
+    );
+
+  saveData();
+  renderRatesPage();
+}
+
+function formatCurrency(value) {
+  const number =
+    Number(value) || 0;
+
+  return new Intl.NumberFormat(
+    "he-IL",
+    {
+      style: "currency",
+      currency: "ILS",
+      maximumFractionDigits: 2
+    }
+  ).format(number);
+}
+
+/* =========================================
+   חישובי הכנסות, עלויות ורווח
+========================================= */
+
+function normalizeDate(value) {
+  return String(value || "")
+    .split("T")[0];
+}
+
+function getApplicableRate(
+  employee,
+  siteId,
+  workDate
+) {
+  if (
+    !employee ||
+    !siteId ||
+    !workDate
+  ) {
+    return null;
+  }
+
+  const normalizedWorkDate =
+    normalizeDate(workDate);
+
+  const rates = Array.isArray(appData.rates)
+    ? appData.rates
+    : [];
+
+  const matchingRates =
+    rates
+      .filter(rate => {
+        const rateDate =
+          normalizeDate(
+            rate.effectiveFrom
+          );
+
+        if (
+          String(rate.siteId) !==
+          String(siteId)
+        ) {
+          return false;
+        }
+
+        if (
+          !rateDate ||
+          rateDate > normalizedWorkDate
+        ) {
+          return false;
+        }
+
+        /*
+          עובד פנימי:
+          מחפשים לפי employeeId
+        */
+        if (employee.type === "internal") {
+          return (
+            rate.rateType === "employee" &&
+            String(rate.employeeId || "") ===
+              String(employee.id)
+          );
+        }
+
+        /*
+          עובד קבלן:
+          מחפשים לפי subcontractorId
+        */
+        const isSubcontractorEmployee =
+          employee.type === "subcontractor" ||
+          employee.type === "external";
+
+        if (isSubcontractorEmployee) {
+          return (
+            rate.rateType === "subcontractor" &&
+            String(
+              rate.subcontractorId || ""
+            ) ===
+              String(
+                employee.subcontractorId || ""
+              )
+          );
+        }
+
+        return false;
+      })
+      .sort((a, b) => {
+        const dateA =
+          normalizeDate(
+            a.effectiveFrom
+          );
+
+        const dateB =
+          normalizeDate(
+            b.effectiveFrom
+          );
+
+        /*
+          החדש ביותר קודם
+        */
+        return dateB.localeCompare(dateA);
+      });
+
+  return matchingRates[0] || null;
+}
+
+function calculateWorkLogFinance(log) {
+  const result = {
+    revenue: 0,
+    cost: 0,
+    profit: 0,
+
+    employeeDays: 0,
+
+    calculatedEmployees: [],
+    missingRateEmployees: []
+  };
+
+  if (!log) {
+    return result;
+  }
+
+  const employeeIds =
+    getEmployeeIds(log);
+
+  employeeIds.forEach(employeeId => {
+    const employee =
+      appData.employees.find(item =>
+        String(item.id) ===
+        String(employeeId)
+      );
+
+    if (!employee) {
+      return;
+    }
+
+    const rate =
+      getApplicableRate(
+        employee,
+        log.siteId,
+        log.date
+      );
+
+    if (!rate) {
+      result.missingRateEmployees.push({
+        employeeId: employee.id,
+        employeeName: employee.name
+      });
+
+      return;
+    }
+
+    const revenue =
+      Number(
+        rate.revenuePerWorker
+      ) || 0;
+
+    const cost =
+      Number(
+        rate.costPerWorker
+      ) || 0;
+
+    const profit =
+      revenue - cost;
+
+    result.revenue += revenue;
+    result.cost += cost;
+    result.profit += profit;
+    result.employeeDays += 1;
+
+    result.calculatedEmployees.push({
+      employeeId: employee.id,
+      employeeName: employee.name,
+      rateId: rate.id,
+      revenue,
+      cost,
+      profit
+    });
+  });
+
+  return result;
+}
+
+function calculateFinanceForPeriod(
+  fromDate = "",
+  toDate = ""
+) {
+  const result = {
+    revenue: 0,
+    cost: 0,
+    profit: 0,
+
+    workLogs: 0,
+    employeeDays: 0,
+
+    missingRates: []
+  };
+
+  const logs =
+    Array.isArray(appData.workLogs)
+      ? appData.workLogs
+      : [];
+
+  logs.forEach(log => {
+    const logDate =
+      normalizeDate(log.date);
+
+    const matchesFrom =
+      !fromDate ||
+      logDate >= fromDate;
+
+    const matchesTo =
+      !toDate ||
+      logDate <= toDate;
+
+    if (!matchesFrom || !matchesTo) {
+      return;
+    }
+
+    const finance =
+      calculateWorkLogFinance(log);
+
+    result.revenue +=
+      finance.revenue;
+
+    result.cost +=
+      finance.cost;
+
+    result.profit +=
+      finance.profit;
+
+    result.workLogs += 1;
+
+    result.employeeDays +=
+      finance.employeeDays;
+
+    finance.missingRateEmployees.forEach(
+      employee => {
+        result.missingRates.push({
+          date: logDate,
+
+          siteId:
+            log.siteId,
+
+          siteName:
+            getName(
+              appData.sites,
+              log.siteId
+            ),
+
+          employeeId:
+            employee.employeeId,
+
+          employeeName:
+            employee.employeeName
+        });
+      }
+    );
+  });
+
+  return result;
+}
+
+function getCurrentMonthRange() {
+  const now = new Date();
+
+  const year =
+    now.getFullYear();
+
+  const month =
+    String(
+      now.getMonth() + 1
+    ).padStart(2, "0");
+
+  const lastDay =
+    new Date(
+      year,
+      now.getMonth() + 1,
+      0
+    ).getDate();
+
+  return {
+    from:
+      `${year}-${month}-01`,
+
+    to:
+      `${year}-${month}-${String(
+        lastDay
+      ).padStart(2, "0")}`
+  };
 }
 
 function renderWorkLogPage() {
@@ -1728,3 +3368,4 @@ function exportToExcel() {
     `יומן_עבודה_${today}.xlsx`
   );
 }
+
