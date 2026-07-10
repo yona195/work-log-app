@@ -1588,7 +1588,7 @@ function renderRatesPage() {
         </option>
 
         <option value="employee">
-          עובד שלי
+          עובד ספציפי
         </option>
       </select>
 
@@ -1681,6 +1681,7 @@ function renderRatesPage() {
                   <th>אתר</th>
                   <th>סוג</th>
                   <th>עובד / קבלן</th>
+                  <th>שיוך</th>
                   <th>הכנסה</th>
                   <th>עלות</th>
                   <th>רווח</th>
@@ -1703,16 +1704,26 @@ function renderRatesPage() {
                   const isEmployeeRate =
                     rate.rateType === "employee";
 
+                  const employee =
+                    isEmployeeRate
+                      ? appData.employees.find(item =>
+                          String(item.id) ===
+                          String(rate.employeeId)
+                        )
+                      : null;
+
                   const targetName =
                     isEmployeeRate
-                      ? getName(
-                          appData.employees,
-                          rate.employeeId
-                        )
+                      ? employee?.name || ""
                       : getName(
                           appData.subcontractors,
                           rate.subcontractorId
                         );
+
+                  const affiliationName =
+                    isEmployeeRate && employee
+                      ? getEmployeeAffiliationName(employee)
+                      : "קבלן משנה";
 
                   return `
                     <tr>
@@ -1732,8 +1743,8 @@ function renderRatesPage() {
                       <td>
                         ${
                           isEmployeeRate
-                            ? "עובד שלי"
-                            : "קבלן משנה"
+                            ? "תעריף אישי"
+                            : "תעריף כללי"
                         }
                       </td>
 
@@ -1742,6 +1753,10 @@ function renderRatesPage() {
                           targetName ||
                           "לא נמצא"
                         }
+                      </td>
+
+                      <td>
+                        ${affiliationName}
                       </td>
 
                       <td>
@@ -1852,35 +1867,44 @@ function updateRateTargetOptions() {
   }
 
   if (rateType === "employee") {
-    const internalEmployees =
-      appData.employees.filter(employee =>
-        employee.type === "internal"
-      );
+    targetLabel.innerText =
+      "בחר עובדים ספציפיים";
 
-    targetLabel.innerText = "בחר עובדים";
+    targetsBox.innerHTML =
+      appData.employees.length === 0
+        ? `
+          <p class="empty-message">
+            אין עובדים
+          </p>
+        `
+        : appData.employees.map(employee => `
+            <label class="checkbox-item">
+              <input
+                type="checkbox"
+                name="rateTargets"
+                value="${employee.id}"
+              />
 
-    targetsBox.innerHTML = internalEmployees.length === 0
-      ? `<p class="empty-message">אין עובדים פנימיים</p>`
-      : internalEmployees.map(employee => `
-          <label class="checkbox-item">
-            <input
-              type="checkbox"
-              name="rateTargets"
-              value="${employee.id}"
-            />
-
-            <span>${employee.name}</span>
-          </label>
-        `).join("");
+              <span>
+                ${employee.name}
+                — ${getEmployeeAffiliationName(employee)}
+              </span>
+            </label>
+          `).join("");
 
     return;
   }
 
-  targetLabel.innerText = "בחר קבלני משנה";
+  targetLabel.innerText =
+    "בחר קבלני משנה";
 
   targetsBox.innerHTML =
     appData.subcontractors.length === 0
-      ? `<p class="empty-message">אין קבלני משנה</p>`
+      ? `
+        <p class="empty-message">
+          אין קבלני משנה
+        </p>
+      `
       : appData.subcontractors.map(subcontractor => `
           <label class="checkbox-item">
             <input
@@ -1889,7 +1913,9 @@ function updateRateTargetOptions() {
               value="${subcontractor.id}"
             />
 
-            <span>${subcontractor.name}</span>
+            <span>
+              ${subcontractor.name}
+            </span>
           </label>
         `).join("");
 }
@@ -2150,84 +2176,57 @@ function getApplicableRate(
   const normalizedWorkDate =
     normalizeDate(workDate);
 
-  const rates = Array.isArray(appData.rates)
-    ? appData.rates
-    : [];
+  const rates =
+    Array.isArray(appData.rates)
+      ? appData.rates
+      : [];
 
-  const matchingRates =
-    rates
-      .filter(rate => {
-        const rateDate =
-          normalizeDate(
-            rate.effectiveFrom
-          );
+  const validRates = rates
+    .filter(rate => {
+      const rateDate =
+        normalizeDate(rate.effectiveFrom);
 
-        if (
-          String(rate.siteId) !==
-          String(siteId)
-        ) {
-          return false;
-        }
+      return (
+        String(rate.siteId) === String(siteId) &&
+        rateDate &&
+        rateDate <= normalizedWorkDate
+      );
+    })
+    .sort((a, b) => {
+      return normalizeDate(b.effectiveFrom)
+        .localeCompare(
+          normalizeDate(a.effectiveFrom)
+        );
+    });
 
-        if (
-          !rateDate ||
-          rateDate > normalizedWorkDate
-        ) {
-          return false;
-        }
+  // עדיפות ראשונה:
+  // תעריף אישי לעובד
+  const employeeRate =
+    validRates.find(rate =>
+      rate.rateType === "employee" &&
+      String(rate.employeeId || "") ===
+        String(employee.id)
+    );
 
-        /*
-          עובד פנימי:
-          מחפשים לפי employeeId
-        */
-        if (employee.type === "internal") {
-          return (
-            rate.rateType === "employee" &&
-            String(rate.employeeId || "") ===
-              String(employee.id)
-          );
-        }
+  if (employeeRate) {
+    return employeeRate;
+  }
 
-        /*
-          עובד קבלן:
-          מחפשים לפי subcontractorId
-        */
-        const isSubcontractorEmployee =
-          employee.type === "subcontractor" ||
-          employee.type === "external";
+  // עובד פנימי חייב תעריף אישי
+  if (employee.type === "internal") {
+    return null;
+  }
 
-        if (isSubcontractorEmployee) {
-          return (
-            rate.rateType === "subcontractor" &&
-            String(
-              rate.subcontractorId || ""
-            ) ===
-              String(
-                employee.subcontractorId || ""
-              )
-          );
-        }
+  // עדיפות שנייה:
+  // תעריף כללי של קבלן המשנה
+  const subcontractorRate =
+    validRates.find(rate =>
+      rate.rateType === "subcontractor" &&
+      String(rate.subcontractorId || "") ===
+        String(employee.subcontractorId || "")
+    );
 
-        return false;
-      })
-      .sort((a, b) => {
-        const dateA =
-          normalizeDate(
-            a.effectiveFrom
-          );
-
-        const dateB =
-          normalizeDate(
-            b.effectiveFrom
-          );
-
-        /*
-          החדש ביותר קודם
-        */
-        return dateB.localeCompare(dateA);
-      });
-
-  return matchingRates[0] || null;
+  return subcontractorRate || null;
 }
 
 function calculateWorkLogFinance(log) {
