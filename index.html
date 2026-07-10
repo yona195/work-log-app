@@ -2,17 +2,27 @@
 <html lang="he" dir="rtl">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+  />
+
+  <meta name="theme-color" content="#1f2937" />
+
   <title>יומן עבודה</title>
 
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="style.css?v=4" />
 </head>
 
 <body class="loading">
+
+  <!-- מסך טעינה -->
   <div id="loadingScreen" class="loading-screen">
     <div class="loading-box">
+
       <img
-        src="logo.png"
+        src="logo.png?v=4"
         alt="לוגו החברה"
         class="loading-logo"
       />
@@ -30,9 +40,11 @@
       <p class="loading-note">
         אנא המתן מספר שניות
       </p>
+
     </div>
   </div>
 
+  <!-- כפתור תפריט במובייל -->
   <button
     id="menuToggle"
     class="menu-toggle"
@@ -43,50 +55,90 @@
     ☰
   </button>
 
-  <div id="menuOverlay" class="menu-overlay"></div>
+  <div
+    id="menuOverlay"
+    class="menu-overlay"
+  ></div>
 
   <div class="app">
 
+    <!-- תפריט צד -->
     <aside class="sidebar">
       <h2>יומן עבודה</h2>
 
-      <button class="nav-btn active" data-page="dashboard">
+      <button
+        class="nav-btn active"
+        type="button"
+        data-page="dashboard"
+      >
         סקירה כללית
       </button>
 
-      <button class="nav-btn" data-page="worklog">
+      <button
+        class="nav-btn"
+        type="button"
+        data-page="worklog"
+      >
         יומן עבודה
       </button>
 
-      <button class="nav-btn" data-page="reports">
+      <button
+        class="nav-btn"
+        type="button"
+        data-page="reports"
+      >
         דוחות PDF / Excel
       </button>
 
-      <button class="nav-btn" data-page="employees">
+      <button
+        class="nav-btn"
+        type="button"
+        data-page="employees"
+      >
         עובדים וקבלני משנה
       </button>
 
-      <button class="nav-btn" data-page="sites">
+      <button
+        class="nav-btn"
+        type="button"
+        data-page="sites"
+      >
         אתרי עבודה
       </button>
 
-      <button class="nav-btn" data-page="buildings">
+      <button
+        class="nav-btn"
+        type="button"
+        data-page="buildings"
+      >
         מבנים
       </button>
 
-      <button class="nav-btn" data-page="customers">
+      <button
+        class="nav-btn"
+        type="button"
+        data-page="customers"
+      >
         מזמיני עבודה
       </button>
     </aside>
 
+    <!-- תוכן ראשי -->
     <main class="main">
 
       <header class="topbar">
-        <h1 id="pageTitle">יומן עבודה</h1>
+        <h1 id="pageTitle">
+          סקירה כללית
+        </h1>
 
-        <p>מערכת מקומית לניהול יומן עבודה</p>
+        <p>
+          מערכת מקומית לניהול יומן עבודה
+        </p>
 
-        <div id="syncStatus" class="sync-status">
+        <div
+          id="syncStatus"
+          class="sync-status"
+        >
           🔄 טוען נתונים מהענן...
         </div>
 
@@ -100,21 +152,28 @@
       </header>
 
       <section id="content"></section>
-    </main>
 
+    </main>
   </div>
 
-  <!-- ספריית PDF -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <!-- ספריות PDF -->
+  <script
+    src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"
+  ></script>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+  <script
+    src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"
+  ></script>
 
   <!-- ספריית Excel -->
-  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+  <script
+    src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"
+  ></script>
 
   <!-- קבצי המערכת -->
-  <script src="data.js"></script>
-  <script src="pdf.js"></script>
-  <script src="app.js"></script>
+  <script src="data.js?v=4"></script>
+  <script src="pdf.js?v=4"></script>
+  <script src="app.js?v=4"></script>
+
 </body>
 </html>
