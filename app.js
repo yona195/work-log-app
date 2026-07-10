@@ -3298,11 +3298,12 @@ function downloadReportPDF() {
   });
 })();
 
-function exportToExcel() {
-  if (typeof XLSX === "undefined") {
-    alert(
-      "ספריית Excel לא נטענה. בדוק שהוספת את ספריית XLSX לקובץ index.html."
-    );
+async function exportToExcel() {
+  if (
+    typeof ExcelJS === "undefined" ||
+    typeof saveAs === "undefined"
+  ) {
+    alert("ספריית Excel לא נטענה. רענן את הדף ונסה שוב.");
     return;
   }
 
@@ -3314,87 +3315,247 @@ function exportToExcel() {
     return;
   }
 
-  const excelData =
-    filteredLogs.map(log => {
+  try {
+    const workbook =
+      new ExcelJS.Workbook();
+
+    workbook.creator = "יומן עבודה";
+    workbook.created = new Date();
+
+    const worksheet =
+      workbook.addWorksheet(
+        "יומן עבודה",
+        {
+          views: [
+            {
+              rightToLeft: true,
+              state: "frozen",
+              ySplit: 1
+            }
+          ]
+        }
+      );
+
+    worksheet.columns = [
+      {
+        header: "תאריך",
+        key: "date",
+        width: 15
+      },
+      {
+        header: "עובדים",
+        key: "employees",
+        width: 38
+      },
+      {
+        header: "שיוך / קבלן משנה",
+        key: "affiliation",
+        width: 28
+      },
+      {
+        header: "סה״כ עובדים",
+        key: "employeeCount",
+        width: 15
+      },
+      {
+        header: "אתר עבודה",
+        key: "site",
+        width: 22
+      },
+      {
+        header: "מבנים",
+        key: "buildings",
+        width: 30
+      },
+      {
+        header: "מזמין עבודה",
+        key: "customer",
+        width: 24
+      },
+      {
+        header: "הערות",
+        key: "notes",
+        width: 40
+      }
+    ];
+
+    filteredLogs.forEach(log => {
       const reportEmployees =
         getReportEmployees(log);
 
-      const employeeNames =
-        reportEmployees
-          .map(employee => employee.name)
-          .join(", ");
+      worksheet.addRow({
+        date:
+          normalizeDate(log.date),
 
-      const affiliationNames =
-        getReportAffiliationNames(log);
+        employees:
+          reportEmployees
+            .map(employee => employee.name)
+            .join(", "),
 
-      return {
-        "תאריך":
-          String(log.date || "").split("T")[0],
+        affiliation:
+          getReportAffiliationNames(log),
 
-        "עובדים":
-          employeeNames,
-
-        "שיוך / קבלן משנה":
-          affiliationNames,
-
-        "סה״כ עובדים":
+        employeeCount:
           reportEmployees.length,
 
-        "אתר עבודה":
+        site:
           getName(
             appData.sites,
             log.siteId
           ),
 
-        "מבנים":
+        buildings:
           getBuildingNames(log),
 
-        "מזמין עבודה":
+        customer:
           getName(
             appData.customers,
             log.customerId
           ),
 
-        "הערות":
+        notes:
           log.notes || ""
+      });
+    });
+
+    const headerRow =
+      worksheet.getRow(1);
+
+    headerRow.height = 30;
+
+    headerRow.eachCell(cell => {
+      cell.font = {
+        bold: true,
+        color: {
+          argb: "FFFFFFFF"
+        },
+        size: 12
+      };
+
+      cell.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: {
+          argb: "FF2563EB"
+        }
+      };
+
+      cell.alignment = {
+        horizontal: "center",
+        vertical: "middle"
+      };
+
+      cell.border = {
+        top: {
+          style: "thin",
+          color: { argb: "FFD1D5DB" }
+        },
+        bottom: {
+          style: "thin",
+          color: { argb: "FFD1D5DB" }
+        },
+        left: {
+          style: "thin",
+          color: { argb: "FFD1D5DB" }
+        },
+        right: {
+          style: "thin",
+          color: { argb: "FFD1D5DB" }
+        }
       };
     });
 
-  const worksheet =
-    XLSX.utils.json_to_sheet(excelData);
+    worksheet.eachRow(
+      { includeEmpty: false },
+      (row, rowNumber) => {
+        if (rowNumber === 1) {
+          return;
+        }
 
-  worksheet["!cols"] = [
-    { wch: 14 },
-    { wch: 35 },
-    { wch: 30 },
-    { wch: 14 },
-    { wch: 25 },
-    { wch: 35 },
-    { wch: 25 },
-    { wch: 45 }
-  ];
+        row.height = 25;
 
-  worksheet["!autofilter"] = {
-    ref: worksheet["!ref"]
-  };
+        row.eachCell(cell => {
+          cell.alignment = {
+            horizontal: "right",
+            vertical: "middle",
+            wrapText: true
+          };
 
-  const workbook =
-    XLSX.utils.book_new();
+          cell.border = {
+            top: {
+              style: "thin",
+              color: { argb: "FFE5E7EB" }
+            },
+            bottom: {
+              style: "thin",
+              color: { argb: "FFE5E7EB" }
+            },
+            left: {
+              style: "thin",
+              color: { argb: "FFE5E7EB" }
+            },
+            right: {
+              style: "thin",
+              color: { argb: "FFE5E7EB" }
+            }
+          };
 
-  XLSX.utils.book_append_sheet(
-    workbook,
-    worksheet,
-    "יומן עבודה"
-  );
+          if (rowNumber % 2 === 0) {
+            cell.fill = {
+              type: "pattern",
+              pattern: "solid",
+              fgColor: {
+                argb: "FFF3F4F6"
+              }
+            };
+          }
+        });
 
-  const today =
-    new Date()
-      .toISOString()
-      .split("T")[0];
+        row.getCell("D").alignment = {
+          horizontal: "center",
+          vertical: "middle"
+        };
+      }
+    );
 
-  XLSX.writeFile(
-    workbook,
-    `יומן_עבודה_${today}.xlsx`
-  );
+    worksheet.autoFilter = {
+      from: "A1",
+      to: "H1"
+    };
+
+    worksheet.getColumn("A").numFmt =
+      "dd/mm/yyyy";
+
+    const buffer =
+      await workbook.xlsx.writeBuffer();
+
+    const today =
+      new Date()
+        .toISOString()
+        .split("T")[0];
+
+    const file =
+      new Blob(
+        [buffer],
+        {
+          type:
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        }
+      );
+
+    saveAs(
+      file,
+      `יומן_עבודה_${today}.xlsx`
+    );
+  } catch (error) {
+    console.error(
+      "שגיאה ביצירת קובץ Excel:",
+      error
+    );
+
+    alert(
+      "הפקת קובץ Excel נכשלה."
+    );
+  }
 }
 
