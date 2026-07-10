@@ -16,18 +16,23 @@
         alt="לוגו החברה"
         class="loading-logo"
       />
+
       <h2>יומן עבודה</h2>
+
       <p id="loadingText">
         טוען נתונים מהענן...
       </p>
+
       <div class="loading-bar">
         <div class="loading-bar-fill"></div>
       </div>
+
       <p class="loading-note">
         אנא המתן מספר שניות
       </p>
     </div>
   </div>
+
   <button
     id="menuToggle"
     class="menu-toggle"
@@ -45,20 +50,20 @@
     <aside class="sidebar">
       <h2>יומן עבודה</h2>
 
-      <button class="nav-btn active" data-page="worklog">
+      <button class="nav-btn active" data-page="dashboard">
+        סקירה כללית
+      </button>
+
+      <button class="nav-btn" data-page="worklog">
         יומן עבודה
       </button>
 
       <button class="nav-btn" data-page="reports">
-        דוחות PDF
-      </button>
-
-      <button class="nav-btn" data-page="dashboard">
-        סקירה כללית
+        דוחות PDF / Excel
       </button>
 
       <button class="nav-btn" data-page="employees">
-        עובדים
+        עובדים וקבלני משנה
       </button>
 
       <button class="nav-btn" data-page="sites">
@@ -78,13 +83,18 @@
 
       <header class="topbar">
         <h1 id="pageTitle">יומן עבודה</h1>
+
         <p>מערכת מקומית לניהול יומן עבודה</p>
 
         <div id="syncStatus" class="sync-status">
           🔄 טוען נתונים מהענן...
         </div>
 
-        <button class="primary-btn" onclick="saveToCloud()">
+        <button
+          class="primary-btn"
+          type="button"
+          onclick="saveToCloud()"
+        >
           💾 שמור לענן
         </button>
       </header>
@@ -94,9 +104,15 @@
 
   </div>
 
+  <!-- ספריית PDF -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
 
+  <!-- ספריית Excel -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+
+  <!-- קבצי המערכת -->
   <script src="data.js"></script>
   <script src="pdf.js"></script>
   <script src="app.js"></script>

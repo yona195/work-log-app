@@ -9,6 +9,7 @@ let cloudDataLoading = false;
 
 let appData = {
   employees: [],
+  subcontractors: [],
   sites: [],
   buildings: [],
   customers: [],
@@ -21,7 +22,11 @@ let appData = {
 ========================================= */
 
 function saveData() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
+  localStorage.setItem(
+    STORAGE_KEY,
+    JSON.stringify(appData)
+  );
+
   markUnsaved();
 }
 
@@ -49,19 +54,22 @@ function markSaved() {
 }
 
 function updateSyncStatus() {
-  const statusElement = document.getElementById("syncStatus");
+  const statusElement =
+    document.getElementById("syncStatus");
 
   if (!statusElement) {
     return;
   }
 
   if (cloudDataLoading) {
-    statusElement.innerText = "🔄 טוען נתונים מהענן...";
+    statusElement.innerText =
+      "🔄 טוען נתונים מהענן...";
     return;
   }
 
   if (!cloudDataLoaded) {
-    statusElement.innerText = "🔴 הנתונים מהענן לא נטענו";
+    statusElement.innerText =
+      "🔴 הנתונים מהענן לא נטענו";
     return;
   }
 
@@ -75,9 +83,14 @@ function updateSyncStatus() {
    מסך טעינה
 ========================================= */
 
-function showLoadingScreen(message = "טוען נתונים מהענן...") {
-  const loadingScreen = document.getElementById("loadingScreen");
-  const loadingText = document.getElementById("loadingText");
+function showLoadingScreen(
+  message = "טוען נתונים מהענן..."
+) {
+  const loadingScreen =
+    document.getElementById("loadingScreen");
+
+  const loadingText =
+    document.getElementById("loadingText");
 
   document.body.classList.add("loading");
 
@@ -91,7 +104,8 @@ function showLoadingScreen(message = "טוען נתונים מהענן...") {
 }
 
 function hideLoadingScreen() {
-  const loadingScreen = document.getElementById("loadingScreen");
+  const loadingScreen =
+    document.getElementById("loadingScreen");
 
   if (loadingScreen) {
     loadingScreen.classList.add("hidden");
@@ -99,6 +113,7 @@ function hideLoadingScreen() {
 
   document.body.classList.remove("loading");
 }
+
 
 /* =========================================
    טעינת הנתונים
@@ -112,17 +127,38 @@ async function loadFromCloud() {
   cloudDataLoading = true;
   cloudDataLoaded = false;
 
-  showLoadingScreen("טוען נתונים מהענן...");
+  showLoadingScreen(
+    "טוען נתונים מהענן..."
+  );
+
   updateSyncStatus();
 
+  const controller =
+    new AbortController();
+
+  const timeoutId =
+    setTimeout(() => {
+      controller.abort();
+    }, 15000);
+
   try {
-    const response = await fetch(`${API_URL}?action=getAll`);
+    const response = await fetch(
+      `${API_URL}?action=getAll&t=${Date.now()}`,
+      {
+        method: "GET",
+        cache: "no-store",
+        signal: controller.signal
+      }
+    );
 
     if (!response.ok) {
-      throw new Error(`שגיאת שרת: ${response.status}`);
+      throw new Error(
+        `שגיאת שרת: ${response.status}`
+      );
     }
 
-    const cloudData = await response.json();
+    const cloudData =
+      await response.json();
 
     const isValidData =
       cloudData &&
@@ -133,46 +169,79 @@ async function loadFromCloud() {
       Array.isArray(cloudData.workLogs);
 
     if (!isValidData) {
-      throw new Error("מבנה הנתונים שהתקבל מהענן אינו תקין");
+      throw new Error(
+        "מבנה הנתונים שהתקבל מהענן אינו תקין"
+      );
     }
 
-    appData = cloudData;
+    appData = {
+      employees:
+        cloudData.employees,
+
+      subcontractors:
+        Array.isArray(
+          cloudData.subcontractors
+        )
+          ? cloudData.subcontractors
+          : [],
+
+      sites:
+        cloudData.sites,
+
+      buildings:
+        cloudData.buildings,
+
+      customers:
+        cloudData.customers,
+
+      workLogs:
+        cloudData.workLogs
+    };
+
     cloudDataLoaded = true;
 
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
-    markSaved();
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify(appData)
+    );
 
-    if (typeof renderDashboard === "function") {
-      renderDashboard();
-    }
+    markSaved();
 
     hideLoadingScreen();
   } catch (error) {
-    console.error("טעינת הנתונים מהענן נכשלה:", error);
+    console.error(
+      "טעינת הנתונים מהענן נכשלה:",
+      error
+    );
 
     cloudDataLoaded = false;
 
-    showLoadingScreen(
-      "לא ניתן לטעון את הנתונים. בדוק את החיבור לאינטרנט ורענן את הדף."
-    );
+    const message =
+      error.name === "AbortError"
+        ? "הטעינה מהענן נמשכה זמן רב מדי. בדוק את החיבור או נסה לרענן."
+        : "לא ניתן לטעון את הנתונים מהענן. בדוק את החיבור לאינטרנט ורענן את הדף.";
+
+    showLoadingScreen(message);
 
     alert(
-      "טעינת הנתונים מהענן נכשלה. השמירה לענן נחסמה כדי למנוע מחיקה."
+      "טעינת הנתונים מהענן נכשלה. המערכת והשמירה לענן נשארו חסומות כדי למנוע בעיות סנכרון."
     );
   } finally {
+    clearTimeout(timeoutId);
+
     cloudDataLoading = false;
     updateSyncStatus();
   }
 }
-
-
 /* =========================================
    שמירה לענן
 ========================================= */
 
 async function saveToCloud() {
   if (cloudDataLoading) {
-    alert("הנתונים עדיין נטענים. המתן לסיום הטעינה.");
+    alert(
+      "הנתונים עדיין נטענים. המתן לסיום הטעינה."
+    );
     return;
   }
 
@@ -194,6 +263,7 @@ async function saveToCloud() {
   try {
     const response = await fetch(API_URL, {
       method: "POST",
+
       body: JSON.stringify({
         action: "saveAll",
         data: appData
@@ -201,15 +271,26 @@ async function saveToCloud() {
     });
 
     if (!response.ok) {
-      throw new Error(`שגיאת שרת: ${response.status}`);
+      throw new Error(
+        `שגיאת שרת: ${response.status}`
+      );
     }
 
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify(appData)
+    );
+
     markSaved();
 
-    alert("הנתונים נשמרו ל-Google Sheets");
+    alert(
+      "הנתונים נשמרו ל-Google Sheets"
+    );
   } catch (error) {
-    console.error("שמירת הנתונים לענן נכשלה:", error);
+    console.error(
+      "שמירת הנתונים לענן נכשלה:",
+      error
+    );
 
     alert(
       "השמירה לענן נכשלה. הנתונים לא נשלחו ל-Google Sheets."
@@ -217,14 +298,16 @@ async function saveToCloud() {
   }
 }
 
-
 /* =========================================
    אזהרה ביציאה
 ========================================= */
 
-window.addEventListener("beforeunload", function (event) {
-  if (hasUnsavedChanges()) {
-    event.preventDefault();
-    event.returnValue = "";
+window.addEventListener(
+  "beforeunload",
+  function (event) {
+    if (hasUnsavedChanges()) {
+      event.preventDefault();
+      event.returnValue = "";
+    }
   }
-});
+);

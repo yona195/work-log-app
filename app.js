@@ -1,7 +1,14 @@
-loadData().then(() => {
-  renderDashboard();
-});
-
+loadData()
+  .then(() => {
+    renderDashboard();
+  })
+  .catch(error => {
+    console.error(
+      "שגיאה בהפעלת המערכת:",
+      error
+    );
+  });
+  
 const content = document.getElementById("content");
 const pageTitle = document.getElementById("pageTitle");
 const navButtons = document.querySelectorAll(".nav-btn");
@@ -15,13 +22,41 @@ navButtons.forEach((btn) => {
 });
 
 function showPage(page) {
-  if (page === "dashboard") renderDashboard();
-  if (page === "employees") renderEmployeesPage();
-  if (page === "sites") renderSimpleManager("sites", "אתרי עבודה", "שם אתר");
-  if (page === "customers") renderSimpleManager("customers", "מזמיני עבודה", "שם מזמין");
-  if (page === "buildings") renderBuildingsPage();
-  if (page === "worklog") renderWorkLogPage();
-  if (page === "reports") renderReportsPage();
+  if (page === "dashboard") {
+    renderDashboard();
+  }
+
+  if (page === "worklog") {
+    renderWorkLogPage();
+  }
+
+  if (page === "reports") {
+    renderReportsPage();
+  }
+
+  if (page === "employees") {
+    renderEmployeesPage();
+  }
+
+  if (page === "sites") {
+    renderSimpleManager(
+      "sites",
+      "אתרי עבודה",
+      "שם אתר"
+    );
+  }
+
+  if (page === "buildings") {
+    renderBuildingsPage();
+  }
+
+  if (page === "customers") {
+    renderSimpleManager(
+      "customers",
+      "מזמיני עבודה",
+      "שם מזמין"
+    );
+  }
 }
 
 function getName(list, id) {
@@ -66,40 +101,179 @@ function getEmployeeIds(log) {
 }
 
 function getReportEmployees(log) {
-  const selectedType =
-    document.getElementById("reportEmployeeType")?.value || "";
+  const selectedGroup =
+    document.getElementById("reportEmployeeGroup")?.value || "";
+
+  const selectedSubcontractorId =
+    document.getElementById("reportSubcontractor")?.value || "";
 
   const selectedEmployeeId =
     document.getElementById("reportEmployee")?.value || "";
 
-  const ids = getEmployeeIds(log);
+  const employeeIds = getEmployeeIds(log);
 
   return appData.employees.filter(employee => {
-    const existsInLog = ids.includes(String(employee.id));
+    const existsInLog =
+      employeeIds.includes(String(employee.id));
 
-    const matchesType =
-      !selectedType || employee.type === selectedType;
+    const isInternal =
+      employee.type === "internal";
+
+    const isSubcontractorEmployee =
+      employee.type === "subcontractor" ||
+      employee.type === "external";
+
+    let matchesGroup = true;
+
+    if (selectedGroup === "internal") {
+      matchesGroup = isInternal;
+    }
+
+    if (selectedGroup === "all-subcontractors") {
+      matchesGroup = isSubcontractorEmployee;
+    }
+
+    const matchesSubcontractor =
+      !selectedSubcontractorId ||
+      String(employee.subcontractorId || "") ===
+        String(selectedSubcontractorId);
 
     const matchesEmployee =
       !selectedEmployeeId ||
-      String(employee.id) === String(selectedEmployeeId);
+      String(employee.id) ===
+        String(selectedEmployeeId);
 
-    return existsInLog && matchesType && matchesEmployee;
+    return (
+      existsInLog &&
+      matchesGroup &&
+      matchesSubcontractor &&
+      matchesEmployee
+    );
   });
 }
 
+function getEmployeeAffiliationName(employee) {
+  if (employee.type === "internal") {
+    return "עובד שלי";
+  }
+
+  return (
+    getName(
+      appData.subcontractors,
+      employee.subcontractorId
+    ) || "ללא קבלן"
+  );
+}
+
+function getReportAffiliationNames(log) {
+  const reportEmployees = getReportEmployees(log);
+
+  const names = reportEmployees.map(employee =>
+    getEmployeeAffiliationName(employee)
+  );
+
+  return [...new Set(names)].join(", ");
+}
 function renderDashboard() {
-  pageTitle.innerText = "דף ראשי";
+  pageTitle.innerText = "סקירה כללית";
 
   content.innerHTML = `
     <div class="cards">
-      <div class="card"><h3>עובדים</h3><p>${appData.employees.length}</p></div>
-      <div class="card"><h3>אתרי עבודה</h3><p>${appData.sites.length}</p></div>
-      <div class="card"><h3>מבנים</h3><p>${appData.buildings.length}</p></div>
-      <div class="card"><h3>מזמיני עבודה</h3><p>${appData.customers.length}</p></div>
-      <div class="card"><h3>רשומות יומן</h3><p>${appData.workLogs.length}</p></div>
+      <div class="card">
+        <h3>עובדים</h3>
+        <p>${appData.employees.length}</p>
+      </div>
+
+      <div class="card">
+        <h3>קבלני משנה</h3>
+        <p>${appData.subcontractors.length}</p>
+      </div>
+
+      <div class="card">
+        <h3>אתרי עבודה</h3>
+        <p>${appData.sites.length}</p>
+      </div>
+
+      <div class="card">
+        <h3>מבנים</h3>
+        <p>${appData.buildings.length}</p>
+      </div>
+
+      <div class="card">
+        <h3>מזמיני עבודה</h3>
+        <p>${appData.customers.length}</p>
+      </div>
+
+      <div class="card">
+        <h3>רשומות יומן</h3>
+        <p>${appData.workLogs.length}</p>
+      </div>
     </div>
   `;
+}
+
+
+function addSubcontractor() {
+  const input =
+    document.getElementById("subcontractorName");
+
+  const name = input?.value.trim() || "";
+
+  if (!name) {
+    alert("נא להזין שם קבלן משנה");
+    return;
+  }
+
+  const alreadyExists =
+    appData.subcontractors.some(subcontractor =>
+      subcontractor.name.trim().toLowerCase() ===
+      name.toLowerCase()
+    );
+
+  if (alreadyExists) {
+    alert("קבלן משנה בשם הזה כבר קיים");
+    return;
+  }
+
+  appData.subcontractors.push({
+    id: generateId(),
+    name
+  });
+
+  saveData();
+  renderEmployeesPage();
+}
+
+function deleteSubcontractor(id) {
+  const relatedEmployees =
+    appData.employees.filter(employee =>
+      String(employee.subcontractorId || "") ===
+      String(id)
+    );
+
+  if (relatedEmployees.length > 0) {
+    alert(
+      `לא ניתן למחוק את הקבלן. משויכים אליו ${relatedEmployees.length} עובדים.`
+    );
+    return;
+  }
+
+  const confirmed = confirm(
+    "האם למחוק את קבלן המשנה?"
+  );
+
+  if (!confirmed) {
+    return;
+  }
+
+  appData.subcontractors =
+    appData.subcontractors.filter(
+      subcontractor =>
+        String(subcontractor.id) !== String(id)
+    );
+
+  saveData();
+  renderEmployeesPage();
 }
 
 function renderSimpleManager(type, title, placeholder) {
@@ -158,69 +332,320 @@ function addSimpleItem(type) {
 }
 
 function renderEmployeesPage() {
-  pageTitle.innerText = "עובדים";
+  pageTitle.innerText = "עובדים וקבלני משנה";
+
+  const internalEmployees = appData.employees.filter(employee =>
+    employee.type === "internal"
+  );
+
+  const subcontractorEmployees = appData.employees.filter(employee =>
+    employee.type === "subcontractor" ||
+    employee.type === "external"
+  );
+
+  const totalEmployees = appData.employees.length;
 
   content.innerHTML = `
-    <div class="card">
-      <h3>הוספת עובד</h3>
+    <div class="cards">
+      <div class="card">
+        <h3>עובדים שלי</h3>
+        <p>${internalEmployees.length}</p>
+      </div>
 
-      <label>שם עובד</label>
-      <input id="employeeName" placeholder="שם עובד" />
+      <div class="card">
+        <h3>עובדי קבלן</h3>
+        <p>${subcontractorEmployees.length}</p>
+      </div>
 
-      <label>סוג עובד</label>
-      <select id="employeeType">
-        <option value="internal">עובד שלי</option>
-        <option value="external">עובד חיצוני</option>
-      </select>
+      <div class="card">
+        <h3>סה״כ עובדים</h3>
+        <p>${totalEmployees}</p>
+      </div>
 
-      <button class="primary-btn" onclick="addEmployee()">הוסף עובד</button>
+      <div class="card">
+        <h3>קבלני משנה</h3>
+        <p>${appData.subcontractors.length}</p>
+      </div>
     </div>
 
     <div class="card" style="margin-top:20px;">
-      <h3>רשימת עובדים</h3>
+      <h3>הוספת עובד</h3>
+
+      <label>שם עובד</label>
+      <input
+        id="employeeName"
+        placeholder="שם עובד"
+      />
+
+      <label>שיוך עובד</label>
+      <select
+        id="employeeType"
+        onchange="updateEmployeeSubcontractorField()"
+      >
+        <option value="internal">
+          עובד שלי
+        </option>
+
+        <option value="subcontractor">
+          עובד קבלן משנה
+        </option>
+      </select>
+
+      <div
+        id="employeeSubcontractorSection"
+        class="hidden"
+      >
+        <label>קבלן משנה</label>
+
+        <select id="employeeSubcontractor">
+          <option value="">
+            בחר קבלן משנה
+          </option>
+
+          ${appData.subcontractors.map(subcontractor => `
+            <option value="${subcontractor.id}">
+              ${subcontractor.name}
+            </option>
+          `).join("")}
+        </select>
+
+        ${
+          appData.subcontractors.length === 0
+            ? `
+              <p>
+                עדיין אין קבלני משנה.
+                הוסף קודם קבלן משנה באזור הבא.
+              </p>
+            `
+            : ""
+        }
+      </div>
+
+      <button
+        class="primary-btn"
+        type="button"
+        onclick="addEmployee()"
+      >
+        הוסף עובד
+      </button>
+    </div>
+
+    <div class="card" style="margin-top:20px;">
+      <h3>הוספת קבלן משנה</h3>
+
+      <label>שם קבלן משנה</label>
+      <input
+        id="subcontractorName"
+        placeholder="שם קבלן המשנה"
+      />
+
+      <button
+        class="primary-btn"
+        type="button"
+        onclick="addSubcontractor()"
+      >
+        הוסף קבלן משנה
+      </button>
+    </div>
+
+    <div class="card" style="margin-top:20px;">
+      <h3>
+        העובדים שלי
+        — סה״כ ${internalEmployees.length}
+      </h3>
+
       ${
-        appData.employees.length === 0 ? `<p>אין עדיין עובדים</p>` : `
-        <table>
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>שם</th>
-              <th>סוג עובד</th>
-              <th>פעולות</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${appData.employees.map((employee, index) => `
-              <tr>
-                <td>${index + 1}</td>
-                <td>${employee.name}</td>
-                <td>${employee.type === "external" ? "עובד חיצוני" : "עובד שלי"}</td>
-                <td><button onclick="deleteEmployee('${employee.id}')">מחק</button></td>
-              </tr>
-            `).join("")}
-          </tbody>
-        </table>`
+        internalEmployees.length === 0
+          ? `<p>אין עדיין עובדים שלי.</p>`
+          : createEmployeeTable(internalEmployees)
       }
     </div>
+
+    ${appData.subcontractors.map(subcontractor => {
+      const employees = appData.employees.filter(employee =>
+        String(employee.subcontractorId || "") ===
+        String(subcontractor.id)
+      );
+
+      return `
+        <div class="card" style="margin-top:20px;">
+          <div
+            style="
+              display:flex;
+              justify-content:space-between;
+              align-items:center;
+              gap:10px;
+              flex-wrap:wrap;
+            "
+          >
+            <h3>
+              ${subcontractor.name}
+              — סה״כ ${employees.length}
+            </h3>
+
+            <button
+              type="button"
+              onclick="deleteSubcontractor('${subcontractor.id}')"
+            >
+              מחק קבלן
+            </button>
+          </div>
+
+          ${
+            employees.length === 0
+              ? `<p>אין עובדים המשויכים לקבלן הזה.</p>`
+              : createEmployeeTable(employees)
+          }
+        </div>
+      `;
+    }).join("")}
+
+    ${
+      subcontractorEmployees.some(employee =>
+        !employee.subcontractorId
+      )
+        ? `
+          <div class="card" style="margin-top:20px;">
+            <h3>עובדי קבלן שלא שויכו לקבלן</h3>
+
+            ${createEmployeeTable(
+              subcontractorEmployees.filter(employee =>
+                !employee.subcontractorId
+              )
+            )}
+          </div>
+        `
+        : ""
+    }
+
+    <div class="card" style="margin-top:20px;">
+      <h3>סיכום עובדים</h3>
+
+      <p>
+        עובדים שלי:
+        <strong>${internalEmployees.length}</strong>
+      </p>
+
+      <p>
+        עובדי קבלני משנה:
+        <strong>${subcontractorEmployees.length}</strong>
+      </p>
+
+      <p>
+        סה״כ עובדים כללי:
+        <strong>${totalEmployees}</strong>
+      </p>
+    </div>
+  `;
+
+  updateEmployeeSubcontractorField();
+}
+
+function createEmployeeTable(employees) {
+  return `
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>שם עובד</th>
+          <th>פעולות</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        ${employees.map((employee, index) => `
+          <tr>
+            <td>${index + 1}</td>
+            <td>${employee.name}</td>
+
+            <td>
+              <button
+                type="button"
+                onclick="deleteEmployee('${employee.id}')"
+              >
+                מחק
+              </button>
+            </td>
+          </tr>
+        `).join("")}
+      </tbody>
+    </table>
   `;
 }
 
+function updateEmployeeSubcontractorField() {
+  const employeeType =
+    document.getElementById("employeeType");
+
+  const section =
+    document.getElementById(
+      "employeeSubcontractorSection"
+    );
+
+  if (!employeeType || !section) {
+    return;
+  }
+
+  if (employeeType.value === "subcontractor") {
+    section.classList.remove("hidden");
+  } else {
+    section.classList.add("hidden");
+
+    const subcontractorSelect =
+      document.getElementById(
+        "employeeSubcontractor"
+      );
+
+    if (subcontractorSelect) {
+      subcontractorSelect.value = "";
+    }
+  }
+}
+
 function addEmployee() {
-  const name = document.getElementById("employeeName").value.trim();
-  const type = document.getElementById("employeeType").value;
+  const name =
+    document
+      .getElementById("employeeName")
+      .value
+      .trim();
+
+  const type =
+    document.getElementById("employeeType").value;
+
+  const subcontractorId =
+    document.getElementById(
+      "employeeSubcontractor"
+    )?.value || "";
 
   if (!name) {
     alert("נא להזין שם עובד");
     return;
   }
 
-  const employee = { id: generateId(), name, type };
+  if (
+    type === "subcontractor" &&
+    !subcontractorId
+  ) {
+    alert("נא לבחור קבלן משנה");
+    return;
+  }
+
+  const employee = {
+    id: generateId(),
+    name,
+    type,
+    subcontractorId:
+      type === "subcontractor"
+        ? subcontractorId
+        : ""
+  };
 
   appData.employees.push(employee);
   saveData();
 
   renderEmployeesPage();
 }
+
 
 function deleteEmployee(id) {
   appData.employees = appData.employees.filter(employee => String(employee.id) !== String(id));
@@ -333,39 +758,125 @@ function renderWorkLogPage() {
       <input id="logDate" type="date" />
 
       <h4>בחירת עובדים</h4>
+
+      <label>סינון לפי שיוך</label>
+      <select
+        id="logEmployeeGroup"
+        onchange="filterEmployees()"
+      >
+        <option value="">
+          כל העובדים
+        </option>
+
+        <option value="internal">
+          העובדים שלי
+        </option>
+
+        <option value="all-subcontractors">
+          כל עובדי קבלני המשנה
+        </option>
+
+        ${appData.subcontractors.map(subcontractor => `
+          <option value="${subcontractor.id}">
+            ${subcontractor.name}
+          </option>
+        `).join("")}
+      </select>
+
       <input
-          id="employeeSearch"
-          type="text"
-          placeholder="🔍 חפש עובד..."
-          onkeyup="filterEmployees()"
+        id="employeeSearch"
+        type="text"
+        placeholder="🔍 חפש עובד..."
+        onkeyup="filterEmployees()"
       />
+
       <div class="employee-actions">
-        <button type="button" class="secondary-btn" onclick="selectAllEmployees()">
+        <button
+          type="button"
+          class="secondary-btn"
+          onclick="selectAllEmployees()"
+        >
           בחר הכל
         </button>
 
-        <button type="button" class="secondary-btn" onclick="clearAllEmployees()">
+        <button
+          type="button"
+          class="secondary-btn"
+          onclick="clearAllEmployees()"
+        >
           נקה הכל
         </button>
       </div>
-      <div id="logEmployeesBox" class="checkbox-list">
-        ${appData.employees.map(e => `
-          <label class="checkbox-item">
-            <input type="checkbox" name="logEmployees" value="${e.id}" />
-            <span>${e.name}</span>
-          </label>
-        `).join("")}
+
+      <div
+        id="logEmployeesBox"
+        class="checkbox-list"
+      >
+        ${appData.employees.map(employee => {
+          const isInternal =
+            employee.type === "internal";
+
+          const subcontractorName = getName(
+            appData.subcontractors,
+            employee.subcontractorId
+          );
+
+          return `
+            <label
+              class="checkbox-item"
+              data-employee-type="${
+                isInternal
+                  ? "internal"
+                  : "subcontractor"
+              }"
+              data-subcontractor-id="${
+                employee.subcontractorId || ""
+              }"
+            >
+              <input
+                type="checkbox"
+                name="logEmployees"
+                value="${employee.id}"
+              />
+
+              <span>
+                ${employee.name}
+                ${
+                  isInternal
+                    ? "— עובד שלי"
+                    : `— ${
+                        subcontractorName ||
+                        "ללא קבלן"
+                      }`
+                }
+              </span>
+            </label>
+          `;
+        }).join("")}
       </div>
 
-<p id="employeeCountText">סה״כ עובדים: 0</p>
+      <p id="employeeCountText">
+        סה״כ עובדים שנבחרו: 0
+      </p>
 
       <label>אתר עבודה</label>
-      <select id="logSite" onchange="updateBuildingOptions()">
+      <select
+        id="logSite"
+        onchange="updateBuildingOptions()"
+      >
         <option value="">בחר אתר</option>
-        ${appData.sites.map(s => `<option value="${s.id}">${s.name}</option>`).join("")}
+
+        ${appData.sites.map(site => `
+          <option value="${site.id}">
+            ${site.name}
+          </option>
+        `).join("")}
       </select>
 
-      <div id="buildingsSection" class="buildings-section hidden">
+      <div
+        id="buildingsSection"
+        class="buildings-section hidden"
+      >
         <div class="section-title-row">
           <label>מבנים</label>
 
@@ -387,70 +898,147 @@ function renderWorkLogPage() {
             </button>
           </div>
         </div>
+
         <input
-            id="buildingSearch"
-            type="text"
-            placeholder="🔍 חפש מבנה..."
-            onkeyup="filterBuildings()"
+          id="buildingSearch"
+          type="text"
+          placeholder="🔍 חפש מבנה..."
+          onkeyup="filterBuildings()"
         />
-        <div id="logBuildingsBox" class="checkbox-list"></div>
+
+        <div
+          id="logBuildingsBox"
+          class="checkbox-list"
+        ></div>
       </div>
 
       <label>מזמין עבודה</label>
       <select id="logCustomer">
         <option value="">בחר מזמין</option>
-        ${appData.customers.map(c => `<option value="${c.id}">${c.name}</option>`).join("")}
+
+        ${appData.customers.map(customer => `
+          <option value="${customer.id}">
+            ${customer.name}
+          </option>
+        `).join("")}
       </select>
 
       <label>הערות</label>
-      <textarea id="logNotes" placeholder="אופציונלי"></textarea>
+      <textarea
+        id="logNotes"
+        placeholder="אופציונלי"
+      ></textarea>
 
-      <button class="primary-btn" onclick="addWorkLog()">הוסף ליומן</button>
+      <button
+        class="primary-btn"
+        type="button"
+        onclick="addWorkLog()"
+      >
+        הוסף ליומן
+      </button>
     </div>
 
-    <div class="card" style="margin-top:20px;">
+    <div
+      class="card"
+      style="margin-top:20px;"
+    >
       <h3>רשומות יומן</h3>
+
       ${
-        appData.workLogs.length === 0 ? `<p>אין עדיין רשומות</p>` : `
-        <table>
-          <thead>
-            <tr>
-              <th>תאריך</th>
-              <th>עובדים</th>
-              <th>סה״כ עובדים</th>
-              <th>אתר</th>
-              <th>מבנה</th>
-              <th>מזמין</th>
-              <th>הערות</th>
-              <th>פעולות</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${appData.workLogs.map(log => {
-              const employeeNames = getEmployeeNames(log);
-              return `
+        appData.workLogs.length === 0
+          ? `<p>אין עדיין רשומות</p>`
+          : `
+            <table>
+              <thead>
                 <tr>
-                  <td>${String(log.date).split("T")[0]}</td>
-                  <td>${employeeNames}</td>
-                  <td>${log.employeeCount || 1}</td>
-                  <td>${getName(appData.sites, log.siteId)}</td>
-                  <td>${getBuildingNames(log)}</td>
-                  <td>${getName(appData.customers, log.customerId)}</td>
-                  <td>${log.notes || ""}</td>
-                  <td><button onclick="deleteWorkLog('${log.id}')">מחק</button></td>
+                  <th>תאריך</th>
+                  <th>עובדים</th>
+                  <th>סה״כ עובדים</th>
+                  <th>אתר</th>
+                  <th>מבנה</th>
+                  <th>מזמין</th>
+                  <th>הערות</th>
+                  <th>פעולות</th>
                 </tr>
-              `;
-            }).join("")}
-          </tbody>
-        </table>`
+              </thead>
+
+              <tbody>
+                ${appData.workLogs.map(log => {
+                  const employeeNames =
+                    getEmployeeNames(log);
+
+                  return `
+                    <tr>
+                      <td>
+                        ${String(log.date).split("T")[0]}
+                      </td>
+
+                      <td>
+                        ${employeeNames}
+                      </td>
+
+                      <td>
+                        ${log.employeeCount || 1}
+                      </td>
+
+                      <td>
+                        ${getName(
+                          appData.sites,
+                          log.siteId
+                        )}
+                      </td>
+
+                      <td>
+                        ${getBuildingNames(log)}
+                      </td>
+
+                      <td>
+                        ${getName(
+                          appData.customers,
+                          log.customerId
+                        )}
+                      </td>
+
+                      <td>
+                        ${log.notes || ""}
+                      </td>
+
+                      <td>
+                        <button
+                          type="button"
+                          onclick="deleteWorkLog('${log.id}')"
+                        >
+                          מחק
+                        </button>
+                      </td>
+                    </tr>
+                  `;
+                }).join("")}
+              </tbody>
+            </table>
+          `
       }
     </div>
   `;
 
-  document.getElementById("logDate").value = new Date().toISOString().split("T")[0];
-  document.querySelectorAll('input[name="logEmployees"]').forEach(input => {
-    input.addEventListener("change", updateEmployeeCountText);
-  });
+  const dateInput =
+    document.getElementById("logDate");
+
+  if (dateInput) {
+    dateInput.value =
+      new Date().toISOString().split("T")[0];
+  }
+
+  document
+    .querySelectorAll(
+      'input[name="logEmployees"]'
+    )
+    .forEach(input => {
+      input.addEventListener(
+        "change",
+        updateEmployeeCountText
+      );
+    });
 
   updateEmployeeCountText();
 }
@@ -480,18 +1068,60 @@ function clearAllEmployees() {
 }
 
 function filterEmployees() {
-  const text = document
-    .getElementById("employeeSearch")
-    .value
-    .toLowerCase();
+  const searchText =
+    document
+      .getElementById("employeeSearch")
+      ?.value
+      .trim()
+      .toLowerCase() || "";
+
+  const selectedGroup =
+    document
+      .getElementById("logEmployeeGroup")
+      ?.value || "";
 
   document
-    .querySelectorAll('#logEmployeesBox .checkbox-item')
+    .querySelectorAll(
+      "#logEmployeesBox .checkbox-item"
+    )
     .forEach(item => {
-      const name = item.innerText.toLowerCase();
-      item.style.display = name.includes(text) ? "flex" : "none";
+      const employeeName =
+        item.innerText.toLowerCase();
+
+      const employeeType =
+        item.dataset.employeeType || "";
+
+      const subcontractorId =
+        item.dataset.subcontractorId || "";
+
+      const matchesSearch =
+        !searchText ||
+        employeeName.includes(searchText);
+
+      let matchesGroup = true;
+
+      if (selectedGroup === "internal") {
+        matchesGroup =
+          employeeType === "internal";
+      } else if (
+        selectedGroup ===
+        "all-subcontractors"
+      ) {
+        matchesGroup =
+          employeeType === "subcontractor";
+      } else if (selectedGroup) {
+        matchesGroup =
+          String(subcontractorId) ===
+          String(selectedGroup);
+      }
+
+      item.style.display =
+        matchesSearch && matchesGroup
+          ? "flex"
+          : "none";
     });
 }
+
 function filterBuildings() {
   const text = document
     .getElementById("buildingSearch")
@@ -653,149 +1283,284 @@ function updateEmployeeCountText() {
   }
 
 }
-function renderReportsPage() {
-  pageTitle.innerText = "דוחות PDF";
 
+function renderReportsPage() {
+  pageTitle.innerText = "דוחות PDF / Excel";
   content.innerHTML = `
     <div class="card">
       <h3>סינון דוח</h3>
-
       <label>מתאריך</label>
       <input id="reportFrom" type="date" />
-
       <label>עד תאריך</label>
       <input id="reportTo" type="date" />
-
-      <label>סוג עובד</label>
-      <select id="reportEmployeeType" onchange="updateReportEmployeeOptions()">
-        <option value="">כל העובדים</option>
-        <option value="internal">עובדים שלי</option>
-        <option value="external">עובדים חיצוניים</option>
+      <label>שיוך עובדים</label>
+      <select
+        id="reportEmployeeGroup"
+        onchange="updateReportEmployeeOptions()"
+      >
+        <option value="">
+          כל העובדים
+        </option>
+        <option value="internal">
+          העובדים שלי
+        </option>
+        <option value="all-subcontractors">
+          כל עובדי קבלני המשנה
+        </option>
       </select>
-
-      <label>עובד</label>
-      <select id="reportEmployee">
-        <option value="">כל העובדים</option>
-        ${appData.employees.map(e => `
-          <option value="${e.id}">${e.name}</option>
+      <label>קבלן משנה</label>
+      <select
+        id="reportSubcontractor"
+        onchange="updateReportEmployeeOptions()"
+      >
+        <option value="">
+          כל קבלני המשנה
+        </option>
+        ${appData.subcontractors.map(subcontractor => `
+          <option value="${subcontractor.id}">
+            ${subcontractor.name}
+          </option>
         `).join("")}
       </select>
-
+      <label>עובד</label>
+      <select id="reportEmployee">
+        <option value="">
+          כל העובדים
+        </option>
+        ${appData.employees.map(employee => `
+          <option value="${employee.id}">
+            ${employee.name}
+          </option>
+        `).join("")}
+      </select>
       <label>אתר עבודה</label>
       <select id="reportSite">
-        <option value="">כל האתרים</option>
-        ${appData.sites.map(s => `<option value="${s.id}">${s.name}</option>`).join("")}
+        <option value="">
+          כל האתרים
+        </option>
+        ${appData.sites.map(site => `
+          <option value="${site.id}">
+            ${site.name}
+          </option>
+        `).join("")}
       </select>
-
       <label>מזמין עבודה</label>
       <select id="reportCustomer">
-        <option value="">כל המזמינים</option>
-        ${appData.customers.map(c => `<option value="${c.id}">${c.name}</option>`).join("")}
+        <option value="">
+          כל המזמינים
+        </option>
+        ${appData.customers.map(customer => `
+          <option value="${customer.id}">
+            ${customer.name}
+          </option>
+        `).join("")}
       </select>
-
-      <button class="primary-btn" onclick="generateReport()">הצג דוח</button>
-      <button class="primary-btn" onclick="downloadReportPDF()" style="margin-right:10px;">הפק PDF</button>
+      <div style="margin-top:20px;">
+        <button
+          class="primary-btn"
+          type="button"
+          onclick="generateReport()"
+        >
+          הצג דוח
+        </button>
+        <button
+          class="primary-btn"
+          type="button"
+          onclick="downloadReportPDF()"
+          style="margin-right:10px;"
+        >
+          הפק PDF
+        </button>
+        <button
+          class="primary-btn"
+          type="button"
+          onclick="exportToExcel()"
+          style="margin-right:10px;"
+        >
+          ייצוא לאקסל
+        </button>
+      </div>
     </div>
-
-    <div id="reportResult" class="card" style="margin-top:20px;">
+    <div
+      id="reportResult"
+      class="card"
+      style="margin-top:20px;"
+    >
       <p>בחר סינון ולחץ הצג דוח.</p>
     </div>
   `;
+  updateReportEmployeeOptions();
 }
-
 function updateReportEmployeeOptions() {
-  const selectedType =
-    document.getElementById("reportEmployeeType").value;
-
+  const selectedGroup =
+    document.getElementById("reportEmployeeGroup")?.value || "";
+  const subcontractorSelect =
+    document.getElementById("reportSubcontractor");
   const employeeSelect =
     document.getElementById("reportEmployee");
-
-  const filteredEmployees = selectedType
-    ? appData.employees.filter(employee => employee.type === selectedType)
-    : appData.employees;
-
+  if (!subcontractorSelect || !employeeSelect) {
+    return;
+  }
+  if (selectedGroup === "internal") {
+    subcontractorSelect.value = "";
+    subcontractorSelect.disabled = true;
+  } else {
+    subcontractorSelect.disabled = false;
+  }
+  const selectedSubcontractorId =
+    subcontractorSelect.value;
+  const filteredEmployees =
+    appData.employees.filter(employee => {
+      const isInternal =
+        employee.type === "internal";
+      const isSubcontractorEmployee =
+        employee.type === "subcontractor" ||
+        employee.type === "external";
+      let matchesGroup = true;
+      if (selectedGroup === "internal") {
+        matchesGroup = isInternal;
+      }
+      if (selectedGroup === "all-subcontractors") {
+        matchesGroup = isSubcontractorEmployee;
+      }
+      const matchesSubcontractor =
+        !selectedSubcontractorId ||
+        String(employee.subcontractorId || "") ===
+          String(selectedSubcontractorId);
+      return (
+        matchesGroup &&
+        matchesSubcontractor
+      );
+    });
   employeeSelect.innerHTML = `
-    <option value="">כל העובדים</option>
+    <option value="">
+      כל העובדים
+    </option>
     ${filteredEmployees.map(employee => `
       <option value="${employee.id}">
         ${employee.name}
+        — ${getEmployeeAffiliationName(employee)}
       </option>
     `).join("")}
   `;
 }
-
 function filterReportLogs() {
-  const from = document.getElementById("reportFrom").value;
-  const to = document.getElementById("reportTo").value;
-  const siteId = document.getElementById("reportSite").value;
-  const customerId = document.getElementById("reportCustomer").value;
-
+  const from =
+    document.getElementById("reportFrom")?.value || "";
+  const to =
+    document.getElementById("reportTo")?.value || "";
+  const siteId =
+    document.getElementById("reportSite")?.value || "";
+  const customerId =
+    document.getElementById("reportCustomer")?.value || "";
   return appData.workLogs.filter(log => {
-    const logDate = String(log.date).split("T")[0];
-    const reportEmployees = getReportEmployees(log);
-
+    const logDate =
+      String(log.date || "").split("T")[0];
+    const reportEmployees =
+      getReportEmployees(log);
     return (
       (!from || logDate >= from) &&
       (!to || logDate <= to) &&
-      (!siteId || String(log.siteId) === String(siteId)) &&
-      (!customerId || String(log.customerId) === String(customerId)) &&
+      (
+        !siteId ||
+        String(log.siteId) === String(siteId)
+      ) &&
+      (
+        !customerId ||
+        String(log.customerId) ===
+          String(customerId)
+      ) &&
       reportEmployees.length > 0
     );
   });
 }
-
-
 function generateReport() {
-  const filtered = filterReportLogs();
-
-  document.getElementById("reportResult").innerHTML = `
+  const filteredLogs =
+    filterReportLogs();
+  const reportResult =
+    document.getElementById("reportResult");
+  reportResult.innerHTML = `
     <h2>דוח יומן עבודה</h2>
-    <p>סה״כ רשומות: ${filtered.length}</p>
-
+    <p>
+      סה״כ רשומות:
+      ${filteredLogs.length}
+    </p>
     ${
-      filtered.length === 0 ? `<p>אין רשומות מתאימות.</p>` : `
-      <table>
-        <thead>
-          <tr>
-            <th>תאריך</th>
-            <th>עובדים</th>
-            <th>סה״כ עובדים</th>
-            <th>אתר</th>
-            <th>מבנה</th>
-            <th>מזמין</th>
-            <th>הערות</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${filtered.map(log => {
-            const reportEmployees = getReportEmployees(log);
-            const employeeNames = reportEmployees
-              .map(employee => employee.name)
-              .join(", ");
-
-            const employeeCount = reportEmployees.length;
-
-            return `
+      filteredLogs.length === 0
+        ? `<p>אין רשומות מתאימות.</p>`
+        : `
+          <table>
+            <thead>
               <tr>
-                <td>${String(log.date).split("T")[0]}</td>
-                <td>${employeeNames}</td>
-                <td>${employeeCount}</td>
-                <td>${getName(appData.sites, log.siteId)}</td>
-                <td>${getBuildingNames(log)}</td>
-                <td>${getName(appData.customers, log.customerId)}</td>
-                <td>${log.notes || ""}</td>
+                <th>תאריך</th>
+                <th>עובדים</th>
+                <th>שיוך / קבלן</th>
+                <th>סה״כ עובדים</th>
+                <th>אתר</th>
+                <th>מבנה</th>
+                <th>מזמין</th>
+                <th>הערות</th>
               </tr>
-            `;
-          }).join("")}
-        </tbody>
-      </table>`
+            </thead>
+            <tbody>
+              ${filteredLogs.map(log => {
+                const reportEmployees =
+                  getReportEmployees(log);
+                const employeeNames =
+                  reportEmployees
+                    .map(employee => employee.name)
+                    .join(", ");
+                const affiliationNames =
+                  getReportAffiliationNames(log);
+                return `
+                  <tr>
+                    <td>
+                      ${String(log.date || "").split("T")[0]}
+                    </td>
+                    <td>
+                      ${employeeNames}
+                    </td>
+                    <td>
+                      ${affiliationNames}
+                    </td>
+                    <td>
+                      ${reportEmployees.length}
+                    </td>
+                    <td>
+                      ${getName(
+                        appData.sites,
+                        log.siteId
+                      )}
+                    </td>
+                    <td>
+                      ${getBuildingNames(log)}
+                    </td>
+                    <td>
+                      ${getName(
+                        appData.customers,
+                        log.customerId
+                      )}
+                    </td>
+                    <td>
+                      ${log.notes || ""}
+                    </td>
+                  </tr>
+                `;
+              }).join("")}
+            </tbody>
+          </table>
+        `
     }
   `;
 }
-
 function downloadReportPDF() {
-  const filtered = filterReportLogs();
-  createWorkLogPDF(filtered);
+  const filteredLogs =
+    filterReportLogs();
+  if (filteredLogs.length === 0) {
+    alert("אין רשומות מתאימות להפקת PDF");
+    return;
+  }
+  createWorkLogPDF(filteredLogs);
 }
 
 /* =========================================
@@ -863,3 +1628,103 @@ function downloadReportPDF() {
     }
   });
 })();
+
+function exportToExcel() {
+  if (typeof XLSX === "undefined") {
+    alert(
+      "ספריית Excel לא נטענה. בדוק שהוספת את ספריית XLSX לקובץ index.html."
+    );
+    return;
+  }
+
+  const filteredLogs =
+    filterReportLogs();
+
+  if (filteredLogs.length === 0) {
+    alert("אין נתונים לייצוא");
+    return;
+  }
+
+  const excelData =
+    filteredLogs.map(log => {
+      const reportEmployees =
+        getReportEmployees(log);
+
+      const employeeNames =
+        reportEmployees
+          .map(employee => employee.name)
+          .join(", ");
+
+      const affiliationNames =
+        getReportAffiliationNames(log);
+
+      return {
+        "תאריך":
+          String(log.date || "").split("T")[0],
+
+        "עובדים":
+          employeeNames,
+
+        "שיוך / קבלן משנה":
+          affiliationNames,
+
+        "סה״כ עובדים":
+          reportEmployees.length,
+
+        "אתר עבודה":
+          getName(
+            appData.sites,
+            log.siteId
+          ),
+
+        "מבנים":
+          getBuildingNames(log),
+
+        "מזמין עבודה":
+          getName(
+            appData.customers,
+            log.customerId
+          ),
+
+        "הערות":
+          log.notes || ""
+      };
+    });
+
+  const worksheet =
+    XLSX.utils.json_to_sheet(excelData);
+
+  worksheet["!cols"] = [
+    { wch: 14 },
+    { wch: 35 },
+    { wch: 30 },
+    { wch: 14 },
+    { wch: 25 },
+    { wch: 35 },
+    { wch: 25 },
+    { wch: 45 }
+  ];
+
+  worksheet["!autofilter"] = {
+    ref: worksheet["!ref"]
+  };
+
+  const workbook =
+    XLSX.utils.book_new();
+
+  XLSX.utils.book_append_sheet(
+    workbook,
+    worksheet,
+    "יומן עבודה"
+  );
+
+  const today =
+    new Date()
+      .toISOString()
+      .split("T")[0];
+
+  XLSX.writeFile(
+    workbook,
+    `יומן_עבודה_${today}.xlsx`
+  );
+}

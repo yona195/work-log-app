@@ -7,7 +7,9 @@ function createWorkLogPDF(filteredLogs) {
   const printWindow = window.open("", "_blank");
 
   if (!printWindow) {
-    alert("הדפדפן חסם את פתיחת ה-PDF. צריך לאשר חלונות קופצים לאתר הזה.");
+    alert(
+      "הדפדפן חסם את פתיחת ה-PDF. צריך לאשר חלונות קופצים לאתר הזה."
+    );
     return;
   }
 
@@ -16,27 +18,65 @@ function createWorkLogPDF(filteredLogs) {
   };
 
   const rows = filteredLogs.map(log => {
-    const reportEmployees = getReportEmployees(log);
+    const reportEmployees =
+      getReportEmployees(log);
 
-    const employeeNames = reportEmployees
-      .map(employee => employee.name)
-      .join(", ");
+    const employeeNames =
+      reportEmployees
+        .map(employee => employee.name)
+        .join(", ");
 
-    const employeeCount = reportEmployees.length;
+    const affiliationNames =
+      getReportAffiliationNames(log);
 
-    const site = getName(appData.sites, log.siteId);
-    const buildingNames = getBuildingNames(log);
-    const customer = getName(appData.customers, log.customerId);
+    const employeeCount =
+      reportEmployees.length;
+
+    const site =
+      getName(appData.sites, log.siteId);
+
+    const buildingNames =
+      getBuildingNames(log);
+
+    const customer =
+      getName(
+        appData.customers,
+        log.customerId
+      );
 
     return `
       <tr>
-        <td dir="ltr">${formatDate(log.date)}</td>
-        <td>${employeeNames}</td>
-        <td>${employeeCount}</td>
-        <td>${site}</td>
-        <td>${buildingNames}</td>
-        <td>${customer}</td>
-        <td>${log.notes || ""}</td>
+        <td dir="ltr">
+          ${formatDate(log.date)}
+        </td>
+
+        <td>
+          ${employeeNames}
+        </td>
+
+        <td>
+          ${affiliationNames}
+        </td>
+
+        <td>
+          ${employeeCount}
+        </td>
+
+        <td>
+          ${site}
+        </td>
+
+        <td>
+          ${buildingNames}
+        </td>
+
+        <td>
+          ${customer}
+        </td>
+
+        <td>
+          ${log.notes || ""}
+        </td>
       </tr>
     `;
   }).join("");
@@ -46,20 +86,33 @@ function createWorkLogPDF(filteredLogs) {
     .filter(Boolean)
     .sort();
 
-  const fromDate = reportDates[0] || "";
-  const toDate = reportDates[reportDates.length - 1] || "";
+  const fromDate =
+    reportDates[0] || "";
+
+  const toDate =
+    reportDates[
+      reportDates.length - 1
+    ] || "";
 
   printWindow.document.write(`
     <!DOCTYPE html>
     <html lang="he" dir="rtl">
     <head>
       <meta charset="UTF-8">
-      <title>דוח יומן עבודה</title>
+
+      <title>
+        דוח יומן עבודה
+      </title>
 
       <style>
+        @page {
+          size: A4 landscape;
+          margin: 10mm;
+        }
+
         body {
           font-family: Arial, sans-serif;
-          padding: 30px;
+          padding: 20px;
           direction: rtl;
           color: #222;
         }
@@ -71,8 +124,8 @@ function createWorkLogPDF(filteredLogs) {
 
         .summary {
           text-align: center;
-          margin-bottom: 30px;
-          font-size: 18px;
+          margin-bottom: 20px;
+          font-size: 17px;
         }
 
         table {
@@ -90,16 +143,16 @@ function createWorkLogPDF(filteredLogs) {
         th,
         td {
           border: 1px solid #999;
-          padding: 10px;
+          padding: 8px;
           text-align: center;
-          font-size: 14px;
+          font-size: 12px;
           vertical-align: middle;
           word-break: break-word;
         }
 
         @media print {
           body {
-            padding: 10px;
+            padding: 0;
           }
 
           button {
@@ -123,13 +176,22 @@ function createWorkLogPDF(filteredLogs) {
     </head>
 
     <body>
-      <h1>דוח יומן עבודה</h1>
+      <h1>
+        דוח יומן עבודה
+      </h1>
 
       <div class="summary">
         תאריכי הדוח:
-        <span dir="ltr">${fromDate}</span>
+
+        <span dir="ltr">
+          ${fromDate}
+        </span>
+
         עד
-        <span dir="ltr">${toDate}</span>
+
+        <span dir="ltr">
+          ${toDate}
+        </span>
       </div>
 
       <table>
@@ -137,6 +199,7 @@ function createWorkLogPDF(filteredLogs) {
           <tr>
             <th>תאריך</th>
             <th>עובדים</th>
+            <th>שיוך / קבלן</th>
             <th>סה״כ עובדים</th>
             <th>אתר</th>
             <th>מבנה</th>
