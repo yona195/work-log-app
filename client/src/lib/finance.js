@@ -7,10 +7,10 @@ import {
 
 /**
  * Resolve the rate that applies to an employee at a site on a given date.
- * Priority: personal (employee) rate → subcontractor rate.
- * Internal employees must have a personal rate.
+ * Priority: customer rate → personal (employee) rate → subcontractor rate.
+ * Internal employees must have a personal or customer rate.
  */
-export function getApplicableRate(data, employee, siteId, workDate) {
+export function getApplicableRate(data, employee, siteId, workDate, customerId) {
   if (!employee || !siteId || !workDate) return null;
 
   const normalizedWorkDate = normalizeDate(workDate);
@@ -28,6 +28,15 @@ export function getApplicableRate(data, employee, siteId, workDate) {
     .sort((a, b) =>
       normalizeDate(b.effectiveFrom).localeCompare(normalizeDate(a.effectiveFrom))
     );
+
+  if (customerId) {
+    const customerRate = validRates.find(
+      (rate) =>
+        rate.rateType === "customer" &&
+        String(rate.customerId || "") === String(customerId)
+    );
+    if (customerRate) return customerRate;
+  }
 
   const employeeRate = validRates.find(
     (rate) =>
@@ -71,7 +80,13 @@ export function calculateWorkLogFinance(data, log, employeeIdsOverride) {
     );
     if (!employee) return;
 
-    const rate = getApplicableRate(data, employee, log.siteId, log.date);
+    const rate = getApplicableRate(
+      data,
+      employee,
+      log.siteId,
+      log.date,
+      log.customerId
+    );
     if (!rate) {
       result.missingRateEmployees.push({
         employeeId: employee.id,
@@ -160,7 +175,13 @@ export function calculateFinanceByWorkforce(data, logs) {
       );
       if (!employee) return;
 
-      const rate = getApplicableRate(data, employee, log.siteId, log.date);
+      const rate = getApplicableRate(
+        data,
+        employee,
+        log.siteId,
+        log.date,
+        log.customerId
+      );
       if (!rate) return;
 
       let groupKey;
