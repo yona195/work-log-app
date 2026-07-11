@@ -1,0 +1,1390 @@
+/* =========================================
+   1. משתנים והגדרות כלליות
+========================================= */
+
+:root {
+    --color-primary: #2563eb;
+    --color-primary-hover: #1d4ed8;
+    --color-primary-soft: #eff6ff;
+
+    --color-sidebar: #111827;
+    --color-sidebar-hover: #1f2937;
+    --color-sidebar-text: #f9fafb;
+    --color-sidebar-muted: #9ca3af;
+
+    --color-background: #f3f4f6;
+    --color-surface: #ffffff;
+    --color-text: #1f2937;
+    --color-muted: #6b7280;
+    --color-border: #e5e7eb;
+
+    --color-danger: #dc2626;
+    --color-warning: #f59e0b;
+    --color-success: #16a34a;
+
+    --radius-small: 8px;
+    --radius-medium: 12px;
+    --radius-large: 16px;
+
+    --shadow-small:
+        0 1px 3px rgba(15, 23, 42, 0.08);
+
+    --shadow-medium:
+        0 8px 24px rgba(15, 23, 42, 0.08);
+
+    --sidebar-width: 260px;
+}
+
+
+/* =========================================
+   2. איפוס בסיסי
+========================================= */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html {
+    width: 100%;
+    min-height: 100%;
+    scroll-behavior: smooth;
+}
+
+body {
+    width: 100%;
+    min-height: 100vh;
+
+    font-family:
+        Arial,
+        Helvetica,
+        sans-serif;
+
+    direction: rtl;
+
+    background: var(--color-background);
+    color: var(--color-text);
+
+    line-height: 1.5;
+    overflow-x: hidden;
+}
+
+button,
+input,
+select,
+textarea {
+    font: inherit;
+}
+
+button {
+    cursor: pointer;
+}
+
+img {
+    display: block;
+    max-width: 100%;
+}
+
+.hidden {
+    display: none !important;
+}
+
+
+/* =========================================
+   3. מבנה האפליקציה
+========================================= */
+
+.app {
+    display: flex;
+    width: 100%;
+    min-height: 100vh;
+}
+
+.main {
+    flex: 1;
+    min-width: 0;
+
+    display: flex;
+    flex-direction: column;
+}
+
+
+/* =========================================
+   4. כותרת עליונה
+========================================= */
+
+.topbar {
+    position: relative;
+
+    width: 100%;
+    padding: 24px 32px;
+
+    background: var(--color-surface);
+    border-bottom: 1px solid var(--color-border);
+}
+
+.topbar h1 {
+    margin: 0;
+
+    font-size: 28px;
+    font-weight: 700;
+    line-height: 1.25;
+
+    color: var(--color-text);
+}
+
+.topbar > p {
+    margin-top: 6px;
+
+    font-size: 14px;
+    font-weight: 400;
+
+    color: var(--color-muted);
+}
+
+.sync-status {
+    margin-top: 14px;
+    margin-bottom: 12px;
+
+    font-size: 14px;
+    font-weight: 600;
+
+    color: var(--color-muted);
+}
+
+
+/* =========================================
+   5. אזור התוכן
+========================================= */
+
+#content {
+    width: 100%;
+    max-width: 1600px;
+
+    padding: 30px;
+    margin-inline: auto;
+}
+
+
+/* =========================================
+   6. כרטיסים
+========================================= */
+
+.cards {
+    display: grid;
+
+    grid-template-columns:
+        repeat(
+            auto-fit,
+            minmax(220px, 1fr)
+        );
+
+    gap: 20px;
+}
+
+.card {
+    width: 100%;
+    padding: 24px;
+
+    background: var(--color-surface);
+    border: 1px solid rgba(229, 231, 235, 0.8);
+    border-radius: var(--radius-medium);
+
+    box-shadow: var(--shadow-small);
+}
+
+.card h2,
+.card h3,
+.card h4 {
+    color: var(--color-text);
+}
+
+.card h2 {
+    margin-bottom: 18px;
+    font-size: 24px;
+}
+
+.card h3 {
+    margin-bottom: 16px;
+    font-size: 19px;
+}
+
+.card h4 {
+    margin-top: 8px;
+    margin-bottom: 12px;
+    font-size: 16px;
+}
+
+/*
+  פסקה רגילה בכרטיס.
+  לא כל פסקה צריכה להיות גדולה ומודגשת.
+*/
+
+.card p {
+    font-size: 15px;
+    font-weight: 400;
+    color: var(--color-muted);
+}
+
+/*
+  מספרים מרכזיים בכרטיסי סיכום
+*/
+
+.cards > .card > p {
+    margin-top: 8px;
+
+    font-size: 28px;
+    font-weight: 700;
+
+    color: var(--color-text);
+}
+
+
+/* =========================================
+   7. טפסים
+========================================= */
+
+label {
+    display: block;
+
+    margin-top: 4px;
+    margin-bottom: 6px;
+
+    font-size: 14px;
+    font-weight: 600;
+
+    color: #374151;
+}
+
+input,
+select,
+textarea {
+    width: 100%;
+
+    padding: 11px 12px;
+    margin-bottom: 16px;
+
+    background: var(--color-surface);
+    color: var(--color-text);
+
+    border: 1px solid #d1d5db;
+    border-radius: var(--radius-small);
+
+    outline: none;
+
+    transition:
+        border-color 0.2s ease,
+        box-shadow 0.2s ease;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+    border-color: var(--color-primary);
+
+    box-shadow:
+        0 0 0 3px
+        rgba(37, 99, 235, 0.12);
+}
+
+input::placeholder,
+textarea::placeholder {
+    color: #9ca3af;
+}
+
+textarea {
+    min-height: 110px;
+    resize: vertical;
+}
+
+
+/* =========================================
+   8. כפתורים
+========================================= */
+
+.primary-btn,
+.secondary-btn {
+    min-height: 42px;
+
+    padding: 10px 18px;
+
+    border-radius: var(--radius-small);
+
+    font-size: 14px;
+    font-weight: 600;
+
+    transition:
+        background-color 0.2s ease,
+        border-color 0.2s ease,
+        color 0.2s ease,
+        transform 0.15s ease;
+}
+
+.primary-btn {
+    color: white;
+    background: var(--color-primary);
+    border: 1px solid var(--color-primary);
+}
+
+.primary-btn:hover {
+    background: var(--color-primary-hover);
+    border-color: var(--color-primary-hover);
+}
+
+.secondary-btn {
+    color: #374151;
+    background: #f9fafb;
+    border: 1px solid #d1d5db;
+}
+
+.secondary-btn:hover {
+    color: var(--color-primary-hover);
+    background: var(--color-primary-soft);
+    border-color: #93c5fd;
+}
+
+.primary-btn:active,
+.secondary-btn:active {
+    transform: scale(0.98);
+}
+
+button:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+
+/* =========================================
+   9. טבלאות
+========================================= */
+
+table {
+    width: 100%;
+    margin-top: 18px;
+
+    border-collapse: separate;
+    border-spacing: 0;
+
+    background: var(--color-surface);
+
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-small);
+
+    overflow: hidden;
+}
+
+thead {
+    background: var(--color-primary);
+}
+
+th,
+td {
+    padding: 12px 14px;
+
+    border-bottom: 1px solid var(--color-border);
+
+    text-align: center;
+    vertical-align: middle;
+
+    font-size: 14px;
+}
+
+th {
+    color: white;
+    font-weight: 700;
+}
+
+td {
+    color: #374151;
+}
+
+tbody tr:last-child td {
+    border-bottom: none;
+}
+
+tbody tr:nth-child(even) {
+    background: #f9fafb;
+}
+
+tbody tr:hover {
+    background: #eff6ff;
+}
+
+
+/* =========================================
+   10. רשימות בחירה
+========================================= */
+
+.checkbox-list {
+    max-height: 240px;
+    overflow-y: auto;
+
+    margin-bottom: 12px;
+    padding: 10px;
+
+    background: #f9fafb;
+
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-small);
+}
+
+.checkbox-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    min-height: 44px;
+    padding: 10px 12px;
+    margin-bottom: 6px;
+
+    background: var(--color-surface);
+
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-small);
+
+    cursor: pointer;
+
+    transition:
+        background-color 0.2s ease,
+        border-color 0.2s ease;
+}
+
+.checkbox-item:last-child {
+    margin-bottom: 0;
+}
+
+.checkbox-item:hover {
+    background: var(--color-primary-soft);
+    border-color: #bfdbfe;
+}
+
+.checkbox-item input {
+    width: 18px;
+    min-width: 18px;
+    height: 18px;
+
+    margin: 0;
+
+    accent-color: var(--color-primary);
+    cursor: pointer;
+}
+
+.employee-actions,
+.building-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+
+    margin-bottom: 12px;
+}
+
+#employeeCountText {
+    margin-bottom: 18px;
+
+    font-size: 16px;
+    font-weight: 700;
+
+    color: var(--color-primary);
+}
+
+
+/* =========================================
+   11. אזור המבנים
+========================================= */
+
+.buildings-section {
+    margin-top: 10px;
+}
+
+.section-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+
+    margin-bottom: 10px;
+}
+
+.section-title-row label {
+    margin: 0;
+}
+
+.empty-message {
+    padding: 22px;
+
+    text-align: center;
+
+    font-size: 14px;
+    font-weight: 500;
+
+    color: var(--color-muted);
+}
+/* =========================================
+   12. תפריט צד מקצועי
+========================================= */
+
+.sidebar {
+    width: var(--sidebar-width);
+    flex-shrink: 0;
+
+    display: flex;
+    flex-direction: column;
+
+    min-height: 100vh;
+    padding: 22px 16px;
+
+    background:
+        linear-gradient(
+            180deg,
+            #111827 0%,
+            #172033 100%
+        );
+
+    color: var(--color-sidebar-text);
+
+    box-shadow:
+        -4px 0 24px
+        rgba(15, 23, 42, 0.14);
+}
+
+
+/* =========================================
+   13. לוגו וכותרת התפריט
+========================================= */
+
+.sidebar-logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    min-height: 58px;
+
+    padding: 0 10px 18px;
+    margin-bottom: 12px;
+
+    color: #93c5fd;
+
+    font-size: 25px;
+    font-weight: 800;
+    letter-spacing: 0.2px;
+
+    text-align: center;
+
+    border-bottom:
+        1px solid
+        rgba(255, 255, 255, 0.08);
+}
+
+
+/* =========================================
+   14. קבוצות בתפריט
+========================================= */
+
+.sidebar-section {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.sidebar-section-title {
+    margin: 18px 12px 8px;
+
+    color: var(--color-sidebar-muted);
+
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+}
+
+.sidebar-divider {
+    width: calc(100% - 20px);
+    height: 1px;
+
+    margin: 18px 10px 2px;
+
+    background:
+        rgba(255, 255, 255, 0.08);
+}
+
+
+/* =========================================
+   15. כפתורי ניווט
+========================================= */
+
+.sidebar .nav-btn {
+    position: relative;
+
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 12px;
+
+    width: 100%;
+    min-height: 48px;
+
+    padding: 11px 13px;
+    margin: 0;
+
+    color: var(--color-sidebar-text);
+    background: transparent;
+
+    border: 1px solid transparent;
+    border-radius: 10px;
+
+    text-align: right;
+
+    font-size: 15px;
+    font-weight: 600;
+
+    transition:
+        background-color 0.2s ease,
+        border-color 0.2s ease,
+        transform 0.2s ease,
+        box-shadow 0.2s ease;
+}
+
+.sidebar .nav-btn:hover {
+    background: rgba(255, 255, 255, 0.07);
+    border-color: rgba(255, 255, 255, 0.06);
+
+    transform: translateX(-3px);
+}
+
+.sidebar .nav-btn.active {
+    background:
+        linear-gradient(
+            135deg,
+            #2563eb 0%,
+            #1d4ed8 100%
+        );
+
+    border-color:
+        rgba(147, 197, 253, 0.22);
+
+    box-shadow:
+        0 8px 22px
+        rgba(37, 99, 235, 0.28);
+}
+
+.sidebar .nav-btn.active::before {
+    content: "";
+
+    position: absolute;
+
+    top: 10px;
+    right: 0;
+    bottom: 10px;
+
+    width: 4px;
+
+    background: #bfdbfe;
+
+    border-radius:
+        8px 0 0 8px;
+}
+
+
+/* =========================================
+   16. אייקונים בתפריט
+========================================= */
+
+.nav-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 26px;
+    min-width: 26px;
+    height: 26px;
+
+    font-size: 21px;
+    line-height: 1;
+
+    text-align: center;
+}
+
+.sidebar .nav-btn span:last-child {
+    flex: 1;
+}
+
+
+/* =========================================
+   17. שיפור נגישות
+========================================= */
+
+.sidebar .nav-btn:focus-visible {
+    outline: 3px solid rgba(147, 197, 253, 0.5);
+    outline-offset: 2px;
+}
+/* =========================================
+   18. תפריט המבורגר
+========================================= */
+
+.menu-toggle,
+.menu-overlay {
+    display: none;
+}
+
+
+/* =========================================
+   19. התאמה לטאבלט ולמובייל
+========================================= */
+
+@media (max-width: 900px) {
+
+    html,
+    body {
+        overflow-x: hidden;
+    }
+
+    body {
+        -webkit-text-size-adjust: 100%;
+    }
+
+    .app {
+        display: block;
+        width: 100%;
+        min-height: 100vh;
+    }
+
+    .main {
+        width: 100%;
+        min-width: 0;
+    }
+
+    /* כפתור המבורגר */
+
+    .menu-toggle {
+        display: flex;
+        position: fixed;
+
+        top: max(14px, env(safe-area-inset-top));
+        right: 14px;
+
+        z-index: 1101;
+
+        width: 48px;
+        height: 48px;
+
+        align-items: center;
+        justify-content: center;
+
+        border: none;
+        border-radius: 12px;
+
+        background:
+            linear-gradient(
+                135deg,
+                #2563eb 0%,
+                #1d4ed8 100%
+            );
+
+        color: white;
+
+        font-size: 26px;
+        line-height: 1;
+
+        box-shadow:
+            0 8px 20px
+            rgba(37, 99, 235, 0.28);
+    }
+
+    .menu-toggle:active {
+        transform: scale(0.96);
+    }
+
+    /* שכבת רקע */
+
+    .menu-overlay {
+        display: block;
+        position: fixed;
+
+        inset: 0;
+        z-index: 1099;
+
+        background:
+            rgba(15, 23, 42, 0.52);
+
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+
+        backdrop-filter: blur(2px);
+        -webkit-backdrop-filter: blur(2px);
+
+        transition:
+            opacity 0.25s ease,
+            visibility 0.25s ease;
+    }
+
+    .menu-overlay.open {
+        opacity: 1;
+        visibility: visible;
+        pointer-events: auto;
+    }
+
+    /* תפריט צד במובייל */
+
+    .sidebar {
+        position: fixed;
+
+        top: 0;
+        right: 0;
+
+        z-index: 1100;
+
+        width: 300px;
+        max-width: 86%;
+
+        height: 100dvh;
+        min-height: 100vh;
+
+        padding:
+            calc(76px + env(safe-area-inset-top))
+            16px
+            calc(22px + env(safe-area-inset-bottom));
+
+        overflow-y: auto;
+        overscroll-behavior: contain;
+
+        transform: translateX(100%);
+
+        transition:
+            transform 0.28s ease;
+    }
+
+    .sidebar.open {
+        transform: translateX(0);
+    }
+
+    /* לוגו במובייל */
+
+    .sidebar-logo {
+        justify-content: flex-start;
+
+        min-height: 48px;
+
+        padding: 0 4px 16px;
+        margin-bottom: 8px;
+
+        font-size: 22px;
+        text-align: right;
+    }
+
+    /* כותרות קבוצות */
+
+    .sidebar-section-title {
+        margin: 16px 10px 7px;
+        font-size: 12px;
+    }
+
+    .sidebar-divider {
+        margin-top: 14px;
+    }
+
+    /* כפתורי ניווט */
+
+    .sidebar .nav-btn {
+        min-height: 50px;
+
+        padding: 12px 13px;
+
+        background:
+            rgba(255, 255, 255, 0.025);
+    }
+
+    .sidebar .nav-btn:hover {
+        transform: none;
+    }
+
+    .sidebar .nav-btn:active {
+        background:
+            rgba(255, 255, 255, 0.1);
+    }
+
+    /* פס עליון */
+
+    .topbar {
+        width: 100%;
+
+        padding:
+            calc(76px + env(safe-area-inset-top))
+            16px
+            18px;
+    }
+
+    .topbar h1 {
+        font-size: 23px;
+        line-height: 1.3;
+    }
+
+    .topbar p {
+        font-size: 14px;
+        line-height: 1.5;
+    }
+
+    .sync-status {
+        margin-top: 12px;
+        text-align: center;
+    }
+
+    .topbar .primary-btn {
+        width: 100%;
+        min-height: 46px;
+    }
+
+    /* תוכן */
+
+    #content {
+        width: 100%;
+        padding: 18px 14px;
+    }
+
+    /* כרטיסים */
+
+    .cards {
+        grid-template-columns: 1fr;
+        gap: 14px;
+    }
+
+    .card {
+        width: 100%;
+        padding: 18px;
+    }
+
+    .card p {
+        font-size: 24px;
+    }
+
+    /* טבלאות */
+
+    table {
+        display: block;
+
+        width: 100%;
+        max-width: 100%;
+
+        overflow-x: auto;
+        white-space: nowrap;
+
+        -webkit-overflow-scrolling: touch;
+    }
+
+    th,
+    td {
+        min-width: 110px;
+        padding: 10px 8px;
+        font-size: 14px;
+    }
+
+    /* טפסים */
+
+    input,
+    select,
+    textarea {
+        min-height: 46px;
+        padding: 11px;
+        font-size: 16px;
+    }
+
+    textarea {
+        min-height: 100px;
+    }
+
+    button,
+    .primary-btn,
+    .secondary-btn {
+        min-height: 46px;
+        font-size: 15px;
+        touch-action: manipulation;
+    }
+
+    /* עובדים */
+
+    .checkbox-list {
+        max-height: 280px;
+        padding: 8px;
+    }
+
+    .checkbox-item {
+        min-height: 48px;
+        padding: 10px;
+    }
+
+    .checkbox-item input {
+        width: 20px;
+        min-width: 20px;
+        height: 20px;
+        margin: 0;
+    }
+
+    #employeeCountText {
+        font-size: 16px;
+        margin-bottom: 14px;
+    }
+
+    .employee-actions {
+        width: 100%;
+        flex-direction: column;
+    }
+
+    .employee-actions .secondary-btn {
+        width: 100%;
+    }
+
+    /* מבנים */
+
+    .section-title-row {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .building-actions {
+        width: 100%;
+        flex-direction: column;
+    }
+
+    .building-actions .secondary-btn {
+        width: 100%;
+    }
+
+    /* גרפים */
+
+    .chart-container {
+        height: 320px;
+    }
+}
+
+
+/* =========================================
+   20. מסכים קטנים במיוחד
+========================================= */
+
+@media (max-width: 480px) {
+
+    .menu-toggle {
+        top: max(12px, env(safe-area-inset-top));
+        right: 12px;
+
+        width: 46px;
+        height: 46px;
+
+        font-size: 24px;
+    }
+
+    .sidebar {
+        width: 286px;
+        max-width: 88%;
+    }
+
+    .sidebar-logo {
+        font-size: 21px;
+    }
+
+    .topbar {
+        padding-right: 12px;
+        padding-left: 12px;
+    }
+
+    .topbar h1 {
+        font-size: 21px;
+    }
+
+    #content {
+        padding: 14px 10px;
+    }
+
+    .card {
+        padding: 15px;
+        border-radius: 12px;
+    }
+
+    th,
+    td {
+        min-width: 100px;
+        font-size: 13px;
+    }
+
+    .chart-container {
+        height: 280px;
+    }
+}
+/* =========================================
+   מחלקות עזר
+========================================= */
+
+.hidden {
+    display: none !important;
+}
+
+.empty-message {
+    padding: 20px;
+    text-align: center;
+    color: #6b7280;
+    font-size: 15px;
+    font-weight: 500;
+}
+
+
+/* =========================================
+   מסך פתיחה וטעינת נתונים
+========================================= */
+
+body.loading {
+    overflow: hidden;
+}
+
+body.loading .app,
+body.loading .menu-toggle,
+body.loading .menu-overlay {
+    visibility: hidden;
+    pointer-events: none;
+}
+
+.loading-screen {
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    min-height: 100vh;
+    padding: 20px;
+
+    background:
+        linear-gradient(
+            135deg,
+            #f8fafc 0%,
+            #e8eef7 100%
+        );
+}
+
+.loading-screen.hidden {
+    display: none;
+}
+
+.loading-box {
+    width: 100%;
+    max-width: 420px;
+    padding: 38px 30px;
+
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 22px;
+
+    text-align: center;
+
+    box-shadow:
+        0 20px 50px rgba(15, 23, 42, 0.14);
+}
+
+.loading-logo {
+    display: block;
+
+    width: 110px;
+    max-width: 70%;
+    height: auto;
+
+    margin: 0 auto 20px;
+}
+
+.loading-box h2 {
+    margin-bottom: 10px;
+
+    color: #1d4ed8;
+    font-size: 30px;
+    line-height: 1.2;
+}
+
+.loading-box > p {
+    margin-bottom: 22px;
+
+    color: #4b5563;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.loading-bar {
+    position: relative;
+
+    width: 100%;
+    height: 10px;
+
+    overflow: hidden;
+
+    background: #e5e7eb;
+    border-radius: 999px;
+}
+
+.loading-bar-fill {
+    position: absolute;
+    top: 0;
+    right: 0;
+
+    width: 38%;
+    height: 100%;
+
+    background:
+        linear-gradient(
+            90deg,
+            #2563eb,
+            #60a5fa
+        );
+
+    border-radius: 999px;
+
+    animation:
+        loadingBarMove 1.2s ease-in-out infinite;
+}
+
+.loading-note {
+    margin-top: 18px !important;
+    margin-bottom: 0 !important;
+
+    color: #9ca3af !important;
+    font-size: 14px !important;
+    font-weight: 400 !important;
+}
+
+@keyframes loadingBarMove {
+    0% {
+        right: -40%;
+    }
+
+    50% {
+        right: 62%;
+    }
+
+    100% {
+        right: -40%;
+    }
+}
+
+
+/* =========================================
+   סקירה כללית וגרפים
+========================================= */
+
+.dashboard-filter {
+    width: 100%;
+    max-width: 720px;
+}
+
+.dashboard-filter h3 {
+    margin-bottom: 18px;
+}
+
+#dashboardCustomDates {
+    margin-top: 5px;
+}
+
+.chart-container {
+    position: relative;
+
+    width: 100%;
+    height: 380px;
+
+    margin-top: 20px;
+}
+
+.dashboard-empty-text {
+    margin: 0;
+
+    color: #6b7280 !important;
+    font-size: 16px !important;
+    font-weight: 400 !important;
+}
+
+.missing-rates-card {
+    border-right: 5px solid #f59e0b;
+}
+
+.missing-rates-card h3 {
+    color: #b45309;
+}
+
+.missing-rates-intro {
+    margin-bottom: 16px;
+
+    color: #4b5563 !important;
+    font-size: 16px !important;
+    font-weight: 400 !important;
+}
+
+
+/* =========================================
+   שיפורי מובייל אחרונים
+========================================= */
+
+@media (max-width: 900px) {
+
+    .chart-container {
+        height: 320px;
+    }
+
+    .loading-box {
+        max-width: 380px;
+        padding: 32px 24px;
+    }
+
+    .loading-logo {
+        width: 95px;
+    }
+
+    .loading-box h2 {
+        font-size: 27px;
+    }
+}
+
+@media (max-width: 480px) {
+
+    .loading-screen {
+        padding: 16px;
+    }
+
+    .loading-box {
+        padding: 28px 20px;
+        border-radius: 18px;
+    }
+
+    .loading-logo {
+        width: 85px;
+    }
+
+    .loading-box h2 {
+        font-size: 25px;
+    }
+
+    .loading-box > p {
+        font-size: 15px;
+    }
+
+    .chart-container {
+        height: 280px;
+    }
+
+    .missing-rates-card {
+        border-right-width: 4px;
+    }
+}
+@media (min-width: 901px) {
+
+    .sync-actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-top: 14px;
+    }
+
+    .sync-actions .sync-status {
+        margin: 0;
+    }
+
+    .sync-actions .primary-btn {
+        width: auto;
+    }
+
+}

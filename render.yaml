@@ -1,0 +1,22 @@
+# Render.com blueprint — free single-service deploy.
+# Storage is Turso (remote), so the free tier's ephemeral disk is fine.
+services:
+  - type: web
+    name: work-log
+    runtime: node
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # Set these in the Render dashboard (sync:false keeps them out of git):
+      - key: DATABASE_URL # turso db show work-log --url
+        sync: false
+      - key: DATABASE_AUTH_TOKEN # turso db tokens create work-log
+        sync: false
+      - key: APP_PASSWORD # the shared login password
+        sync: false
+      - key: SESSION_SECRET # long random string; keeps logins across restarts
+        generateValue: true
