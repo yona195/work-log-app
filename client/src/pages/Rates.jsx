@@ -7,6 +7,7 @@ export default function Rates() {
   const { data, addItem, deleteItem } = useData();
   const { sites, employees, subcontractors, customers, rates } = data;
 
+  const [selectedCustomerIds, setSelectedCustomerIds] = useState([]);
   const [selectedSiteIds, setSelectedSiteIds] = useState([]);
   const [rateType, setRateType] = useState("subcontractor");
   const [selectedTargetIds, setSelectedTargetIds] = useState([]);
@@ -20,8 +21,6 @@ export default function Rates() {
           id: e.id,
           label: `${e.name} — ${getEmployeeAffiliationName(data, e)}`,
         }))
-      : rateType === "customer"
-      ? customers.map((c) => ({ id: c.id, label: c.name }))
       : subcontractors.map((s) => ({ id: s.id, label: s.name }));
 
   const toggle = (list, setList, id) =>
@@ -51,11 +50,15 @@ export default function Rates() {
     const revenuePerWorker = Number(revenue);
     const costPerWorker = Number(cost);
 
+    if (selectedCustomerIds.length === 0) {
+      alert("נא לבחור לפחות מזמין עבודה אחד");
+      return;
+    }
     if (selectedSiteIds.length === 0) {
       alert("נא לבחור לפחות אתר עבודה אחד");
       return;
     }
-    if (!["employee", "subcontractor", "customer"].includes(rateType)) {
+    if (rateType !== "employee" && rateType !== "subcontractor") {
       alert("נא לבחור סוג תעריף");
       return;
     }
@@ -63,8 +66,6 @@ export default function Rates() {
       alert(
         rateType === "employee"
           ? "נא לבחור לפחות עובד אחד"
-          : rateType === "customer"
-          ? "נא לבחור לפחות מזמין עבודה אחד"
           : "נא לבחור לפחות קבלן משנה אחד"
       );
       return;
@@ -85,38 +86,39 @@ export default function Rates() {
     let addedCount = 0;
     let skippedCount = 0;
 
-    for (const siteId of selectedSiteIds) {
-      for (const targetId of selectedTargetIds) {
-        const duplicate = rates.some((rate) => {
-          const sameBase =
-            String(rate.siteId) === String(siteId) &&
-            String(rate.rateType) === String(rateType) &&
-            normalizeDate(rate.effectiveFrom) === effectiveFrom;
-          if (!sameBase) return false;
-          if (rateType === "employee")
-            return String(rate.employeeId || "") === String(targetId);
-          if (rateType === "customer")
-            return String(rate.customerId || "") === String(targetId);
-          return String(rate.subcontractorId || "") === String(targetId);
-        });
+    for (const customerId of selectedCustomerIds) {
+      for (const siteId of selectedSiteIds) {
+        for (const targetId of selectedTargetIds) {
+          const duplicate = rates.some((rate) => {
+            const sameBase =
+              String(rate.customerId || "") === String(customerId) &&
+              String(rate.siteId) === String(siteId) &&
+              String(rate.rateType) === String(rateType) &&
+              normalizeDate(rate.effectiveFrom) === effectiveFrom;
+            if (!sameBase) return false;
+            return rateType === "employee"
+              ? String(rate.employeeId || "") === String(targetId)
+              : String(rate.subcontractorId || "") === String(targetId);
+          });
 
-        if (duplicate) {
-          skippedCount += 1;
-          continue;
+          if (duplicate) {
+            skippedCount += 1;
+            continue;
+          }
+
+          // eslint-disable-next-line no-await-in-loop
+          await addItem("rates", {
+            customerId,
+            siteId,
+            rateType,
+            subcontractorId: rateType === "subcontractor" ? targetId : "",
+            employeeId: rateType === "employee" ? targetId : "",
+            revenuePerWorker,
+            costPerWorker,
+            effectiveFrom,
+          });
+          addedCount += 1;
         }
-
-        // eslint-disable-next-line no-await-in-loop
-        await addItem("rates", {
-          siteId,
-          rateType,
-          subcontractorId: rateType === "subcontractor" ? targetId : "",
-          employeeId: rateType === "employee" ? targetId : "",
-          customerId: rateType === "customer" ? targetId : "",
-          revenuePerWorker,
-          costPerWorker,
-          effectiveFrom,
-        });
-        addedCount += 1;
       }
     }
 
@@ -125,6 +127,7 @@ export default function Rates() {
       return;
     }
 
+    setSelectedCustomerIds([]);
     setSelectedSiteIds([]);
     setSelectedTargetIds([]);
     setRevenue("");
@@ -143,6 +146,42 @@ export default function Rates() {
     <>
       <div className="card">
         <h3>הוספת תעריף</h3>
+
+        <label>בחר מזמיני עבודה</label>
+        <div className="checkbox-list">
+          {customers.length === 0 ? (
+            <p className="empty-message">אין מזמיני עבודה</p>
+          ) : (
+            customers.map((customer) => (
+              <label className="checkbox-item" key={customer.id}>
+                <input
+                  type="checkbox"
+                  checked={selectedCustomerIds.includes(customer.id)}
+                  onChange={() =>
+                    toggle(selectedCustomerIds, setSelectedCustomerIds, customer.id)
+                  }
+                />
+                <span>{customer.name}</span>
+              </label>
+            ))
+          )}
+        </div>
+        <div className="employee-actions">
+          <button
+            type="button"
+            className="secondary-btn"
+            onClick={() => setSelectedCustomerIds(customers.map((c) => c.id))}
+          >
+            בחר את כל המזמינים
+          </button>
+          <button
+            type="button"
+            className="secondary-btn"
+            onClick={() => setSelectedCustomerIds([])}
+          >
+            נקה את כל המזמינים
+          </button>
+        </div>
 
         <label>בחר אתרי עבודה</label>
         <div className="checkbox-list">
@@ -184,24 +223,15 @@ export default function Rates() {
         <select value={rateType} onChange={(e) => changeRateType(e.target.value)}>
           <option value="subcontractor">קבלן משנה</option>
           <option value="employee">עובד ספציפי</option>
-          <option value="customer">מזמין עבודה</option>
         </select>
 
         <label>
-          {rateType === "employee"
-            ? "בחר עובדים ספציפיים"
-            : rateType === "customer"
-            ? "בחר מזמיני עבודה"
-            : "בחר קבלני משנה"}
+          {rateType === "employee" ? "בחר עובדים ספציפיים" : "בחר קבלני משנה"}
         </label>
         <div className="checkbox-list">
           {targets.length === 0 ? (
             <p className="empty-message">
-              {rateType === "employee"
-                ? "אין עובדים"
-                : rateType === "customer"
-                ? "אין מזמיני עבודה"
-                : "אין קבלני משנה"}
+              {rateType === "employee" ? "אין עובדים" : "אין קבלני משנה"}
             </p>
           ) : (
             targets.map((target) => (
@@ -278,6 +308,7 @@ export default function Rates() {
             <thead>
               <tr>
                 <th>#</th>
+                <th>מזמין עבודה</th>
                 <th>אתר</th>
                 <th>סוג</th>
                 <th>עובד / קבלן</th>
@@ -294,7 +325,6 @@ export default function Rates() {
                 const revenueValue = Number(rate.revenuePerWorker) || 0;
                 const costValue = Number(rate.costPerWorker) || 0;
                 const isEmployeeRate = rate.rateType === "employee";
-                const isCustomerRate = rate.rateType === "customer";
                 const employee = isEmployeeRate
                   ? employees.find(
                       (e) => String(e.id) === String(rate.employeeId)
@@ -302,25 +332,18 @@ export default function Rates() {
                   : null;
                 const targetName = isEmployeeRate
                   ? employee?.name || ""
-                  : isCustomerRate
-                  ? getName(customers, rate.customerId)
                   : getName(subcontractors, rate.subcontractorId);
-                const affiliationName = isCustomerRate
-                  ? "מזמין עבודה"
-                  : isEmployeeRate && employee
-                  ? getEmployeeAffiliationName(data, employee)
-                  : "קבלן משנה";
-                const typeLabel = isEmployeeRate
-                  ? "תעריף אישי"
-                  : isCustomerRate
-                  ? "תעריף לפי מזמין"
-                  : "תעריף כללי";
+                const affiliationName =
+                  isEmployeeRate && employee
+                    ? getEmployeeAffiliationName(data, employee)
+                    : "קבלן משנה";
 
                 return (
                   <tr key={rate.id}>
                     <td>{index + 1}</td>
+                    <td>{getName(customers, rate.customerId) || "מזמין לא נמצא"}</td>
                     <td>{getName(sites, rate.siteId) || "אתר לא נמצא"}</td>
-                    <td>{typeLabel}</td>
+                    <td>{isEmployeeRate ? "תעריף אישי" : "תעריף כללי"}</td>
                     <td>{targetName || "לא נמצא"}</td>
                     <td>{affiliationName}</td>
                     <td>{formatCurrency(revenueValue)}</td>
