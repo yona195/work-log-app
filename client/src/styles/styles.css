@@ -143,17 +143,6 @@ img {
     color: var(--color-muted);
 }
 
-.sync-status {
-    margin-top: 14px;
-    margin-bottom: 12px;
-
-    font-size: 14px;
-    font-weight: 600;
-
-    color: var(--color-muted);
-}
-
-
 /* =========================================
    5. אזור התוכן
 ========================================= */
@@ -924,16 +913,6 @@ tbody tr:hover {
         line-height: 1.5;
     }
 
-    .sync-status {
-        margin-top: 12px;
-        text-align: center;
-    }
-
-    .topbar .primary-btn {
-        width: 100%;
-        min-height: 46px;
-    }
-
     /* תוכן */
 
     #content {
@@ -1369,22 +1348,4 @@ body.loading .menu-overlay {
     .missing-rates-card {
         border-right-width: 4px;
     }
-}
-@media (min-width: 901px) {
-
-    .sync-actions {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        margin-top: 14px;
-    }
-
-    .sync-actions .sync-status {
-        margin: 0;
-    }
-
-    .sync-actions .primary-btn {
-        width: auto;
-    }
-
 }
