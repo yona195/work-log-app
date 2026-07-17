@@ -212,6 +212,35 @@ export function createFinancialSummaryPDF(data, filteredLogs, filters) {
     `;
   };
 
+  const monthSummary = (groups) => {
+    const totals = groups.reduce(
+      (acc, group) => ({
+        cost: acc.cost + group.totalCost,
+        revenue: acc.revenue + group.totalRevenue,
+        profit: acc.profit + group.totalProfit,
+      }),
+      { cost: 0, revenue: 0, profit: 0 }
+    );
+
+    return `
+      <h3 class="month-summary-title">סיכום כללי</h3>
+      <div class="totals-tiles">
+        <div class="total-tile">
+          <div class="total-label">עלות חודשית</div>
+          <div class="total-value">${escapeHtml(formatCurrency(totals.cost))}</div>
+        </div>
+        <div class="total-tile">
+          <div class="total-label">תשלום חודשי</div>
+          <div class="total-value">${escapeHtml(formatCurrency(totals.revenue))}</div>
+        </div>
+        <div class="total-tile">
+          <div class="total-label">רווח/הפסד חודשי</div>
+          <div class="total-value">${escapeHtml(formatCurrency(totals.profit))}</div>
+        </div>
+      </div>
+    `;
+  };
+
   const monthSections = groupLogsByMonth(filteredLogs)
     .map((month) => {
       const groups = calculateEmployerBreakdown(data, month.logs, filters);
@@ -220,6 +249,7 @@ export function createFinancialSummaryPDF(data, filteredLogs, filters) {
       return `
         <section class="month-section">
           <h2 class="month-title">${escapeHtml(month.label)}</h2>
+          ${monthSummary(groups)}
           ${groups.map(groupTable).join("")}
         </section>
       `;
@@ -249,6 +279,11 @@ export function createFinancialSummaryPDF(data, filteredLogs, filters) {
         .month-section:not(:first-child) { page-break-before: always; }
         .month-title { margin-bottom: 8px; }
         .group-title { margin-top: 20px; margin-bottom: 6px; font-size: 15px; }
+        .month-summary-title { margin-bottom: 6px; font-size: 14px; color: #444; }
+        .totals-tiles { display: flex; gap: 12px; }
+        .total-tile { flex: 1; border: 1px solid #999; border-radius: 6px; padding: 10px; text-align: center; background: #f8fafc; }
+        .total-label { font-size: 13px; color: #555; }
+        .total-value { font-size: 18px; font-weight: bold; margin-top: 4px; color: #1d4ed8; }
         table { width: 100%; border-collapse: collapse; margin-top: 6px; table-layout: auto; }
         th { background: #2563eb; color: white; }
         th, td { border: 1px solid #999; padding: 8px; text-align: center; font-size: 12px; vertical-align: middle; word-break: break-word; }

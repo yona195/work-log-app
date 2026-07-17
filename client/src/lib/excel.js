@@ -311,6 +311,74 @@ function addEmployerGroupTable(worksheet, startRow, group) {
   return row + 1; // blank spacer before the next group's table
 }
 
+// Writes the month's overall summary (all groups combined) starting at
+// `startRow`. Returns the next free row after its spacer.
+function addMonthSummaryBlock(worksheet, startRow, groups) {
+  let row = startRow;
+
+  const totals = groups.reduce(
+    (acc, group) => ({
+      cost: acc.cost + group.totalCost,
+      revenue: acc.revenue + group.totalRevenue,
+      profit: acc.profit + group.totalProfit,
+    }),
+    { cost: 0, revenue: 0, profit: 0 }
+  );
+
+  worksheet.mergeCells(`A${row}:J${row}`);
+  const titleCell = worksheet.getCell(`A${row}`);
+  titleCell.value = "סיכום כללי";
+  titleCell.font = { bold: true, size: 14 };
+  titleCell.alignment = { horizontal: "right", vertical: "middle" };
+  worksheet.getRow(row).height = 26;
+  row += 1;
+
+  worksheet.mergeCells(`A${row}:G${row}`);
+  worksheet.getCell(`H${row}`).value = "עלות חודשית";
+  worksheet.getCell(`I${row}`).value = "תשלום חודשי";
+  worksheet.getCell(`J${row}`).value = "רווח/הפסד חודשי";
+  const labelRow = worksheet.getRow(row);
+  labelRow.height = 22;
+  labelRow.eachCell({ includeEmpty: true }, (cell) => {
+    cell.font = { bold: true, size: 11, color: { argb: "FFFFFFFF" } };
+    cell.fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "FF1D4ED8" },
+    };
+    cell.alignment = { horizontal: "center", vertical: "middle" };
+    const thin = { style: "thin", color: { argb: "FFD1D5DB" } };
+    cell.border = { top: thin, bottom: thin, left: thin, right: thin };
+  });
+  row += 1;
+
+  worksheet.mergeCells(`A${row}:G${row}`);
+  worksheet.getCell(`A${row}`).value = "סה״כ כללי";
+  worksheet.getCell(`H${row}`).value = totals.cost;
+  worksheet.getCell(`I${row}`).value = totals.revenue;
+  worksheet.getCell(`J${row}`).value = totals.profit;
+  const valueRow = worksheet.getRow(row);
+  valueRow.height = 28;
+  valueRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+    cell.font = { bold: true, size: 13 };
+    cell.fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "FFDBEAFE" },
+    };
+    cell.alignment = {
+      horizontal: colNumber === 1 ? "right" : "center",
+      vertical: "middle",
+    };
+    const thin = { style: "thin", color: { argb: "FFD1D5DB" } };
+    cell.border = { top: thin, bottom: thin, left: thin, right: thin };
+    if (colNumber >= 8) cell.numFmt = CURRENCY_FORMAT;
+  });
+  row += 1;
+
+  return row + 1; // blank spacer before the group tables
+}
+
 function addEmployerWorksheet(workbook, month, groups) {
   const worksheet = workbook.addWorksheet(toSheetName(month.label), {
     views: [{ rightToLeft: true }],
@@ -343,7 +411,7 @@ function addEmployerWorksheet(workbook, month, groups) {
   datesCell.alignment = { horizontal: "center", vertical: "middle" };
   worksheet.getRow(2).height = 24;
 
-  let row = 4;
+  let row = addMonthSummaryBlock(worksheet, 4, groups);
   groups.forEach((group) => {
     row = addEmployerGroupTable(worksheet, row, group);
   });
