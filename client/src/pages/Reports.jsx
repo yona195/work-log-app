@@ -178,22 +178,16 @@ export default function Reports() {
         </select>
 
         <div className="report-actions">
-          <div className="report-action-group report-action-group--customer">
-            <span className="report-action-group-title">
-              <span className="report-action-group-icon">🏗️</span>
-              אזור מזמין
-            </span>
+          <div className="report-action-group">
+            <span className="report-action-group-title">אזור מזמין</span>
             <div className="report-action-group-buttons">
               <button className="primary-btn" type="button" onClick={() => setView("report")}>
-                <span className="btn-icon">📋</span>
                 הצג דוח
               </button>
-              <button className="report-btn-outline" type="button" onClick={handlePDF}>
-                <span className="btn-icon">📄</span>
+              <button className="secondary-btn" type="button" onClick={handlePDF}>
                 דוח מזמין
               </button>
-              <button className="report-btn-outline" type="button" onClick={handleExcel}>
-                <span className="btn-icon">📊</span>
+              <button className="secondary-btn" type="button" onClick={handleExcel}>
                 אקסל מזמין
               </button>
             </div>
@@ -201,22 +195,16 @@ export default function Reports() {
 
           <div className="report-action-divider" aria-hidden="true" />
 
-          <div className="report-action-group report-action-group--employer">
-            <span className="report-action-group-title">
-              <span className="report-action-group-icon">💼</span>
-              אזור מעסיק
-            </span>
+          <div className="report-action-group">
+            <span className="report-action-group-title">אזור מעסיק</span>
             <div className="report-action-group-buttons">
               <button className="primary-btn" type="button" onClick={() => setView("summary")}>
-                <span className="btn-icon">💰</span>
                 סיכום כספי
               </button>
-              <button className="report-btn-outline" type="button" onClick={handleEmployerPDF}>
-                <span className="btn-icon">📄</span>
+              <button className="secondary-btn" type="button" onClick={handleEmployerPDF}>
                 דוח מעסיק
               </button>
-              <button className="report-btn-outline" type="button" onClick={handleEmployerExcel}>
-                <span className="btn-icon">📊</span>
+              <button className="secondary-btn" type="button" onClick={handleEmployerExcel}>
                 אקסל מעסיק
               </button>
             </div>

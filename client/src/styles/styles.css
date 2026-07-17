@@ -1302,15 +1302,12 @@ body.loading .menu-overlay {
 .report-actions {
     display: flex;
     align-items: stretch;
-    gap: 18px;
+    gap: 16px;
 
     margin-top: 20px;
 }
 
 .report-action-group {
-    --group-accent: var(--color-primary);
-    --group-accent-soft: var(--color-primary-soft);
-
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -1320,41 +1317,18 @@ body.loading .menu-overlay {
 
     padding: 16px 18px;
 
-    background: var(--group-accent-soft);
-    border: 1px solid color-mix(in srgb, var(--group-accent) 20%, transparent);
-    border-radius: var(--radius-large);
-    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
-}
-
-.report-action-group--customer {
-    --group-accent: var(--color-primary);
-    --group-accent-soft: var(--color-primary-soft);
-}
-
-.report-action-group--employer {
-    --group-accent: var(--color-success);
-    --group-accent-soft: #f0fdf4;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-medium);
 }
 
 .report-action-group-title {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    align-self: flex-start;
-
-    padding: 4px 12px;
-
-    color: var(--group-accent);
-    background: color-mix(in srgb, var(--group-accent) 12%, white);
-    border-radius: 999px;
+    color: var(--color-muted);
 
     font-size: 12.5px;
     font-weight: 700;
-    letter-spacing: 0.02em;
-}
-
-.report-action-group-icon {
-    font-size: 13px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
 }
 
 .report-action-group-buttons {
@@ -1364,55 +1338,8 @@ body.loading .menu-overlay {
 }
 
 .report-action-group-buttons .primary-btn,
-.report-action-group-buttons .report-btn-outline {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 7px;
-
+.report-action-group-buttons .secondary-btn {
     flex: 1 1 150px;
-}
-
-.report-action-group-buttons .primary-btn {
-    background: var(--group-accent);
-    border-color: var(--group-accent);
-}
-
-.report-action-group-buttons .primary-btn:hover {
-    filter: brightness(0.92);
-}
-
-.report-btn-outline {
-    min-height: 42px;
-
-    padding: 10px 16px;
-
-    color: var(--group-accent);
-    background: var(--color-surface);
-    border: 1px solid color-mix(in srgb, var(--group-accent) 45%, transparent);
-    border-radius: var(--radius-small);
-
-    font-size: 14px;
-    font-weight: 600;
-
-    transition:
-        background-color 0.2s ease,
-        border-color 0.2s ease,
-        transform 0.15s ease;
-}
-
-.report-btn-outline:hover {
-    background: color-mix(in srgb, var(--group-accent) 10%, white);
-    border-color: var(--group-accent);
-}
-
-.report-btn-outline:active {
-    transform: scale(0.98);
-}
-
-.btn-icon {
-    font-size: 15px;
-    line-height: 1;
 }
 
 .report-action-divider {
@@ -1431,7 +1358,7 @@ body.loading .menu-overlay {
     }
 
     .report-action-group-buttons .primary-btn,
-    .report-action-group-buttons .report-btn-outline {
+    .report-action-group-buttons .secondary-btn {
         flex: 1 1 auto;
     }
 }
