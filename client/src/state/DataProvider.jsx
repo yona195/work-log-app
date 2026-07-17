@@ -9,7 +9,7 @@ const EMPTY_DATA = {
   customers: [],
   rates: [],
   workLogs: [],
-  lastLogin: null,
+  previousLogin: null,
 };
 
 const DataContext = createContext(null);

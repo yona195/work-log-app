@@ -195,7 +195,7 @@ export async function getData() {
     // eslint-disable-next-line no-await-in-loop
     data[name] = await listAll(name);
   }
-  data.lastLogin = await getAppState("lastLogin");
+  data.previousLogin = await getAppState("previousLogin");
   return data;
 }
 
@@ -216,7 +216,9 @@ export async function setAppState(key, value) {
   await client.execute({
     sql: `INSERT INTO app_state (key, value) VALUES (?, ?)
           ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
-    args: [key, value],
+    // column is NOT NULL — a first-ever login has no prior value to carry
+    // forward, so setAppState("previousLogin", null) must not crash.
+    args: [key, value ?? ""],
   });
 }
 

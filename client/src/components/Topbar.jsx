@@ -3,7 +3,7 @@ import { formatDateTime } from "../lib/format.js";
 
 export default function Topbar({ title }) {
   const { data } = useData();
-  const { lastLogin } = data;
+  const { previousLogin } = data;
 
   return (
     <header className="topbar">
@@ -14,11 +14,11 @@ export default function Topbar({ title }) {
 
       <div className="topbar-brand">
         <img src="/logo.png" alt="לוגו החברה" className="topbar-logo" />
-        {lastLogin && (
+        {previousLogin && (
           <p className="topbar-last-login">
-            כניסה אחרונה:
+            כניסה קודמת:
             <br />
-            {formatDateTime(lastLogin)}
+            {formatDateTime(previousLogin)}
           </p>
         )}
       </div>
