@@ -6,11 +6,12 @@ import {
 } from "./entities.js";
 
 /**
- * Resolve the rate that applies to an employee at a site on a given date.
- * Priority: personal (employee) rate → subcontractor rate.
- * Internal employees must have a personal rate.
+ * Resolve the rate that applies to an employee at a site, for a given
+ * customer, on a given date. Priority: personal (employee) rate →
+ * subcontractor rate. Internal employees must have a personal rate.
+ * A rate only matches work logged for the same customer it was defined for.
  */
-export function getApplicableRate(data, employee, siteId, workDate) {
+export function getApplicableRate(data, employee, siteId, workDate, customerId) {
   if (!employee || !siteId || !workDate) return null;
 
   const normalizedWorkDate = normalizeDate(workDate);
@@ -21,6 +22,7 @@ export function getApplicableRate(data, employee, siteId, workDate) {
       const rateDate = normalizeDate(rate.effectiveFrom);
       return (
         String(rate.siteId) === String(siteId) &&
+        String(rate.customerId || "") === String(customerId || "") &&
         rateDate &&
         rateDate <= normalizedWorkDate
       );
@@ -71,7 +73,13 @@ export function calculateWorkLogFinance(data, log, employeeIdsOverride) {
     );
     if (!employee) return;
 
-    const rate = getApplicableRate(data, employee, log.siteId, log.date);
+    const rate = getApplicableRate(
+      data,
+      employee,
+      log.siteId,
+      log.date,
+      log.customerId
+    );
     if (!rate) {
       result.missingRateEmployees.push({
         employeeId: employee.id,
@@ -160,7 +168,13 @@ export function calculateFinanceByWorkforce(data, logs) {
       );
       if (!employee) return;
 
-      const rate = getApplicableRate(data, employee, log.siteId, log.date);
+      const rate = getApplicableRate(
+        data,
+        employee,
+        log.siteId,
+        log.date,
+        log.customerId
+      );
       if (!rate) return;
 
       let groupKey;

@@ -44,6 +44,7 @@ export const COLLECTIONS = {
       "rateType",
       "employeeId",
       "subcontractorId",
+      "customerId",
       "revenuePerWorker",
       "costPerWorker",
       "effectiveFrom",
@@ -115,6 +116,16 @@ export async function initDb() {
       notes       TEXT NOT NULL DEFAULT ''
     );
   `);
+
+  // rates.customerId was added after the initial release; back-fill it on
+  // databases created before this column existed.
+  try {
+    await client.execute(
+      `ALTER TABLE rates ADD COLUMN customerId TEXT NOT NULL DEFAULT ''`
+    );
+  } catch (err) {
+    if (!/duplicate column/i.test(err.message)) throw err;
+  }
 }
 
 /* =========================================

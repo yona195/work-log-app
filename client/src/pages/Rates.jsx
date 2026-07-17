@@ -5,8 +5,9 @@ import { getName, getEmployeeAffiliationName } from "../lib/entities.js";
 
 export default function Rates() {
   const { data, addItem, deleteItem } = useData();
-  const { sites, employees, subcontractors, rates } = data;
+  const { sites, employees, subcontractors, customers, rates } = data;
 
+  const [selectedCustomerIds, setSelectedCustomerIds] = useState([]);
   const [selectedSiteIds, setSelectedSiteIds] = useState([]);
   const [rateType, setRateType] = useState("subcontractor");
   const [selectedTargetIds, setSelectedTargetIds] = useState([]);
@@ -49,6 +50,10 @@ export default function Rates() {
     const revenuePerWorker = Number(revenue);
     const costPerWorker = Number(cost);
 
+    if (selectedCustomerIds.length === 0) {
+      alert("נא לבחור לפחות מזמין עבודה אחד");
+      return;
+    }
     if (selectedSiteIds.length === 0) {
       alert("נא לבחור לפחות אתר עבודה אחד");
       return;
@@ -81,35 +86,39 @@ export default function Rates() {
     let addedCount = 0;
     let skippedCount = 0;
 
-    for (const siteId of selectedSiteIds) {
-      for (const targetId of selectedTargetIds) {
-        const duplicate = rates.some((rate) => {
-          const sameBase =
-            String(rate.siteId) === String(siteId) &&
-            String(rate.rateType) === String(rateType) &&
-            normalizeDate(rate.effectiveFrom) === effectiveFrom;
-          if (!sameBase) return false;
-          return rateType === "employee"
-            ? String(rate.employeeId || "") === String(targetId)
-            : String(rate.subcontractorId || "") === String(targetId);
-        });
+    for (const customerId of selectedCustomerIds) {
+      for (const siteId of selectedSiteIds) {
+        for (const targetId of selectedTargetIds) {
+          const duplicate = rates.some((rate) => {
+            const sameBase =
+              String(rate.customerId || "") === String(customerId) &&
+              String(rate.siteId) === String(siteId) &&
+              String(rate.rateType) === String(rateType) &&
+              normalizeDate(rate.effectiveFrom) === effectiveFrom;
+            if (!sameBase) return false;
+            return rateType === "employee"
+              ? String(rate.employeeId || "") === String(targetId)
+              : String(rate.subcontractorId || "") === String(targetId);
+          });
 
-        if (duplicate) {
-          skippedCount += 1;
-          continue;
+          if (duplicate) {
+            skippedCount += 1;
+            continue;
+          }
+
+          // eslint-disable-next-line no-await-in-loop
+          await addItem("rates", {
+            customerId,
+            siteId,
+            rateType,
+            subcontractorId: rateType === "subcontractor" ? targetId : "",
+            employeeId: rateType === "employee" ? targetId : "",
+            revenuePerWorker,
+            costPerWorker,
+            effectiveFrom,
+          });
+          addedCount += 1;
         }
-
-        // eslint-disable-next-line no-await-in-loop
-        await addItem("rates", {
-          siteId,
-          rateType,
-          subcontractorId: rateType === "subcontractor" ? targetId : "",
-          employeeId: rateType === "employee" ? targetId : "",
-          revenuePerWorker,
-          costPerWorker,
-          effectiveFrom,
-        });
-        addedCount += 1;
       }
     }
 
@@ -118,6 +127,7 @@ export default function Rates() {
       return;
     }
 
+    setSelectedCustomerIds([]);
     setSelectedSiteIds([]);
     setSelectedTargetIds([]);
     setRevenue("");
@@ -136,6 +146,42 @@ export default function Rates() {
     <>
       <div className="card">
         <h3>הוספת תעריף</h3>
+
+        <label>בחר מזמיני עבודה</label>
+        <div className="checkbox-list">
+          {customers.length === 0 ? (
+            <p className="empty-message">אין מזמיני עבודה</p>
+          ) : (
+            customers.map((customer) => (
+              <label className="checkbox-item" key={customer.id}>
+                <input
+                  type="checkbox"
+                  checked={selectedCustomerIds.includes(customer.id)}
+                  onChange={() =>
+                    toggle(selectedCustomerIds, setSelectedCustomerIds, customer.id)
+                  }
+                />
+                <span>{customer.name}</span>
+              </label>
+            ))
+          )}
+        </div>
+        <div className="employee-actions">
+          <button
+            type="button"
+            className="secondary-btn"
+            onClick={() => setSelectedCustomerIds(customers.map((c) => c.id))}
+          >
+            בחר את כל המזמינים
+          </button>
+          <button
+            type="button"
+            className="secondary-btn"
+            onClick={() => setSelectedCustomerIds([])}
+          >
+            נקה את כל המזמינים
+          </button>
+        </div>
 
         <label>בחר אתרי עבודה</label>
         <div className="checkbox-list">
@@ -262,6 +308,7 @@ export default function Rates() {
             <thead>
               <tr>
                 <th>#</th>
+                <th>מזמין עבודה</th>
                 <th>אתר</th>
                 <th>סוג</th>
                 <th>עובד / קבלן</th>
@@ -294,6 +341,7 @@ export default function Rates() {
                 return (
                   <tr key={rate.id}>
                     <td>{index + 1}</td>
+                    <td>{getName(customers, rate.customerId) || "מזמין לא נמצא"}</td>
                     <td>{getName(sites, rate.siteId) || "אתר לא נמצא"}</td>
                     <td>{isEmployeeRate ? "תעריף אישי" : "תעריף כללי"}</td>
                     <td>{targetName || "לא נמצא"}</td>
