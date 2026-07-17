@@ -6,6 +6,7 @@ import {
   calculateFilteredWorkLogFinance,
   filterReportLogs,
   getReportEmployees,
+  groupLogsByMonth,
 } from "../lib/reports.js";
 import { createWorkLogPDF } from "../lib/pdf.js";
 import { exportToExcel } from "../lib/excel.js";
@@ -55,6 +56,11 @@ export default function Reports() {
   );
 
   const reportEmployeesFor = (log) => getReportEmployees(data, log, filters);
+
+  const monthGroups = useMemo(
+    () => groupLogsByMonth(filteredLogs),
+    [filteredLogs]
+  );
 
   const summary = useMemo(() => {
     if (view !== "summary") return null;
@@ -254,35 +260,40 @@ export default function Reports() {
             {filteredLogs.length === 0 ? (
               <p>אין רשומות מתאימות.</p>
             ) : (
-              <table>
-                <thead>
-                  <tr>
-                    <th>תאריך</th>
-                    <th>עובדים</th>
-                    <th>סה״כ עובדים</th>
-                    <th>אתר</th>
-                    <th>מבנה</th>
-                    <th>מזמין</th>
-                    <th>הערות</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredLogs.map((log) => {
-                    const reportEmployees = reportEmployeesFor(log);
-                    return (
-                      <tr key={log.id}>
-                        <td>{normalizeDate(log.date)}</td>
-                        <td>{reportEmployees.map((e) => e.name).join(", ")}</td>
-                        <td>{reportEmployees.length}</td>
-                        <td>{getName(sites, log.siteId)}</td>
-                        <td>{getBuildingNames(data, log)}</td>
-                        <td>{getName(customers, log.customerId)}</td>
-                        <td>{log.notes || ""}</td>
+              monthGroups.map((group) => (
+                <div key={group.key} style={{ marginTop: 20 }}>
+                  <h3>{group.label}</h3>
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>תאריך</th>
+                        <th>עובדים</th>
+                        <th>סה״כ עובדים</th>
+                        <th>אתר</th>
+                        <th>מבנה</th>
+                        <th>מזמין</th>
+                        <th>הערות</th>
                       </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                    </thead>
+                    <tbody>
+                      {group.logs.map((log) => {
+                        const reportEmployees = reportEmployeesFor(log);
+                        return (
+                          <tr key={log.id}>
+                            <td>{normalizeDate(log.date)}</td>
+                            <td>{reportEmployees.map((e) => e.name).join(", ")}</td>
+                            <td>{reportEmployees.length}</td>
+                            <td>{getName(sites, log.siteId)}</td>
+                            <td>{getBuildingNames(data, log)}</td>
+                            <td>{getName(customers, log.customerId)}</td>
+                            <td>{log.notes || ""}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              ))
             )}
           </>
         )}

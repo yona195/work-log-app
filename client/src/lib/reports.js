@@ -1,6 +1,28 @@
-import { normalizeDate } from "./format.js";
+import { normalizeDate, formatMonthLabel } from "./format.js";
 import { getEmployeeIds } from "./entities.js";
 import { getApplicableRate } from "./finance.js";
+
+/**
+ * Groups logs by calendar month (year-month), sorted chronologically.
+ * Returns [{ key: "2026-07", label: "יולי 2026", logs: [...] }, ...]
+ */
+export function groupLogsByMonth(logs) {
+  const sortedLogs = [...logs].sort((a, b) =>
+    normalizeDate(a.date).localeCompare(normalizeDate(b.date))
+  );
+
+  const groups = new Map();
+  sortedLogs.forEach((log) => {
+    const dateStr = normalizeDate(log.date);
+    const key = dateStr.slice(0, 7); // "YYYY-MM"
+    if (!groups.has(key)) {
+      groups.set(key, { key, label: formatMonthLabel(key), logs: [] });
+    }
+    groups.get(key).logs.push(log);
+  });
+
+  return Array.from(groups.values()).sort((a, b) => a.key.localeCompare(b.key));
+}
 
 /**
  * Employees of a log that match the report filters.
