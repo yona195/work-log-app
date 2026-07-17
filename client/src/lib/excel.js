@@ -78,7 +78,9 @@ function addMonthWorksheet(workbook, group, data, reportEmployeesFor) {
     const reportEmployees = reportEmployeesFor(log);
     const [year, month, day] = normalizeDate(log.date).split("-").map(Number);
     worksheet.addRow({
-      date: new Date(year, month - 1, day),
+      // UTC midnight, not local: ExcelJS serializes dates via UTC math, so a
+      // local-midnight Date shifts back a day in timezones ahead of UTC.
+      date: new Date(Date.UTC(year, month - 1, day)),
       employees: reportEmployees.map((e) => e.name).join(", "),
       employeeCount: reportEmployees.length,
       site: getName(data.sites, log.siteId),
