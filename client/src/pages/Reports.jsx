@@ -10,13 +10,13 @@ import { useData } from "../state/DataProvider.jsx";
 import { formatCurrency, normalizeDate } from "../lib/format.js";
 import { getName, getBuildingNames, getEmployeeAffiliationName } from "../lib/entities.js";
 import {
-  calculateFilteredWorkLogFinance,
+  calculateFinancialSummary,
   filterReportLogs,
   getReportEmployees,
   groupLogsByMonth,
 } from "../lib/reports.js";
-import { createWorkLogPDF } from "../lib/pdf.js";
-import { exportToExcel } from "../lib/excel.js";
+import { createWorkLogPDF, createFinancialSummaryPDF } from "../lib/pdf.js";
+import { exportToExcel, exportFinancialSummaryToExcel } from "../lib/excel.js";
 
 const EMPTY_FILTERS = {
   from: "",
@@ -71,97 +71,8 @@ export default function Reports() {
 
   const summary = useMemo(() => {
     if (view !== "summary") return null;
-
-    let totalRevenue = 0;
-    let totalCost = 0;
-    let totalProfit = 0;
-    const workforceGroups = {};
-    const siteGroups = {};
-    const customerGroups = {};
-    const missingRates = [];
-
-    filteredLogs.forEach((log) => {
-      const finance = calculateFilteredWorkLogFinance(data, log, filters);
-      totalRevenue += finance.revenue;
-      totalCost += finance.cost;
-      totalProfit += finance.profit;
-
-      const siteId = String(log.siteId || "");
-      const siteName = getName(sites, log.siteId) || "אתר לא ידוע";
-      if (!siteGroups[siteId]) {
-        siteGroups[siteId] = { name: siteName, revenue: 0, cost: 0, profit: 0 };
-      }
-      siteGroups[siteId].revenue += finance.revenue;
-      siteGroups[siteId].cost += finance.cost;
-      siteGroups[siteId].profit += finance.profit;
-
-      const customerId = String(log.customerId || "");
-      const customerName = getName(customers, log.customerId) || "מזמין לא ידוע";
-      if (!customerGroups[customerId]) {
-        customerGroups[customerId] = {
-          name: customerName,
-          revenue: 0,
-          cost: 0,
-          profit: 0,
-        };
-      }
-      customerGroups[customerId].revenue += finance.revenue;
-      customerGroups[customerId].cost += finance.cost;
-      customerGroups[customerId].profit += finance.profit;
-
-      finance.calculatedEmployees.forEach((calc) => {
-        const employee = employees.find(
-          (e) => String(e.id) === String(calc.employeeId)
-        );
-        if (!employee) return;
-        let groupKey;
-        let groupName;
-        if (employee.type === "internal") {
-          groupKey = "internal";
-          groupName = "העובדים שלי";
-        } else {
-          groupKey = `subcontractor-${employee.subcontractorId}`;
-          groupName =
-            getName(subcontractors, employee.subcontractorId) || "קבלן לא ידוע";
-        }
-        if (!workforceGroups[groupKey]) {
-          workforceGroups[groupKey] = {
-            name: groupName,
-            revenue: 0,
-            cost: 0,
-            profit: 0,
-          };
-        }
-        workforceGroups[groupKey].revenue += calc.revenue;
-        workforceGroups[groupKey].cost += calc.cost;
-        workforceGroups[groupKey].profit += calc.profit;
-      });
-
-      finance.missingRateEmployees.forEach((missing) => {
-        const employee = employees.find(
-          (e) => String(e.id) === String(missing.employeeId)
-        );
-        missingRates.push({
-          employeeName: missing.employeeName,
-          affiliationName: employee
-            ? getEmployeeAffiliationName(data, employee)
-            : "שיוך לא ידוע",
-          siteName,
-          date: normalizeDate(log.date),
-        });
-      });
-    });
-
-    return {
-      totalRevenue,
-      totalCost,
-      totalProfit,
-      workforce: Object.values(workforceGroups),
-      sites: Object.values(siteGroups),
-      customers: Object.values(customerGroups),
-      missingRates,
-    };
-  }, [view, filteredLogs, data, filters, sites, customers, subcontractors, employees]);
+    return calculateFinancialSummary(data, filteredLogs, filters);
+  }, [view, filteredLogs, data, filters]);
 
   const handlePDF = () => {
     if (filteredLogs.length === 0) {
@@ -172,6 +83,17 @@ export default function Reports() {
   };
 
   const handleExcel = () => exportToExcel(data, filteredLogs, reportEmployeesFor);
+
+  const handleEmployerPDF = () => {
+    if (filteredLogs.length === 0) {
+      alert("אין רשומות מתאימות להפקת PDF");
+      return;
+    }
+    createFinancialSummaryPDF(data, filteredLogs, filters);
+  };
+
+  const handleEmployerExcel = () =>
+    exportFinancialSummaryToExcel(data, filteredLogs, filters);
 
   return (
     <>
@@ -255,21 +177,38 @@ export default function Reports() {
           ))}
         </select>
 
-        <div
-          style={{ marginTop: 20, display: "flex", gap: 10, flexWrap: "wrap" }}
-        >
-          <button className="primary-btn" type="button" onClick={() => setView("report")}>
-            הצג דוח
-          </button>
-          <button className="primary-btn" type="button" onClick={() => setView("summary")}>
-            סיכום כספי
-          </button>
-          <button className="primary-btn" type="button" onClick={handlePDF}>
-            הפק PDF
-          </button>
-          <button className="primary-btn" type="button" onClick={handleExcel}>
-            ייצוא לאקסל
-          </button>
+        <div className="report-actions">
+          <div className="report-action-group">
+            <span className="report-action-group-title">אזור מזמין</span>
+            <div className="report-action-group-buttons">
+              <button className="primary-btn" type="button" onClick={() => setView("report")}>
+                הצג דוח
+              </button>
+              <button className="primary-btn" type="button" onClick={handlePDF}>
+                דוח מזמין
+              </button>
+              <button className="primary-btn" type="button" onClick={handleExcel}>
+                אקסל מזמין
+              </button>
+            </div>
+          </div>
+
+          <div className="report-action-divider" aria-hidden="true" />
+
+          <div className="report-action-group">
+            <span className="report-action-group-title">אזור מעסיק</span>
+            <div className="report-action-group-buttons">
+              <button className="primary-btn" type="button" onClick={() => setView("summary")}>
+                סיכום כספי
+              </button>
+              <button className="primary-btn" type="button" onClick={handleEmployerPDF}>
+                דוח מעסיק
+              </button>
+              <button className="primary-btn" type="button" onClick={handleEmployerExcel}>
+                אקסל מעסיק
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 

@@ -1,5 +1,5 @@
 import { normalizeDate, formatMonthLabel } from "./format.js";
-import { getEmployeeIds } from "./entities.js";
+import { getEmployeeIds, getName, getEmployeeAffiliationName } from "./entities.js";
 import { getApplicableRate } from "./finance.js";
 
 /**
@@ -132,4 +132,97 @@ export function calculateFilteredWorkLogFinance(data, log, filters) {
   });
 
   return result;
+}
+
+/**
+ * Financial summary (totals + breakdowns by workforce/site/customer, plus
+ * missing-rate warnings) over a set of report-filtered logs. Shared between
+ * the on-screen summary view and the employer PDF/Excel exports, which each
+ * call it once per month group.
+ */
+export function calculateFinancialSummary(data, logs, filters) {
+  let totalRevenue = 0;
+  let totalCost = 0;
+  let totalProfit = 0;
+  const workforceGroups = {};
+  const siteGroups = {};
+  const customerGroups = {};
+  const missingRates = [];
+
+  logs.forEach((log) => {
+    const finance = calculateFilteredWorkLogFinance(data, log, filters);
+    totalRevenue += finance.revenue;
+    totalCost += finance.cost;
+    totalProfit += finance.profit;
+
+    const siteId = String(log.siteId || "");
+    const siteName = getName(data.sites, log.siteId) || "אתר לא ידוע";
+    if (!siteGroups[siteId]) {
+      siteGroups[siteId] = { name: siteName, revenue: 0, cost: 0, profit: 0 };
+    }
+    siteGroups[siteId].revenue += finance.revenue;
+    siteGroups[siteId].cost += finance.cost;
+    siteGroups[siteId].profit += finance.profit;
+
+    const customerId = String(log.customerId || "");
+    const customerName = getName(data.customers, log.customerId) || "מזמין לא ידוע";
+    if (!customerGroups[customerId]) {
+      customerGroups[customerId] = { name: customerName, revenue: 0, cost: 0, profit: 0 };
+    }
+    customerGroups[customerId].revenue += finance.revenue;
+    customerGroups[customerId].cost += finance.cost;
+    customerGroups[customerId].profit += finance.profit;
+
+    finance.calculatedEmployees.forEach((calc) => {
+      const employee = data.employees.find(
+        (e) => String(e.id) === String(calc.employeeId)
+      );
+      if (!employee) return;
+      let groupKey;
+      let groupName;
+      if (employee.type === "internal") {
+        groupKey = "internal";
+        groupName = "העובדים שלי";
+      } else {
+        groupKey = `subcontractor-${employee.subcontractorId}`;
+        groupName =
+          getName(data.subcontractors, employee.subcontractorId) || "קבלן לא ידוע";
+      }
+      if (!workforceGroups[groupKey]) {
+        workforceGroups[groupKey] = {
+          name: groupName,
+          revenue: 0,
+          cost: 0,
+          profit: 0,
+        };
+      }
+      workforceGroups[groupKey].revenue += calc.revenue;
+      workforceGroups[groupKey].cost += calc.cost;
+      workforceGroups[groupKey].profit += calc.profit;
+    });
+
+    finance.missingRateEmployees.forEach((missing) => {
+      const employee = data.employees.find(
+        (e) => String(e.id) === String(missing.employeeId)
+      );
+      missingRates.push({
+        employeeName: missing.employeeName,
+        affiliationName: employee
+          ? getEmployeeAffiliationName(data, employee)
+          : "שיוך לא ידוע",
+        siteName: getName(data.sites, log.siteId) || "אתר לא ידוע",
+        date: normalizeDate(log.date),
+      });
+    });
+  });
+
+  return {
+    totalRevenue,
+    totalCost,
+    totalProfit,
+    workforce: Object.values(workforceGroups),
+    sites: Object.values(siteGroups),
+    customers: Object.values(customerGroups),
+    missingRates,
+  };
 }
