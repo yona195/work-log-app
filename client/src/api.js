@@ -3,7 +3,6 @@
 
 const BASE = "/api";
 export const TOKEN_KEY = "work_log_token";
-export const LAST_LOGIN_KEY = "work_log_last_login";
 
 function authHeaders() {
   const token = localStorage.getItem(TOKEN_KEY);

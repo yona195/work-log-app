@@ -115,6 +115,10 @@ export async function initDb() {
       customerId  TEXT NOT NULL DEFAULT '',
       notes       TEXT NOT NULL DEFAULT ''
     );
+    CREATE TABLE IF NOT EXISTS app_state (
+      key   TEXT PRIMARY KEY,
+      value TEXT NOT NULL DEFAULT ''
+    );
   `);
 
   // rates.customerId was added after the initial release; back-fill it on
@@ -191,7 +195,29 @@ export async function getData() {
     // eslint-disable-next-line no-await-in-loop
     data[name] = await listAll(name);
   }
+  data.lastLogin = await getAppState("lastLogin");
   return data;
+}
+
+/* =========================================
+   Small app-wide key/value settings (e.g. last login time) — a single
+   shared password means there's no per-user table to hang this off of.
+========================================= */
+
+export async function getAppState(key) {
+  const { rows } = await client.execute({
+    sql: `SELECT value FROM app_state WHERE key = ?`,
+    args: [key],
+  });
+  return rows[0]?.value ?? null;
+}
+
+export async function setAppState(key, value) {
+  await client.execute({
+    sql: `INSERT INTO app_state (key, value) VALUES (?, ?)
+          ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+    args: [key, value],
+  });
 }
 
 async function getById(def, id) {

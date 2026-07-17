@@ -1,14 +1,11 @@
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
-import { authApi, LAST_LOGIN_KEY, TOKEN_KEY } from "../api.js";
+import { authApi, TOKEN_KEY } from "../api.js";
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [authRequired, setAuthRequired] = useState(null); // null = unknown
   const [token, setToken] = useState(() => localStorage.getItem(TOKEN_KEY));
-  const [lastLogin, setLastLogin] = useState(() =>
-    localStorage.getItem(LAST_LOGIN_KEY)
-  );
 
   // Ask the server whether login is needed at all.
   useEffect(() => {
@@ -46,9 +43,6 @@ export function AuthProvider({ children }) {
     if (res.token) {
       localStorage.setItem(TOKEN_KEY, res.token);
       setToken(res.token);
-      const now = new Date().toISOString();
-      localStorage.setItem(LAST_LOGIN_KEY, now);
-      setLastLogin(now);
     }
     return res;
   }, []);
@@ -59,7 +53,6 @@ export function AuthProvider({ children }) {
     ready: authRequired !== null,
     authRequired,
     isAuthenticated,
-    lastLogin,
     login,
     logout,
   };

@@ -1,8 +1,9 @@
-import { useAuth } from "../state/AuthProvider.jsx";
+import { useData } from "../state/DataProvider.jsx";
 import { formatDateTime } from "../lib/format.js";
 
 export default function Topbar({ title }) {
-  const { lastLogin } = useAuth();
+  const { data } = useData();
+  const { lastLogin } = data;
 
   return (
     <header className="topbar">

@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { authRequired, checkPassword, createToken } from "../auth.js";
+import { setAppState } from "../db.js";
 
 const router = Router();
 
@@ -8,11 +9,12 @@ router.get("/auth/status", (req, res) => {
   res.json({ authRequired });
 });
 
-router.post("/login", (req, res) => {
+router.post("/login", async (req, res) => {
   if (!authRequired) {
     return res.json({ token: null, authRequired: false });
   }
   if (checkPassword(req.body?.password)) {
+    await setAppState("lastLogin", new Date().toISOString());
     return res.json({ token: createToken() });
   }
   res.status(401).json({ error: "סיסמה שגויה" });
