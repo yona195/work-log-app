@@ -7,7 +7,10 @@ services:
     plan: free
     # --include=dev forces devDependencies (Vite) to install even though
     # NODE_ENV=production would otherwise skip them, which breaks the build.
-    buildCommand: npm install --include=dev && npm run build
+    # The explicit puppeteer install is needed because Render's non-interactive
+    # build skips npm's postinstall-script trust prompt, so puppeteer's
+    # bundled Chromium never downloads unless we force it here.
+    buildCommand: npm install --include=dev && npx puppeteer browsers install chrome && npm run build
     startCommand: npm start
     healthCheckPath: /api/health
     envVars:
