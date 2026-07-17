@@ -35,3 +35,9 @@ services:
         sync: false
       - key: CRON_SECRET # shared secret the external cron sends as the x-cron-secret header
         sync: false
+      # Pins puppeteer's browser cache to a path inside the persisted project
+      # directory instead of the default $HOME/.cache — Render's build and
+      # runtime phases don't reliably share the same $HOME, which otherwise
+      # leaves the Chrome downloaded during build unfindable at runtime.
+      - key: PUPPETEER_CACHE_DIR
+        value: /opt/render/project/src/.cache/puppeteer
