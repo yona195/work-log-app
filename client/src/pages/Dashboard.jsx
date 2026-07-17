@@ -57,24 +57,43 @@ export default function Dashboard() {
     computeRange("current-month", month.from, month.to)
   );
 
-  const show = () => {
-    const range = computeRange(period, customFrom, customTo);
-    if (range.from && range.to && range.from > range.to) {
-      alert("תאריך ההתחלה לא יכול להיות מאוחר מתאריך הסיום");
-      return;
-    }
+  // Applies a range unless it's an incomplete/invalid custom range still
+  // being typed — in that case we just keep showing the last valid one.
+  const applyRange = (nextPeriod, nextFrom, nextTo) => {
+    const range = computeRange(nextPeriod, nextFrom, nextTo);
+    if (range.from && range.to && range.from > range.to) return;
     setApplied(range);
   };
 
-  const { totals, workforce, sites, missingRates } = useMemo(() => {
+  const handlePeriodChange = (value) => {
+    setPeriod(value);
+    applyRange(value, customFrom, customTo);
+  };
+
+  const handleCustomFromChange = (value) => {
+    setCustomFrom(value);
+    applyRange("custom", value, customTo);
+  };
+
+  const handleCustomToChange = (value) => {
+    setCustomTo(value);
+    applyRange("custom", customFrom, value);
+  };
+
+  const { totals, workforce, sites } = useMemo(() => {
     const logs = getLogsForPeriod(data, applied.from, applied.to);
     return {
       totals: calculateFinanceForPeriod(data, applied.from, applied.to),
       workforce: calculateFinanceByWorkforce(data, logs),
       sites: calculateProfitBySite(data, logs),
-      missingRates: getMissingRatesForLogs(data, logs),
     };
   }, [data, applied]);
+
+  // Always shown regardless of the selected review period.
+  const missingRates = useMemo(
+    () => getMissingRatesForLogs(data, data.workLogs),
+    [data]
+  );
 
   const currencyTick = (value) => formatCurrency(value);
 
@@ -84,7 +103,7 @@ export default function Dashboard() {
         <h3>תקופת הסקירה</h3>
 
         <label>בחר תקופה</label>
-        <select value={period} onChange={(e) => setPeriod(e.target.value)}>
+        <select value={period} onChange={(e) => handlePeriodChange(e.target.value)}>
           <option value="current-month">החודש הנוכחי</option>
           <option value="previous-month">החודש הקודם</option>
           <option value="current-year">השנה הנוכחית</option>
@@ -97,20 +116,16 @@ export default function Dashboard() {
             <input
               type="date"
               value={customFrom}
-              onChange={(e) => setCustomFrom(e.target.value)}
+              onChange={(e) => handleCustomFromChange(e.target.value)}
             />
             <label>עד תאריך</label>
             <input
               type="date"
               value={customTo}
-              onChange={(e) => setCustomTo(e.target.value)}
+              onChange={(e) => handleCustomToChange(e.target.value)}
             />
           </div>
         )}
-
-        <button type="button" className="primary-btn" onClick={show}>
-          הצג נתונים
-        </button>
       </div>
 
       <div style={{ marginTop: 20 }}>
