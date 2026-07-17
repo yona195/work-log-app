@@ -1,5 +1,10 @@
 import { normalizeDate, formatMonthLabel } from "./format.js";
-import { getEmployeeIds, getName, getEmployeeAffiliationName } from "./entities.js";
+import {
+  getEmployeeIds,
+  getName,
+  getBuildingNames,
+  getEmployeeAffiliationName,
+} from "./entities.js";
 import { getApplicableRate } from "./finance.js";
 
 /**
@@ -225,4 +230,91 @@ export function calculateFinancialSummary(data, logs, filters) {
     customers: Object.values(customerGroups),
     missingRates,
   };
+}
+
+/**
+ * Employer breakdown for the PDF/Excel employer report: one table per
+ * workforce group (internal employees, then each subcontractor), each with
+ * one row per log — same shape as the customer report row, plus per-row
+ * cost/payment/profit — and a totals row summed over the group.
+ * Returns [{ key, name, rows: [...], totalCost, totalRevenue, totalProfit }],
+ * internal group first, subcontractors alphabetically after.
+ */
+export function calculateEmployerBreakdown(data, logs, filters) {
+  const groups = new Map();
+
+  logs.forEach((log) => {
+    const reportEmployees = getReportEmployees(data, log, filters);
+    const employeesByGroup = new Map();
+
+    reportEmployees.forEach((employee) => {
+      const groupKey =
+        employee.type === "internal"
+          ? "internal"
+          : `subcontractor-${employee.subcontractorId}`;
+      if (!employeesByGroup.has(groupKey)) employeesByGroup.set(groupKey, []);
+      employeesByGroup.get(groupKey).push(employee);
+    });
+
+    employeesByGroup.forEach((groupEmployees, groupKey) => {
+      let rowCost = 0;
+      let rowRevenue = 0;
+      let rowProfit = 0;
+
+      groupEmployees.forEach((employee) => {
+        const rate = getApplicableRate(
+          data,
+          employee,
+          log.siteId,
+          log.date,
+          log.customerId
+        );
+        if (!rate) return;
+        const revenue = Number(rate.revenuePerWorker) || 0;
+        const cost = Number(rate.costPerWorker) || 0;
+        rowRevenue += revenue;
+        rowCost += cost;
+        rowProfit += revenue - cost;
+      });
+
+      if (!groups.has(groupKey)) {
+        const name =
+          groupKey === "internal"
+            ? "העובדים שלי"
+            : getName(data.subcontractors, groupEmployees[0].subcontractorId) ||
+              "קבלן לא ידוע";
+        groups.set(groupKey, {
+          key: groupKey,
+          name,
+          rows: [],
+          totalCost: 0,
+          totalRevenue: 0,
+          totalProfit: 0,
+        });
+      }
+
+      const groupData = groups.get(groupKey);
+      groupData.rows.push({
+        date: normalizeDate(log.date),
+        employeeNames: groupEmployees.map((e) => e.name).join(", "),
+        employeeCount: groupEmployees.length,
+        site: getName(data.sites, log.siteId),
+        buildings: getBuildingNames(data, log),
+        customer: getName(data.customers, log.customerId),
+        notes: log.notes || "",
+        cost: rowCost,
+        revenue: rowRevenue,
+        profit: rowProfit,
+      });
+      groupData.totalCost += rowCost;
+      groupData.totalRevenue += rowRevenue;
+      groupData.totalProfit += rowProfit;
+    });
+  });
+
+  return Array.from(groups.values()).sort((a, b) => {
+    if (a.key === "internal") return -1;
+    if (b.key === "internal") return 1;
+    return a.name.localeCompare(b.name, "he");
+  });
 }

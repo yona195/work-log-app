@@ -1,6 +1,6 @@
 import { formatExcelDate, normalizeDate } from "./format.js";
 import { getName, getBuildingNames } from "./entities.js";
-import { groupLogsByMonth, calculateFinancialSummary } from "./reports.js";
+import { groupLogsByMonth, calculateEmployerBreakdown } from "./reports.js";
 
 const CURRENCY_FORMAT = '#,##0.00 "₪"';
 
@@ -175,22 +175,34 @@ export async function exportToExcel(data, filteredLogs, reportEmployeesFor) {
   }
 }
 
-// Writes a titled breakdown table (name/revenue/cost/profit rows) starting
-// at `startRow`. Returns the next free row after the table's spacer.
-function addBreakdownSection(worksheet, startRow, title, groups) {
+// Writes one workforce-group table (same row shape as the customer report
+// plus cost/payment/profit) starting at `startRow`, ending with a totals
+// row. Returns the next free row after the table's spacer.
+function addEmployerGroupTable(worksheet, startRow, group) {
   let row = startRow;
 
-  worksheet.mergeCells(`A${row}:D${row}`);
+  worksheet.mergeCells(`A${row}:J${row}`);
   const titleCell = worksheet.getCell(`A${row}`);
-  titleCell.value = title;
+  titleCell.value = group.name;
   titleCell.font = { bold: true, size: 14 };
   titleCell.alignment = { horizontal: "right", vertical: "middle" };
   worksheet.getRow(row).height = 26;
   row += 1;
 
   const headerRow = worksheet.getRow(row);
-  headerRow.values = ["שם", "הכנסות", "הוצאות", "רווח / הפסד"];
-  headerRow.height = 26;
+  headerRow.values = [
+    "תאריך",
+    "עובדים",
+    "סה״כ עובדים",
+    "אתר עבודה",
+    "מבנים",
+    "מזמין עבודה",
+    "הערות",
+    "עלות עובד",
+    "תשלום עובד",
+    "רווח",
+  ];
+  headerRow.height = 28;
   headerRow.eachCell((cell) => {
     cell.font = { bold: true, color: { argb: "FFFFFFFF" }, size: 12 };
     cell.fill = {
@@ -198,72 +210,112 @@ function addBreakdownSection(worksheet, startRow, title, groups) {
       pattern: "solid",
       fgColor: { argb: "FF2563EB" },
     };
-    cell.alignment = { horizontal: "center", vertical: "middle" };
+    cell.alignment = {
+      horizontal: "center",
+      vertical: "middle",
+      wrapText: true,
+    };
     const thin = { style: "thin", color: { argb: "FFD1D5DB" } };
     cell.border = { top: thin, bottom: thin, left: thin, right: thin };
   });
   row += 1;
 
-  if (groups.length === 0) {
-    worksheet.mergeCells(`A${row}:D${row}`);
-    const emptyCell = worksheet.getCell(`A${row}`);
-    emptyCell.value = "אין נתונים";
-    emptyCell.alignment = { horizontal: "center", vertical: "middle" };
-    row += 1;
-  } else {
-    groups.forEach((group, index) => {
-      const dataRow = worksheet.getRow(row);
-      dataRow.values = [group.name, group.revenue, group.cost, group.profit];
-      dataRow.height = 22;
-      dataRow.eachCell((cell, colNumber) => {
-        cell.alignment = { horizontal: "right", vertical: "middle" };
-        if (colNumber > 1) cell.numFmt = CURRENCY_FORMAT;
-        const thin = { style: "thin", color: { argb: "FFE5E7EB" } };
-        cell.border = { top: thin, bottom: thin, left: thin, right: thin };
-        if (index % 2 === 1) {
-          cell.fill = {
-            type: "pattern",
-            pattern: "solid",
-            fgColor: { argb: "FFF3F4F6" },
-          };
-        }
-      });
-      row += 1;
+  group.rows.forEach((entry, index) => {
+    const [year, month, day] = entry.date.split("-").map(Number);
+    const dataRow = worksheet.getRow(row);
+    dataRow.values = [
+      // UTC midnight, not local: ExcelJS serializes dates via UTC math, so a
+      // local-midnight Date shifts back a day in timezones ahead of UTC.
+      new Date(Date.UTC(year, month - 1, day)),
+      entry.employeeNames,
+      entry.employeeCount,
+      entry.site,
+      entry.buildings,
+      entry.customer,
+      entry.notes,
+      entry.cost,
+      entry.revenue,
+      entry.profit,
+    ];
+    dataRow.height = 24;
+    dataRow.eachCell((cell, colNumber) => {
+      cell.alignment = {
+        horizontal: "right",
+        vertical: "middle",
+        wrapText: true,
+      };
+      const thin = { style: "thin", color: { argb: "FFE5E7EB" } };
+      cell.border = { top: thin, bottom: thin, left: thin, right: thin };
+      if (colNumber === 1) {
+        cell.numFmt = "dd-mm-yyyy";
+        cell.alignment = { horizontal: "center", vertical: "middle" };
+      }
+      if (colNumber === 3) {
+        cell.alignment = { horizontal: "center", vertical: "middle" };
+      }
+      if (colNumber >= 8) cell.numFmt = CURRENCY_FORMAT;
+      if (index % 2 === 1) {
+        cell.fill = {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: { argb: "FFF3F4F6" },
+        };
+      }
     });
-  }
+    row += 1;
+  });
 
-  return row + 1; // blank spacer before the next section
+  worksheet.mergeCells(`A${row}:G${row}`);
+  worksheet.getCell(`A${row}`).value = "סה״כ";
+  worksheet.getCell(`H${row}`).value = group.totalCost;
+  worksheet.getCell(`I${row}`).value = group.totalRevenue;
+  worksheet.getCell(`J${row}`).value = group.totalProfit;
+  const totalsRow = worksheet.getRow(row);
+  totalsRow.height = 26;
+  totalsRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+    cell.font = { bold: true, size: 12 };
+    cell.fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "FFEFF6FF" },
+    };
+    cell.alignment = {
+      horizontal: colNumber === 1 ? "right" : "center",
+      vertical: "middle",
+    };
+    const thin = { style: "thin", color: { argb: "FFD1D5DB" } };
+    cell.border = { top: thin, bottom: thin, left: thin, right: thin };
+    if (colNumber >= 8) cell.numFmt = CURRENCY_FORMAT;
+  });
+  row += 1;
+
+  return row + 1; // blank spacer before the next group's table
 }
 
-function addFinancialSummaryWorksheet(workbook, group, data, filters) {
-  const worksheet = workbook.addWorksheet(toSheetName(group.label), {
+function addEmployerWorksheet(workbook, month, groups) {
+  const worksheet = workbook.addWorksheet(toSheetName(month.label), {
     views: [{ rightToLeft: true }],
   });
 
-  worksheet.columns = [
-    { key: "name", width: 30 },
-    { key: "revenue", width: 20 },
-    { key: "cost", width: 20 },
-    { key: "profit", width: 20 },
-  ];
+  worksheet.columns = [14, 34, 13, 20, 26, 20, 30, 16, 16, 16].map(
+    (width) => ({ width })
+  );
 
-  const summary = calculateFinancialSummary(data, group.logs, filters);
-
-  const monthDates = group.logs
+  const monthDates = month.logs
     .map((log) => normalizeDate(log.date))
     .filter(Boolean)
     .sort();
   const fromDate = monthDates[0] || "";
   const toDate = monthDates[monthDates.length - 1] || "";
 
-  worksheet.mergeCells("A1:D1");
+  worksheet.mergeCells("A1:J1");
   const titleCell = worksheet.getCell("A1");
-  titleCell.value = `דוח מעסיק - ${group.label}`;
+  titleCell.value = `דוח מעסיק - ${month.label}`;
   titleCell.font = { bold: true, size: 20 };
   titleCell.alignment = { horizontal: "center", vertical: "middle" };
   worksheet.getRow(1).height = 34;
 
-  worksheet.mergeCells("A2:D2");
+  worksheet.mergeCells("A2:J2");
   const datesCell = worksheet.getCell("A2");
   datesCell.value = `תאריכי הדוח: ${formatExcelDate(
     fromDate
@@ -272,43 +324,10 @@ function addFinancialSummaryWorksheet(workbook, group, data, filters) {
   datesCell.alignment = { horizontal: "center", vertical: "middle" };
   worksheet.getRow(2).height = 24;
 
-  const totalsHeaderRow = worksheet.getRow(4);
-  totalsHeaderRow.values = [
-    "",
-    "הכנסות",
-    "הוצאות",
-    summary.totalProfit >= 0 ? "רווח" : "הפסד",
-  ];
-  totalsHeaderRow.height = 26;
-  totalsHeaderRow.eachCell((cell, colNumber) => {
-    if (colNumber === 1) return;
-    cell.font = { bold: true, color: { argb: "FFFFFFFF" }, size: 12 };
-    cell.fill = {
-      type: "pattern",
-      pattern: "solid",
-      fgColor: { argb: "FF2563EB" },
-    };
-    cell.alignment = { horizontal: "center", vertical: "middle" };
+  let row = 4;
+  groups.forEach((group) => {
+    row = addEmployerGroupTable(worksheet, row, group);
   });
-
-  const totalsValueRow = worksheet.getRow(5);
-  totalsValueRow.values = [
-    "סה״כ",
-    summary.totalRevenue,
-    summary.totalCost,
-    summary.totalProfit,
-  ];
-  totalsValueRow.height = 26;
-  totalsValueRow.eachCell((cell, colNumber) => {
-    cell.font = { bold: true, size: 13 };
-    cell.alignment = { horizontal: "center", vertical: "middle" };
-    if (colNumber > 1) cell.numFmt = CURRENCY_FORMAT;
-  });
-
-  let row = 7;
-  row = addBreakdownSection(worksheet, row, "סיכום לפי כוח אדם", summary.workforce);
-  row = addBreakdownSection(worksheet, row, "סיכום לפי אתר עבודה", summary.sites);
-  addBreakdownSection(worksheet, row, "סיכום לפי מזמין עבודה", summary.customers);
 
   worksheet.pageSetup = {
     orientation: "landscape",
@@ -344,9 +363,16 @@ export async function exportFinancialSummaryToExcel(data, filteredLogs, filters)
     workbook.created = new Date();
 
     const monthGroups = groupLogsByMonth(filteredLogs);
-    monthGroups.forEach((group) => {
-      addFinancialSummaryWorksheet(workbook, group, data, filters);
+    monthGroups.forEach((month) => {
+      const groups = calculateEmployerBreakdown(data, month.logs, filters);
+      if (groups.length === 0) return;
+      addEmployerWorksheet(workbook, month, groups);
     });
+
+    if (workbook.worksheets.length === 0) {
+      alert("אין נתונים כספיים מתאימים לייצוא");
+      return;
+    }
 
     const reportDates = filteredLogs
       .map((log) => normalizeDate(log.date))
