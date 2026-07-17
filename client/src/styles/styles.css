@@ -158,8 +158,10 @@ img {
 }
 
 .topbar-logo {
-    height: 40px;
+    height: 64px;
     width: auto;
+
+    border-radius: 10px;
 }
 
 .topbar-last-login {
@@ -944,7 +946,7 @@ tbody tr:hover {
     }
 
     .topbar-logo {
-        height: 30px;
+        height: 42px;
     }
 
     /* מסך צר מדי לשורת "כניסה אחרונה" בלי לדחוק את הכותרת */
