@@ -13,10 +13,19 @@ export function groupLogsByMonth(logs) {
 
   const groups = new Map();
   sortedLogs.forEach((log) => {
-    const dateStr = normalizeDate(log.date);
-    const key = dateStr.slice(0, 7); // "YYYY-MM"
+    const [yearStr, monthStr] = normalizeDate(log.date).split("-");
+    const year = Number(yearStr);
+    const month = Number(monthStr);
+    // Zero-pad explicitly: legacy imported dates aren't always "YYYY-MM-DD",
+    // so naive string-slicing can split the same month into two differently
+    // keyed groups whose labels collide and crash the Excel export.
+    const key =
+      yearStr && Number.isInteger(year) && Number.isInteger(month)
+        ? `${yearStr.padStart(4, "0")}-${String(month).padStart(2, "0")}`
+        : "unknown";
+    const label = key === "unknown" ? "ללא תאריך" : formatMonthLabel(key);
     if (!groups.has(key)) {
-      groups.set(key, { key, label: formatMonthLabel(key), logs: [] });
+      groups.set(key, { key, label, logs: [] });
     }
     groups.get(key).logs.push(log);
   });
