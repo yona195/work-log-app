@@ -42,3 +42,14 @@ export function formatMonthLabel(monthKey) {
 export function todayISO() {
   return new Date().toISOString().split("T")[0];
 }
+
+/** ISO timestamp -> "17/07/2026, 10:32" (local time, he-IL formatting). */
+export function formatDateTime(isoValue) {
+  if (!isoValue) return "";
+  const date = new Date(isoValue);
+  if (Number.isNaN(date.getTime())) return "";
+  return new Intl.DateTimeFormat("he-IL", {
+    dateStyle: "short",
+    timeStyle: "short",
+  }).format(date);
+}
