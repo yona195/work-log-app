@@ -98,7 +98,13 @@ export function calculateFilteredWorkLogFinance(data, log, filters) {
   };
 
   reportEmployees.forEach((employee) => {
-    const rate = getApplicableRate(data, employee, log.siteId, log.date);
+    const rate = getApplicableRate(
+      data,
+      employee,
+      log.siteId,
+      log.date,
+      log.customerId
+    );
     if (!rate) {
       result.missingRateEmployees.push({
         employeeId: employee.id,
