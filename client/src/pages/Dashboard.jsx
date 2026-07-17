@@ -1,12 +1,13 @@
 import { useMemo, useState } from "react";
-import { Bar } from "react-chartjs-2";
-import { CATEGORICAL_COLORS, NEGATIVE_COLOR, buildBarChartOptions } from "../lib/charts.js";
+import ProfitBarChart from "../components/ProfitBarChart.jsx";
+import RevenueCostBarChart from "../components/RevenueCostBarChart.jsx";
 import { useData } from "../state/DataProvider.jsx";
 import { formatCurrency } from "../lib/format.js";
 import { getCurrentMonthRange } from "../lib/entities.js";
 import {
   calculateFinanceByWorkforce,
   calculateFinanceForPeriod,
+  calculateProfitByCustomer,
   calculateProfitBySite,
   getLogsForPeriod,
   getMissingRatesForLogs,
@@ -80,12 +81,13 @@ export default function Dashboard() {
     applyRange("custom", customFrom, value);
   };
 
-  const { totals, workforce, sites } = useMemo(() => {
+  const { totals, workforce, sites, customers } = useMemo(() => {
     const logs = getLogsForPeriod(data, applied.from, applied.to);
     return {
       totals: calculateFinanceForPeriod(data, applied.from, applied.to),
       workforce: calculateFinanceByWorkforce(data, logs),
       sites: calculateProfitBySite(data, logs),
+      customers: calculateProfitByCustomer(data, logs),
     };
   }, [data, applied]);
 
@@ -94,8 +96,6 @@ export default function Dashboard() {
     () => getMissingRatesForLogs(data, data.workLogs),
     [data]
   );
-
-  const currencyTick = (value) => formatCurrency(value);
 
   return (
     <>
@@ -154,36 +154,7 @@ export default function Dashboard() {
               אין נתונים מתאימים בתקופה שנבחרה.
             </p>
           ) : (
-            <div className="chart-container">
-              <Bar
-                data={{
-                  labels: workforce.map((g) => g.name),
-                  datasets: [
-                    {
-                      label: "הכנסות",
-                      data: workforce.map((g) => g.revenue),
-                      backgroundColor: "rgba(37, 99, 235, 0.75)",
-                      borderRadius: 4,
-                      maxBarThickness: 64,
-                    },
-                    {
-                      label: "הוצאות",
-                      data: workforce.map((g) => g.cost),
-                      backgroundColor: "rgba(239, 68, 68, 0.75)",
-                      borderRadius: 4,
-                      maxBarThickness: 64,
-                    },
-                  ],
-                }}
-                options={buildBarChartOptions({
-                  legend: true,
-                  grouped: true,
-                  tooltipLabel: (ctx) =>
-                    `${ctx.dataset.label}: ${formatCurrency(ctx.raw)}`,
-                  yTickFormatter: currencyTick,
-                })}
-              />
-            </div>
+            <RevenueCostBarChart groups={workforce} />
           )}
         </div>
 
@@ -194,30 +165,18 @@ export default function Dashboard() {
               אין נתונים מתאימים בתקופה שנבחרה.
             </p>
           ) : (
-            <div className="chart-container">
-              <Bar
-                data={{
-                  labels: sites.map((s) => s.name),
-                  datasets: [
-                    {
-                      label: "רווח",
-                      data: sites.map((s) => s.profit),
-                      backgroundColor: sites.map((s, index) =>
-                        s.profit < 0
-                          ? NEGATIVE_COLOR
-                          : CATEGORICAL_COLORS[index % CATEGORICAL_COLORS.length]
-                      ),
-                      borderRadius: 4,
-                      maxBarThickness: 64,
-                    },
-                  ],
-                }}
-                options={buildBarChartOptions({
-                  tooltipLabel: (ctx) => `רווח: ${formatCurrency(ctx.raw)}`,
-                  yTickFormatter: currencyTick,
-                })}
-              />
-            </div>
+            <ProfitBarChart groups={sites} label="רווח" />
+          )}
+        </div>
+
+        <div className="card" style={{ marginTop: 20 }}>
+          <h3>רווח לפי מזמין עבודה</h3>
+          {customers.length === 0 ? (
+            <p className="dashboard-empty-text">
+              אין נתונים מתאימים בתקופה שנבחרה.
+            </p>
+          ) : (
+            <ProfitBarChart groups={customers} label="רווח" />
           )}
         </div>
 

@@ -1,12 +1,6 @@
 import { useMemo, useState } from "react";
-import { Bar } from "react-chartjs-2";
-import {
-  CATEGORICAL_COLORS,
-  COST_COLOR,
-  NEGATIVE_COLOR,
-  REVENUE_COLOR,
-  buildBarChartOptions,
-} from "../lib/charts.js";
+import ProfitBarChart from "../components/ProfitBarChart.jsx";
+import RevenueCostBarChart from "../components/RevenueCostBarChart.jsx";
 import { useData } from "../state/DataProvider.jsx";
 import { formatCurrency, normalizeDate } from "../lib/format.js";
 import { getName, getBuildingNames, getEmployeeAffiliationName } from "../lib/entities.js";
@@ -269,71 +263,6 @@ export default function Reports() {
   );
 }
 
-const currencyTick = (value) => formatCurrency(value);
-
-function RevenueCostChart({ groups }) {
-  return (
-    <div className="chart-container">
-      <Bar
-        data={{
-          labels: groups.map((g) => g.name),
-          datasets: [
-            {
-              label: "הכנסות",
-              data: groups.map((g) => g.revenue),
-              backgroundColor: REVENUE_COLOR,
-              borderRadius: 4,
-              maxBarThickness: 64,
-            },
-            {
-              label: "הוצאות",
-              data: groups.map((g) => g.cost),
-              backgroundColor: COST_COLOR,
-              borderRadius: 4,
-              maxBarThickness: 64,
-            },
-          ],
-        }}
-        options={buildBarChartOptions({
-          legend: true,
-          grouped: true,
-          tooltipLabel: (ctx) => `${ctx.dataset.label}: ${formatCurrency(ctx.raw)}`,
-          yTickFormatter: currencyTick,
-        })}
-      />
-    </div>
-  );
-}
-
-function ProfitChart({ groups }) {
-  return (
-    <div className="chart-container">
-      <Bar
-        data={{
-          labels: groups.map((g) => g.name),
-          datasets: [
-            {
-              label: "רווח / הפסד",
-              data: groups.map((g) => g.profit),
-              backgroundColor: groups.map((g, index) =>
-                g.profit < 0
-                  ? NEGATIVE_COLOR
-                  : CATEGORICAL_COLORS[index % CATEGORICAL_COLORS.length]
-              ),
-              borderRadius: 4,
-              maxBarThickness: 64,
-            },
-          ],
-        }}
-        options={buildBarChartOptions({
-          tooltipLabel: (ctx) => `רווח / הפסד: ${formatCurrency(ctx.raw)}`,
-          yTickFormatter: currencyTick,
-        })}
-      />
-    </div>
-  );
-}
-
 function FinancialSummary({ summary }) {
   if (
     summary.workforce.length === 0 &&
@@ -395,7 +324,7 @@ function FinancialSummary({ summary }) {
                 ))}
               </tbody>
             </table>
-            <RevenueCostChart groups={summary.workforce} />
+            <RevenueCostBarChart groups={summary.workforce} />
           </>
         )}
       </div>
@@ -426,7 +355,7 @@ function FinancialSummary({ summary }) {
                 ))}
               </tbody>
             </table>
-            <ProfitChart groups={summary.sites} />
+            <ProfitBarChart groups={summary.sites} label="רווח / הפסד" />
           </>
         )}
       </div>
@@ -457,7 +386,7 @@ function FinancialSummary({ summary }) {
                 ))}
               </tbody>
             </table>
-            <ProfitChart groups={summary.customers} />
+            <ProfitBarChart groups={summary.customers} label="רווח / הפסד" />
           </>
         )}
       </div>

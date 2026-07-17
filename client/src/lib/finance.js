@@ -223,6 +223,25 @@ export function calculateProfitBySite(data, logs) {
   return Object.values(sites);
 }
 
+export function calculateProfitByCustomer(data, logs) {
+  const customers = {};
+
+  logs.forEach((log) => {
+    const finance = calculateWorkLogFinance(data, log);
+    const customerId = String(log.customerId || "");
+    const customerName = getName(data.customers, log.customerId) || "מזמין לא ידוע";
+
+    if (!customers[customerId]) {
+      customers[customerId] = { name: customerName, revenue: 0, cost: 0, profit: 0 };
+    }
+    customers[customerId].revenue += finance.revenue;
+    customers[customerId].cost += finance.cost;
+    customers[customerId].profit += finance.profit;
+  });
+
+  return Object.values(customers);
+}
+
 export function getMissingRatesForLogs(data, logs) {
   const missingMap = new Map();
 
