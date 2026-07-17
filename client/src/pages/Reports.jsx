@@ -5,6 +5,7 @@ import {
   COST_COLOR,
   NEGATIVE_COLOR,
   REVENUE_COLOR,
+  buildBarChartOptions,
 } from "../lib/charts.js";
 import { useData } from "../state/DataProvider.jsx";
 import { formatCurrency, normalizeDate } from "../lib/format.js";
@@ -281,29 +282,24 @@ function RevenueCostChart({ groups }) {
               label: "הכנסות",
               data: groups.map((g) => g.revenue),
               backgroundColor: REVENUE_COLOR,
+              borderRadius: 4,
+              maxBarThickness: 64,
             },
             {
               label: "הוצאות",
               data: groups.map((g) => g.cost),
               backgroundColor: COST_COLOR,
+              borderRadius: 4,
+              maxBarThickness: 64,
             },
           ],
         }}
-        options={{
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: { position: "bottom" },
-            tooltip: {
-              callbacks: {
-                label: (ctx) => `${ctx.dataset.label}: ${formatCurrency(ctx.raw)}`,
-              },
-            },
-          },
-          scales: {
-            y: { beginAtZero: true, ticks: { callback: currencyTick } },
-          },
-        }}
+        options={buildBarChartOptions({
+          legend: true,
+          grouped: true,
+          tooltipLabel: (ctx) => `${ctx.dataset.label}: ${formatCurrency(ctx.raw)}`,
+          yTickFormatter: currencyTick,
+        })}
       />
     </div>
   );
@@ -324,26 +320,15 @@ function ProfitChart({ groups }) {
                   ? NEGATIVE_COLOR
                   : CATEGORICAL_COLORS[index % CATEGORICAL_COLORS.length]
               ),
-              borderWidth: 1,
+              borderRadius: 4,
+              maxBarThickness: 64,
             },
           ],
         }}
-        options={{
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: { display: false },
-            tooltip: {
-              callbacks: {
-                label: (ctx) => `רווח / הפסד: ${formatCurrency(ctx.raw)}`,
-              },
-            },
-          },
-          scales: {
-            x: { ticks: { font: { size: 14 } } },
-            y: { beginAtZero: true, ticks: { callback: currencyTick } },
-          },
-        }}
+        options={buildBarChartOptions({
+          tooltipLabel: (ctx) => `רווח / הפסד: ${formatCurrency(ctx.raw)}`,
+          yTickFormatter: currencyTick,
+        })}
       />
     </div>
   );

@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Bar } from "react-chartjs-2";
-import { CATEGORICAL_COLORS, NEGATIVE_COLOR } from "../lib/charts.js";
+import { CATEGORICAL_COLORS, NEGATIVE_COLOR, buildBarChartOptions } from "../lib/charts.js";
 import { useData } from "../state/DataProvider.jsx";
 import { formatCurrency } from "../lib/format.js";
 import { getCurrentMonthRange } from "../lib/entities.js";
@@ -163,30 +163,25 @@ export default function Dashboard() {
                       label: "הכנסות",
                       data: workforce.map((g) => g.revenue),
                       backgroundColor: "rgba(37, 99, 235, 0.75)",
+                      borderRadius: 4,
+                      maxBarThickness: 64,
                     },
                     {
                       label: "הוצאות",
                       data: workforce.map((g) => g.cost),
                       backgroundColor: "rgba(239, 68, 68, 0.75)",
+                      borderRadius: 4,
+                      maxBarThickness: 64,
                     },
                   ],
                 }}
-                options={{
-                  responsive: true,
-                  maintainAspectRatio: false,
-                  plugins: {
-                    legend: { position: "bottom" },
-                    tooltip: {
-                      callbacks: {
-                        label: (ctx) =>
-                          `${ctx.dataset.label}: ${formatCurrency(ctx.raw)}`,
-                      },
-                    },
-                  },
-                  scales: {
-                    y: { beginAtZero: true, ticks: { callback: currencyTick } },
-                  },
-                }}
+                options={buildBarChartOptions({
+                  legend: true,
+                  grouped: true,
+                  tooltipLabel: (ctx) =>
+                    `${ctx.dataset.label}: ${formatCurrency(ctx.raw)}`,
+                  yTickFormatter: currencyTick,
+                })}
               />
             </div>
           )}
@@ -212,26 +207,15 @@ export default function Dashboard() {
                           ? NEGATIVE_COLOR
                           : CATEGORICAL_COLORS[index % CATEGORICAL_COLORS.length]
                       ),
-                      borderWidth: 1,
+                      borderRadius: 4,
+                      maxBarThickness: 64,
                     },
                   ],
                 }}
-                options={{
-                  responsive: true,
-                  maintainAspectRatio: false,
-                  plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                      callbacks: {
-                        label: (ctx) => `רווח: ${formatCurrency(ctx.raw)}`,
-                      },
-                    },
-                  },
-                  scales: {
-                    x: { ticks: { font: { size: 14 } } },
-                    y: { beginAtZero: true, ticks: { callback: currencyTick } },
-                  },
-                }}
+                options={buildBarChartOptions({
+                  tooltipLabel: (ctx) => `רווח: ${formatCurrency(ctx.raw)}`,
+                  yTickFormatter: currencyTick,
+                })}
               />
             </div>
           )}

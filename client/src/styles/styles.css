@@ -168,10 +168,10 @@ img {
     margin: 0;
     white-space: nowrap;
 
-    font-size: 12px;
-    font-weight: 400;
+    font-size: 14px;
+    font-weight: 700;
 
-    color: var(--color-muted);
+    color: var(--color-text);
 }
 
 /* =========================================
