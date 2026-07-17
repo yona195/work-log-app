@@ -95,7 +95,7 @@ export function createWorkLogPDF(data, filteredLogs, reportEmployeesFor) {
         h1 { text-align: center; margin-bottom: 10px; }
         .summary { text-align: center; margin-bottom: 20px; font-size: 17px; }
         .month-section { margin-top: 20px; }
-        .month-section:not(:first-child) { page-break-before: always; }
+        .month-section:not(:first-of-type) { page-break-before: always; }
         .month-title { margin-bottom: 8px; }
         table { width: 100%; border-collapse: collapse; margin-top: 10px; table-layout: auto; }
         th { background: #2563eb; color: white; }
@@ -277,7 +277,7 @@ export function buildEmployerReportHtml(
         h1 { text-align: center; margin-bottom: 10px; }
         .summary { text-align: center; margin-bottom: 20px; font-size: 17px; }
         .month-section { margin-top: 20px; }
-        .month-section:not(:first-child) { page-break-before: always; }
+        .month-section:not(:first-of-type) { page-break-before: always; }
         .month-title { margin-bottom: 8px; }
         .group-title { margin-top: 20px; margin-bottom: 6px; font-size: 15px; }
         .month-summary-title { margin-bottom: 6px; font-size: 14px; color: #444; }
