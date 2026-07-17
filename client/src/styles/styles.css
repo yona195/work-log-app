@@ -1308,27 +1308,57 @@ body.loading .menu-overlay {
 }
 
 .report-action-group {
+    position: relative;
+    overflow: hidden;
+
     display: flex;
     flex-direction: column;
     justify-content: center;
-    gap: 12px;
+    gap: 14px;
 
     flex: 1 1 260px;
 
-    padding: 16px 18px;
+    padding: 20px 20px 18px;
 
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
+    background: var(--color-primary-soft);
+    border: 1px solid rgba(37, 99, 235, 0.16);
     border-radius: var(--radius-medium);
+    box-shadow: var(--shadow-small);
+}
+
+.report-action-group::before {
+    content: "";
+
+    position: absolute;
+    top: 0;
+    right: 0;
+    left: 0;
+
+    height: 4px;
+
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
 }
 
 .report-action-group-title {
-    color: var(--color-muted);
+    display: flex;
+    align-items: center;
+    gap: 8px;
 
-    font-size: 12.5px;
+    color: var(--color-text);
+
+    font-size: 15px;
     font-weight: 700;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
+}
+
+.report-action-group-title::before {
+    content: "";
+    flex-shrink: 0;
+
+    width: 8px;
+    height: 8px;
+
+    background: var(--color-primary);
+    border-radius: 50%;
 }
 
 .report-action-group-buttons {
