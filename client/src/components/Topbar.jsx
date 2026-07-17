@@ -15,7 +15,11 @@ export default function Topbar({ title }) {
       <div className="topbar-brand">
         <img src="/logo.png" alt="לוגו החברה" className="topbar-logo" />
         {lastLogin && (
-          <p className="topbar-last-login">כניסה אחרונה: {formatDateTime(lastLogin)}</p>
+          <p className="topbar-last-login">
+            כניסה אחרונה:
+            <br />
+            {formatDateTime(lastLogin)}
+          </p>
         )}
       </div>
     </header>

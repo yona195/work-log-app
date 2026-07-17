@@ -167,9 +167,11 @@ img {
 .topbar-last-login {
     margin: 0;
     white-space: nowrap;
+    text-align: center;
 
     font-size: 14px;
     font-weight: 700;
+    line-height: 1.5;
 
     color: var(--color-text);
 }
