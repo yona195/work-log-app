@@ -622,6 +622,7 @@ tbody tr:hover {
     border-radius: 10px;
 
     text-align: right;
+    text-decoration: none;
 
     font-size: 15px;
     font-weight: 600;
