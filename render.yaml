@@ -22,3 +22,13 @@ services:
         sync: false
       - key: SESSION_SECRET # long random string; keeps logins across restarts
         generateValue: true
+      # Monthly employer report email (sent by an external cron hitting
+      # POST /api/cron/monthly-employer-report on the 1st of each month):
+      - key: RESEND_API_KEY # from resend.com
+        sync: false
+      - key: REPORT_EMAIL_FROM # e.g. onboarding@resend.dev, or a verified domain address
+        sync: false
+      - key: REPORT_EMAIL_TO # recipient for the monthly report
+        sync: false
+      - key: CRON_SECRET # shared secret the external cron sends as the x-cron-secret header
+        sync: false

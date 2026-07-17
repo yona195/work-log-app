@@ -379,7 +379,9 @@ function addMonthSummaryBlock(worksheet, startRow, groups) {
   return row + 1; // blank spacer before the group tables
 }
 
-function addEmployerWorksheet(workbook, month, groups) {
+// Pure — no browser APIs — reused by the server-side monthly email to build
+// an identical workbook without going through exportFinancialSummaryToExcel.
+export function addEmployerWorksheet(workbook, month, groups) {
   const worksheet = workbook.addWorksheet(toSheetName(month.label), {
     views: [{ rightToLeft: true }],
   });

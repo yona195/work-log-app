@@ -14,6 +14,7 @@ import express from "express";
 import { authRequired, requireAuth, secretFromEnv } from "./auth.js";
 import { initDb } from "./db.js";
 import authRouter from "./routes/auth.js";
+import cronRouter from "./routes/cron.js";
 import dataRouter from "./routes/data.js";
 
 const app = express();
@@ -27,6 +28,9 @@ app.get("/api/health", (req, res) => {
 
 // Public auth endpoints (login / status / logout).
 app.use("/api", authRouter);
+
+// Cron-triggered endpoints — gated by a shared secret, not the login flow.
+app.use("/api", cronRouter);
 
 // Everything else under /api requires a valid token (when auth is enabled).
 app.use("/api", requireAuth, dataRouter);

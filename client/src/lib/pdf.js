@@ -128,22 +128,17 @@ export function createWorkLogPDF(data, filteredLogs, reportEmployeesFor) {
   printWindow.document.close();
 }
 
-// Opens a print-ready window with the employer's report: one section per
-// month, and within each month one table per workforce group (internal
-// employees, then each subcontractor) — same row shape as the customer
-// report plus per-row cost/payment/profit, with a totals row per table.
-export function createFinancialSummaryPDF(data, filteredLogs, filters) {
-  if (!filteredLogs || filteredLogs.length === 0) {
-    alert("אין רשומות להפקת דוח");
-    return;
-  }
-
-  const printWindow = window.open("", "_blank");
-  if (!printWindow) {
-    alert("הדפדפן חסם את פתיחת ה-PDF. צריך לאשר חלונות קופצים לאתר הזה.");
-    return;
-  }
-
+// Builds the employer report's HTML document: one section per month, and
+// within each month one table per workforce group (internal employees, then
+// each subcontractor) — same row shape as the customer report plus per-row
+// cost/payment/profit, with a totals row per table. Pure/no browser APIs —
+// shared between the on-screen PDF button and the server-side monthly email.
+export function buildEmployerReportHtml(
+  data,
+  filteredLogs,
+  filters,
+  { autoPrint = true } = {}
+) {
   const formatDate = (dateValue) => {
     if (!dateValue) return "";
     const [year, month, day] = String(dateValue).split("T")[0].split("-");
@@ -264,7 +259,13 @@ export function createFinancialSummaryPDF(data, filteredLogs, filters) {
   const fromDate = reportDates[0] || "";
   const toDate = reportDates[reportDates.length - 1] || "";
 
-  printWindow.document.write(`
+  const printScript = autoPrint
+    ? `<script>
+        window.onload = function () { window.print(); };
+      <\/script>`
+    : "";
+
+  return `
     <!DOCTYPE html>
     <html lang="he" dir="rtl">
     <head>
@@ -307,12 +308,27 @@ export function createFinancialSummaryPDF(data, filteredLogs, filters) {
         <span dir="ltr">${toDate}</span>
       </div>
       ${monthSections}
-      <script>
-        window.onload = function () { window.print(); };
-      <\/script>
+      ${printScript}
     </body>
     </html>
-  `);
+  `;
+}
 
+// Opens a print-ready window with the employer's report. Thin browser
+// wrapper around buildEmployerReportHtml — see that function for the actual
+// layout (shared with the server-side monthly email).
+export function createFinancialSummaryPDF(data, filteredLogs, filters) {
+  if (!filteredLogs || filteredLogs.length === 0) {
+    alert("אין רשומות להפקת דוח");
+    return;
+  }
+
+  const printWindow = window.open("", "_blank");
+  if (!printWindow) {
+    alert("הדפדפן חסם את פתיחת ה-PDF. צריך לאשר חלונות קופצים לאתר הזה.");
+    return;
+  }
+
+  printWindow.document.write(buildEmployerReportHtml(data, filteredLogs, filters));
   printWindow.document.close();
 }
