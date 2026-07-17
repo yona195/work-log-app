@@ -216,6 +216,7 @@ export function calculateFinancialSummary(data, logs, filters) {
           ? getEmployeeAffiliationName(data, employee)
           : "שיוך לא ידוע",
         siteName: getName(data.sites, log.siteId) || "אתר לא ידוע",
+        customerName: getName(data.customers, log.customerId) || "מזמין לא ידוע",
         date: normalizeDate(log.date),
       });
     });

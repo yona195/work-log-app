@@ -243,12 +243,13 @@ export function getMissingRatesForLogs(data, logs) {
               "ללא קבלן";
       }
 
-      const key = [employee.employeeId, log.siteId, date].join("-");
+      const key = [employee.employeeId, log.siteId, log.customerId, date].join("-");
       if (!missingMap.has(key)) {
         missingMap.set(key, {
           employeeName: employee.employeeName,
           affiliationName,
           siteName: getName(data.sites, log.siteId) || "אתר לא ידוע",
+          customerName: getName(data.customers, log.customerId) || "מזמין לא ידוע",
           date,
         });
       }

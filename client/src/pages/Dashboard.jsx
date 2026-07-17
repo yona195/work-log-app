@@ -249,6 +249,7 @@ export default function Dashboard() {
                   <th>עובד</th>
                   <th>שיוך / קבלן</th>
                   <th>אתר</th>
+                  <th>מזמין</th>
                   <th>תאריך</th>
                 </tr>
               </thead>
@@ -258,6 +259,7 @@ export default function Dashboard() {
                     <td>{item.employeeName}</td>
                     <td>{item.affiliationName}</td>
                     <td>{item.siteName}</td>
+                    <td>{item.customerName}</td>
                     <td dir="ltr">{item.date}</td>
                   </tr>
                 ))}
