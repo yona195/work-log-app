@@ -1,4 +1,11 @@
 import { useMemo, useState } from "react";
+import { Bar } from "react-chartjs-2";
+import {
+  CATEGORICAL_COLORS,
+  COST_COLOR,
+  NEGATIVE_COLOR,
+  REVENUE_COLOR,
+} from "../lib/charts.js";
 import { useData } from "../state/DataProvider.jsx";
 import { formatCurrency, normalizeDate } from "../lib/format.js";
 import { getName, getBuildingNames, getEmployeeAffiliationName } from "../lib/entities.js";
@@ -70,6 +77,7 @@ export default function Reports() {
     let totalProfit = 0;
     const workforceGroups = {};
     const siteGroups = {};
+    const customerGroups = {};
     const missingRates = [];
 
     filteredLogs.forEach((log) => {
@@ -86,6 +94,20 @@ export default function Reports() {
       siteGroups[siteId].revenue += finance.revenue;
       siteGroups[siteId].cost += finance.cost;
       siteGroups[siteId].profit += finance.profit;
+
+      const customerId = String(log.customerId || "");
+      const customerName = getName(customers, log.customerId) || "מזמין לא ידוע";
+      if (!customerGroups[customerId]) {
+        customerGroups[customerId] = {
+          name: customerName,
+          revenue: 0,
+          cost: 0,
+          profit: 0,
+        };
+      }
+      customerGroups[customerId].revenue += finance.revenue;
+      customerGroups[customerId].cost += finance.cost;
+      customerGroups[customerId].profit += finance.profit;
 
       finance.calculatedEmployees.forEach((calc) => {
         const employee = employees.find(
@@ -136,9 +158,10 @@ export default function Reports() {
       totalProfit,
       workforce: Object.values(workforceGroups),
       sites: Object.values(siteGroups),
+      customers: Object.values(customerGroups),
       missingRates,
     };
-  }, [view, filteredLogs, data, filters, sites, subcontractors, employees]);
+  }, [view, filteredLogs, data, filters, sites, customers, subcontractors, employees]);
 
   const handlePDF = () => {
     if (filteredLogs.length === 0) {
@@ -306,8 +329,93 @@ export default function Reports() {
   );
 }
 
+const currencyTick = (value) => formatCurrency(value);
+
+function RevenueCostChart({ groups }) {
+  return (
+    <div className="chart-container">
+      <Bar
+        data={{
+          labels: groups.map((g) => g.name),
+          datasets: [
+            {
+              label: "הכנסות",
+              data: groups.map((g) => g.revenue),
+              backgroundColor: REVENUE_COLOR,
+            },
+            {
+              label: "הוצאות",
+              data: groups.map((g) => g.cost),
+              backgroundColor: COST_COLOR,
+            },
+          ],
+        }}
+        options={{
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: "bottom" },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => `${ctx.dataset.label}: ${formatCurrency(ctx.raw)}`,
+              },
+            },
+          },
+          scales: {
+            y: { beginAtZero: true, ticks: { callback: currencyTick } },
+          },
+        }}
+      />
+    </div>
+  );
+}
+
+function ProfitChart({ groups }) {
+  return (
+    <div className="chart-container">
+      <Bar
+        data={{
+          labels: groups.map((g) => g.name),
+          datasets: [
+            {
+              label: "רווח / הפסד",
+              data: groups.map((g) => g.profit),
+              backgroundColor: groups.map((g, index) =>
+                g.profit < 0
+                  ? NEGATIVE_COLOR
+                  : CATEGORICAL_COLORS[index % CATEGORICAL_COLORS.length]
+              ),
+              borderWidth: 1,
+            },
+          ],
+        }}
+        options={{
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => `רווח / הפסד: ${formatCurrency(ctx.raw)}`,
+              },
+            },
+          },
+          scales: {
+            x: { ticks: { font: { size: 14 } } },
+            y: { beginAtZero: true, ticks: { callback: currencyTick } },
+          },
+        }}
+      />
+    </div>
+  );
+}
+
 function FinancialSummary({ summary }) {
-  if (summary.workforce.length === 0 && summary.sites.length === 0) {
+  if (
+    summary.workforce.length === 0 &&
+    summary.sites.length === 0 &&
+    summary.customers.length === 0
+  ) {
     return (
       <>
         <h2>סיכום כספי</h2>
@@ -342,26 +450,29 @@ function FinancialSummary({ summary }) {
         {summary.workforce.length === 0 ? (
           <p>אין נתונים כספיים מתאימים.</p>
         ) : (
-          <table>
-            <thead>
-              <tr>
-                <th>עובדים / קבלן</th>
-                <th>הכנסות</th>
-                <th>הוצאות</th>
-                <th>רווח / הפסד</th>
-              </tr>
-            </thead>
-            <tbody>
-              {summary.workforce.map((group, index) => (
-                <tr key={`${group.name}-${index}`}>
-                  <td>{group.name}</td>
-                  <td>{formatCurrency(group.revenue)}</td>
-                  <td>{formatCurrency(group.cost)}</td>
-                  <td>{formatCurrency(group.profit)}</td>
+          <>
+            <table>
+              <thead>
+                <tr>
+                  <th>עובדים / קבלן</th>
+                  <th>הכנסות</th>
+                  <th>הוצאות</th>
+                  <th>רווח / הפסד</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {summary.workforce.map((group, index) => (
+                  <tr key={`${group.name}-${index}`}>
+                    <td>{group.name}</td>
+                    <td>{formatCurrency(group.revenue)}</td>
+                    <td>{formatCurrency(group.cost)}</td>
+                    <td>{formatCurrency(group.profit)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <RevenueCostChart groups={summary.workforce} />
+          </>
         )}
       </div>
 
@@ -370,26 +481,60 @@ function FinancialSummary({ summary }) {
         {summary.sites.length === 0 ? (
           <p>אין נתונים לפי אתרים.</p>
         ) : (
-          <table>
-            <thead>
-              <tr>
-                <th>אתר</th>
-                <th>הכנסות</th>
-                <th>הוצאות</th>
-                <th>רווח / הפסד</th>
-              </tr>
-            </thead>
-            <tbody>
-              {summary.sites.map((site, index) => (
-                <tr key={`${site.name}-${index}`}>
-                  <td>{site.name}</td>
-                  <td>{formatCurrency(site.revenue)}</td>
-                  <td>{formatCurrency(site.cost)}</td>
-                  <td>{formatCurrency(site.profit)}</td>
+          <>
+            <table>
+              <thead>
+                <tr>
+                  <th>אתר</th>
+                  <th>הכנסות</th>
+                  <th>הוצאות</th>
+                  <th>רווח / הפסד</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {summary.sites.map((site, index) => (
+                  <tr key={`${site.name}-${index}`}>
+                    <td>{site.name}</td>
+                    <td>{formatCurrency(site.revenue)}</td>
+                    <td>{formatCurrency(site.cost)}</td>
+                    <td>{formatCurrency(site.profit)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <ProfitChart groups={summary.sites} />
+          </>
+        )}
+      </div>
+
+      <div className="card" style={{ marginTop: 20 }}>
+        <h3>סיכום לפי מזמין עבודה</h3>
+        {summary.customers.length === 0 ? (
+          <p>אין נתונים לפי מזמינים.</p>
+        ) : (
+          <>
+            <table>
+              <thead>
+                <tr>
+                  <th>מזמין</th>
+                  <th>הכנסות</th>
+                  <th>הוצאות</th>
+                  <th>רווח / הפסד</th>
+                </tr>
+              </thead>
+              <tbody>
+                {summary.customers.map((customer, index) => (
+                  <tr key={`${customer.name}-${index}`}>
+                    <td>{customer.name}</td>
+                    <td>{formatCurrency(customer.revenue)}</td>
+                    <td>{formatCurrency(customer.cost)}</td>
+                    <td>{formatCurrency(customer.profit)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <ProfitChart groups={summary.customers} />
+          </>
         )}
       </div>
 

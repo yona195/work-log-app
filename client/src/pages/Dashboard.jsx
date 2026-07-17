@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Bar } from "react-chartjs-2";
-import "../lib/charts.js";
+import { CATEGORICAL_COLORS, NEGATIVE_COLOR } from "../lib/charts.js";
 import { useData } from "../state/DataProvider.jsx";
 import { formatCurrency } from "../lib/format.js";
 import { getCurrentMonthRange } from "../lib/entities.js";
@@ -11,17 +11,6 @@ import {
   getLogsForPeriod,
   getMissingRatesForLogs,
 } from "../lib/finance.js";
-
-const SITE_COLORS = [
-  "rgba(37, 99, 235, 0.8)",
-  "rgba(34, 197, 94, 0.8)",
-  "rgba(245, 158, 11, 0.8)",
-  "rgba(168, 85, 247, 0.8)",
-  "rgba(239, 68, 68, 0.8)",
-  "rgba(14, 165, 233, 0.8)",
-  "rgba(236, 72, 153, 0.8)",
-  "rgba(100, 116, 139, 0.8)",
-];
 
 function formatLocalDate(date) {
   const year = date.getFullYear();
@@ -205,8 +194,8 @@ export default function Dashboard() {
                       data: sites.map((s) => s.profit),
                       backgroundColor: sites.map((s, index) =>
                         s.profit < 0
-                          ? "rgba(239, 68, 68, 0.8)"
-                          : SITE_COLORS[index % SITE_COLORS.length]
+                          ? NEGATIVE_COLOR
+                          : CATEGORICAL_COLORS[index % CATEGORICAL_COLORS.length]
                       ),
                       borderWidth: 1,
                     },
