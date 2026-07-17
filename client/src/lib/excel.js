@@ -198,9 +198,9 @@ function addEmployerGroupTable(worksheet, startRow, group) {
     "מבנים",
     "מזמין עבודה",
     "הערות",
-    "עלות עובד",
-    "תשלום עובד",
-    "רווח",
+    "עלות יומית",
+    "תשלום יומי",
+    "רווח/הפסד יומי",
   ];
   headerRow.height = 28;
   headerRow.eachCell((cell) => {
@@ -264,6 +264,25 @@ function addEmployerGroupTable(worksheet, startRow, group) {
     });
     row += 1;
   });
+
+  worksheet.mergeCells(`A${row}:G${row}`);
+  worksheet.getCell(`H${row}`).value = "עלות חודשית";
+  worksheet.getCell(`I${row}`).value = "תשלום חודשי";
+  worksheet.getCell(`J${row}`).value = "רווח/הפסד חודשי";
+  const totalsLabelRow = worksheet.getRow(row);
+  totalsLabelRow.height = 22;
+  totalsLabelRow.eachCell({ includeEmpty: true }, (cell) => {
+    cell.font = { bold: true, size: 11, color: { argb: "FF1D4ED8" } };
+    cell.fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "FFDBEAFE" },
+    };
+    cell.alignment = { horizontal: "center", vertical: "middle" };
+    const thin = { style: "thin", color: { argb: "FFD1D5DB" } };
+    cell.border = { top: thin, bottom: thin, left: thin, right: thin };
+  });
+  row += 1;
 
   worksheet.mergeCells(`A${row}:G${row}`);
   worksheet.getCell(`A${row}`).value = "סה״כ";

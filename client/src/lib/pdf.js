@@ -188,13 +188,19 @@ export function createFinancialSummaryPDF(data, filteredLogs, filters) {
             <th>מבנה</th>
             <th>מזמין</th>
             <th>הערות</th>
-            <th>עלות עובד</th>
-            <th>תשלום עובד</th>
-            <th>רווח</th>
+            <th>עלות יומית</th>
+            <th>תשלום יומי</th>
+            <th>רווח/הפסד יומי</th>
           </tr>
         </thead>
         <tbody>
           ${rows}
+          <tr class="totals-label-row">
+            <td colspan="7"></td>
+            <td>עלות חודשית</td>
+            <td>תשלום חודשי</td>
+            <td>רווח/הפסד חודשי</td>
+          </tr>
           <tr class="totals-row">
             <td colspan="7">סה״כ</td>
             <td>${escapeHtml(formatCurrency(group.totalCost))}</td>
@@ -246,6 +252,7 @@ export function createFinancialSummaryPDF(data, filteredLogs, filters) {
         table { width: 100%; border-collapse: collapse; margin-top: 6px; table-layout: auto; }
         th { background: #2563eb; color: white; }
         th, td { border: 1px solid #999; padding: 8px; text-align: center; font-size: 12px; vertical-align: middle; word-break: break-word; }
+        tr.totals-label-row td { background: #dbeafe; font-weight: bold; font-size: 11px; color: #1d4ed8; }
         tr.totals-row td { background: #eff6ff; font-weight: bold; }
         @media print {
           body { padding: 0; }
