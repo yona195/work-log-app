@@ -68,4 +68,18 @@ export function getCurrentMonthRange() {
   };
 }
 
+function formatLocalDate(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+// Rolling window: 3 months ago (same day) through today.
+export function getLastThreeMonthsRange() {
+  const now = new Date();
+  const from = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate());
+  return { from: formatLocalDate(from), to: formatLocalDate(now) };
+}
+
 export { normalizeDate };

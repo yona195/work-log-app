@@ -4,6 +4,7 @@ import { getEmployeeAffiliationName } from "../lib/entities.js";
 import { filterReportLogs } from "../lib/reports.js";
 import { createEmployeeWorkPDF, createEmployeeSummaryPDF } from "../lib/pdf.js";
 import { exportEmployeeWorkExcel, exportEmployeeSummaryExcel } from "../lib/excel.js";
+import PeriodFilter, { useDateRangeFilter } from "../components/PeriodFilter.jsx";
 
 const toggle = (list, id) =>
   list.includes(id) ? list.filter((x) => x !== id) : [...list, id];
@@ -12,8 +13,7 @@ export default function EmployeeReports() {
   const { data } = useData();
   const { employees, subcontractors } = data;
 
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
+  const dateRange = useDateRangeFilter();
   const [group, setGroup] = useState("");
 
   // Starts empty on purpose — nothing is pre-checked; the user picks what
@@ -70,13 +70,13 @@ export default function EmployeeReports() {
 
   const filters = useMemo(
     () => ({
-      from,
-      to,
+      from: dateRange.from,
+      to: dateRange.to,
       group,
       subcontractorId: group === "all-subcontractors" ? selectedSubcontractorIds : "",
       employeeId: selectedEmployeeIds,
     }),
-    [from, to, group, selectedSubcontractorIds, selectedEmployeeIds]
+    [dateRange.from, dateRange.to, group, selectedSubcontractorIds, selectedEmployeeIds]
   );
 
   const filteredLogs = useMemo(
@@ -102,11 +102,14 @@ export default function EmployeeReports() {
       <div className="card">
         <h3>סינון דוח</h3>
 
-        <label>מתאריך</label>
-        <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
-
-        <label>עד תאריך</label>
-        <input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
+        <PeriodFilter
+          period={dateRange.period}
+          onPeriodChange={dateRange.setPeriod}
+          customFrom={dateRange.customFrom}
+          customTo={dateRange.customTo}
+          onCustomFromChange={dateRange.setCustomFrom}
+          onCustomToChange={dateRange.setCustomTo}
+        />
 
         <label>סוג עובדים</label>
         <select value={group} onChange={(e) => handleGroupChange(e.target.value)}>

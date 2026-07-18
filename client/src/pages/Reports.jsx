@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import ProfitBarChart from "../components/ProfitBarChart.jsx";
 import RevenueCostBarChart from "../components/RevenueCostBarChart.jsx";
+import PeriodFilter, { useDateRangeFilter } from "../components/PeriodFilter.jsx";
 import { useData } from "../state/DataProvider.jsx";
 import { formatCurrency, normalizeDate } from "../lib/format.js";
 import { getName, getBuildingNames, getEmployeeAffiliationName } from "../lib/entities.js";
@@ -14,8 +15,6 @@ import { createWorkLogPDF, createFinancialSummaryPDF } from "../lib/pdf.js";
 import { exportToExcel, exportFinancialSummaryToExcel } from "../lib/excel.js";
 
 const EMPTY_FILTERS = {
-  from: "",
-  to: "",
   group: "",
   subcontractorId: "",
   employeeId: "",
@@ -27,6 +26,7 @@ export default function Reports() {
   const { data } = useData();
   const { subcontractors, sites, customers, employees } = data;
 
+  const dateRange = useDateRangeFilter();
   const [filters, setFilters] = useState(EMPTY_FILTERS);
   const [view, setView] = useState("none"); // none | report | summary
 
@@ -52,12 +52,17 @@ export default function Reports() {
     });
   }, [employees, filters.group, filters.subcontractorId]);
 
-  const filteredLogs = useMemo(
-    () => filterReportLogs(data, filters),
-    [data, filters]
+  const effectiveFilters = useMemo(
+    () => ({ ...filters, from: dateRange.from, to: dateRange.to }),
+    [filters, dateRange.from, dateRange.to]
   );
 
-  const reportEmployeesFor = (log) => getReportEmployees(data, log, filters);
+  const filteredLogs = useMemo(
+    () => filterReportLogs(data, effectiveFilters),
+    [data, effectiveFilters]
+  );
+
+  const reportEmployeesFor = (log) => getReportEmployees(data, log, effectiveFilters);
 
   const monthGroups = useMemo(
     () => groupLogsByMonth(filteredLogs),
@@ -66,8 +71,8 @@ export default function Reports() {
 
   const summary = useMemo(() => {
     if (view !== "summary") return null;
-    return calculateFinancialSummary(data, filteredLogs, filters);
-  }, [view, filteredLogs, data, filters]);
+    return calculateFinancialSummary(data, filteredLogs, effectiveFilters);
+  }, [view, filteredLogs, data, effectiveFilters]);
 
   const handlePDF = () => {
     if (filteredLogs.length === 0) {
@@ -84,29 +89,24 @@ export default function Reports() {
       alert("אין רשומות מתאימות להפקת PDF");
       return;
     }
-    createFinancialSummaryPDF(data, filteredLogs, filters);
+    createFinancialSummaryPDF(data, filteredLogs, effectiveFilters);
   };
 
   const handleEmployerExcel = () =>
-    exportFinancialSummaryToExcel(data, filteredLogs, filters);
+    exportFinancialSummaryToExcel(data, filteredLogs, effectiveFilters);
 
   return (
     <>
       <div className="card">
         <h3>סינון דוח</h3>
 
-        <label>מתאריך</label>
-        <input
-          type="date"
-          value={filters.from}
-          onChange={(e) => setFilter("from", e.target.value)}
-        />
-
-        <label>עד תאריך</label>
-        <input
-          type="date"
-          value={filters.to}
-          onChange={(e) => setFilter("to", e.target.value)}
+        <PeriodFilter
+          period={dateRange.period}
+          onPeriodChange={dateRange.setPeriod}
+          customFrom={dateRange.customFrom}
+          customTo={dateRange.customTo}
+          onCustomFromChange={dateRange.setCustomFrom}
+          onCustomToChange={dateRange.setCustomTo}
         />
 
         <label>שיוך עובדים</label>
