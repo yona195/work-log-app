@@ -7,6 +7,7 @@ import { DataProvider, useData } from "./state/DataProvider.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 import WorkLog from "./pages/WorkLog.jsx";
 import Reports from "./pages/Reports.jsx";
+import EmployeeReports from "./pages/EmployeeReports.jsx";
 import Employees from "./pages/Employees.jsx";
 import Buildings from "./pages/Buildings.jsx";
 import Rates from "./pages/Rates.jsx";
@@ -32,6 +33,7 @@ function AuthenticatedApp() {
         <Route path="/" element={<Dashboard />} />
         <Route path="/worklog" element={<WorkLog />} />
         <Route path="/reports" element={<Reports />} />
+        <Route path="/employee-reports" element={<EmployeeReports />} />
         <Route path="/employees" element={<Employees />} />
         <Route
           path="/sites"

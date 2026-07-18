@@ -319,3 +319,60 @@ export function calculateEmployerBreakdown(data, logs, filters) {
     return a.name.localeCompare(b.name, "he");
   });
 }
+
+/**
+ * Per-employee breakdown for the employee reports page: one table per
+ * individual employee (not grouped by affiliation), each row one shift
+ * (date/site/building) with per-row cost/payment/profit, plus totals summed
+ * over the whole selected range. Returns
+ * [{ key, name, rows: [...], totalCost, totalRevenue, totalProfit }],
+ * sorted alphabetically by employee name.
+ */
+export function calculateEmployeeBreakdown(data, logs, filters) {
+  const employees = new Map();
+
+  logs.forEach((log) => {
+    const reportEmployees = getReportEmployees(data, log, filters);
+
+    reportEmployees.forEach((employee) => {
+      const rate = getApplicableRate(
+        data,
+        employee,
+        log.siteId,
+        log.date,
+        log.customerId
+      );
+      const revenue = rate ? Number(rate.revenuePerWorker) || 0 : 0;
+      const cost = rate ? Number(rate.costPerWorker) || 0 : 0;
+      const profit = revenue - cost;
+
+      if (!employees.has(employee.id)) {
+        employees.set(employee.id, {
+          key: employee.id,
+          name: employee.name,
+          rows: [],
+          totalCost: 0,
+          totalRevenue: 0,
+          totalProfit: 0,
+        });
+      }
+
+      const entry = employees.get(employee.id);
+      entry.rows.push({
+        date: normalizeDate(log.date),
+        site: getName(data.sites, log.siteId),
+        buildings: getBuildingNames(data, log),
+        cost,
+        revenue,
+        profit,
+      });
+      entry.totalCost += cost;
+      entry.totalRevenue += revenue;
+      entry.totalProfit += profit;
+    });
+  });
+
+  return Array.from(employees.values()).sort((a, b) =>
+    a.name.localeCompare(b.name, "he")
+  );
+}

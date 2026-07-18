@@ -13,8 +13,14 @@ export const NAV_SECTIONS = [
       {
         path: "/reports",
         icon: "description",
-        label: "דוחות",
-        title: "דוחות",
+        label: "דוחות מזמין",
+        title: "דוחות מזמין",
+      },
+      {
+        path: "/employee-reports",
+        icon: "badge",
+        label: "דוחות עובד",
+        title: "דוחות עובד",
       },
     ],
   },

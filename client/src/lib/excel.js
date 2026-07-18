@@ -1,6 +1,10 @@
 import { formatExcelDate, normalizeDate } from "./format.js";
 import { getName, getBuildingNames } from "./entities.js";
-import { groupLogsByMonth, calculateEmployerBreakdown } from "./reports.js";
+import {
+  groupLogsByMonth,
+  calculateEmployerBreakdown,
+  calculateEmployeeBreakdown,
+} from "./reports.js";
 
 const CURRENCY_FORMAT = '#,##0.00 "₪"';
 
@@ -479,4 +483,235 @@ export async function exportFinancialSummaryToExcel(data, filteredLogs, filters)
     console.error("שגיאה ביצירת קובץ Excel:", error);
     alert("הפקת קובץ Excel נכשלה.");
   }
+}
+
+// Writes one employee's table (date/site/building, plus per-row cost/payment/
+// profit and a totals row when includeFinance) starting at `startRow`.
+// Returns the next free row after the table's spacer.
+function addEmployeeTable(worksheet, startRow, employee, includeFinance) {
+  let row = startRow;
+  const lastCol = includeFinance ? "F" : "C";
+
+  worksheet.mergeCells(`A${row}:${lastCol}${row}`);
+  const titleCell = worksheet.getCell(`A${row}`);
+  titleCell.value = employee.name;
+  titleCell.font = { bold: true, size: 14 };
+  titleCell.alignment = { horizontal: "right", vertical: "middle" };
+  worksheet.getRow(row).height = 26;
+  row += 1;
+
+  const headerRow = worksheet.getRow(row);
+  headerRow.values = includeFinance
+    ? ["תאריך", "אתר עבודה", "מבנה", "עלות יומית", "תשלום יומי", "רווח/הפסד יומי"]
+    : ["תאריך", "אתר עבודה", "מבנה"];
+  headerRow.height = 28;
+  headerRow.eachCell((cell) => {
+    cell.font = { bold: true, color: { argb: "FFFFFFFF" }, size: 12 };
+    cell.fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "FF2563EB" },
+    };
+    cell.alignment = {
+      horizontal: "center",
+      vertical: "middle",
+      wrapText: true,
+    };
+    const thin = { style: "thin", color: { argb: "FFD1D5DB" } };
+    cell.border = { top: thin, bottom: thin, left: thin, right: thin };
+  });
+  row += 1;
+
+  employee.rows.forEach((entry, index) => {
+    const [year, month, day] = entry.date.split("-").map(Number);
+    const dataRow = worksheet.getRow(row);
+    dataRow.values = includeFinance
+      ? [
+          // UTC midnight, not local: ExcelJS serializes dates via UTC math,
+          // so a local-midnight Date shifts back a day in timezones ahead of UTC.
+          new Date(Date.UTC(year, month - 1, day)),
+          entry.site,
+          entry.buildings,
+          entry.cost,
+          entry.revenue,
+          entry.profit,
+        ]
+      : [new Date(Date.UTC(year, month - 1, day)), entry.site, entry.buildings];
+    dataRow.height = 24;
+    dataRow.eachCell((cell, colNumber) => {
+      cell.alignment = {
+        horizontal: "right",
+        vertical: "middle",
+        wrapText: true,
+      };
+      const thin = { style: "thin", color: { argb: "FFE5E7EB" } };
+      cell.border = { top: thin, bottom: thin, left: thin, right: thin };
+      if (colNumber === 1) {
+        cell.numFmt = "dd-mm-yyyy";
+        cell.alignment = { horizontal: "center", vertical: "middle" };
+      }
+      if (includeFinance && colNumber >= 4) cell.numFmt = CURRENCY_FORMAT;
+      if (index % 2 === 1) {
+        cell.fill = {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: { argb: "FFF3F4F6" },
+        };
+      }
+    });
+    row += 1;
+  });
+
+  if (includeFinance) {
+    worksheet.mergeCells(`A${row}:C${row}`);
+    worksheet.getCell(`D${row}`).value = "עלות כוללת";
+    worksheet.getCell(`E${row}`).value = "תשלום כולל";
+    worksheet.getCell(`F${row}`).value = "רווח/הפסד כולל";
+    const labelRow = worksheet.getRow(row);
+    labelRow.height = 22;
+    labelRow.eachCell({ includeEmpty: true }, (cell) => {
+      cell.font = { bold: true, size: 11, color: { argb: "FF1D4ED8" } };
+      cell.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FFDBEAFE" },
+      };
+      cell.alignment = { horizontal: "center", vertical: "middle" };
+      const thin = { style: "thin", color: { argb: "FFD1D5DB" } };
+      cell.border = { top: thin, bottom: thin, left: thin, right: thin };
+    });
+    row += 1;
+
+    worksheet.mergeCells(`A${row}:C${row}`);
+    worksheet.getCell(`A${row}`).value = "סה״כ";
+    worksheet.getCell(`D${row}`).value = employee.totalCost;
+    worksheet.getCell(`E${row}`).value = employee.totalRevenue;
+    worksheet.getCell(`F${row}`).value = employee.totalProfit;
+    const totalsRow = worksheet.getRow(row);
+    totalsRow.height = 26;
+    totalsRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+      cell.font = { bold: true, size: 12 };
+      cell.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FFEFF6FF" },
+      };
+      cell.alignment = {
+        horizontal: colNumber === 1 ? "right" : "center",
+        vertical: "middle",
+      };
+      const thin = { style: "thin", color: { argb: "FFD1D5DB" } };
+      cell.border = { top: thin, bottom: thin, left: thin, right: thin };
+      if (colNumber >= 4) cell.numFmt = CURRENCY_FORMAT;
+    });
+    row += 1;
+  }
+
+  return row + 1; // blank spacer before the next employee's table
+}
+
+async function exportEmployeeReportExcel(
+  data,
+  filteredLogs,
+  filters,
+  includeFinance,
+  filenamePrefix
+) {
+  if (!filteredLogs || filteredLogs.length === 0) {
+    alert("אין נתונים לייצוא");
+    return;
+  }
+
+  try {
+    const [{ default: ExcelJS }, { saveAs }] = await Promise.all([
+      import("exceljs"),
+      import("file-saver"),
+    ]);
+
+    const employees = calculateEmployeeBreakdown(data, filteredLogs, filters);
+    if (employees.length === 0) {
+      alert("אין נתונים מתאימים לייצוא");
+      return;
+    }
+
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = "יומן עבודה";
+    workbook.created = new Date();
+
+    const sheetTitle = includeFinance ? "דוח עובדים - סיכום" : "דוח עובדים";
+    const worksheet = workbook.addWorksheet(toSheetName(sheetTitle), {
+      views: [{ rightToLeft: true }],
+    });
+    worksheet.columns = (includeFinance ? [14, 24, 26, 16, 16, 16] : [14, 24, 26]).map(
+      (width) => ({ width })
+    );
+
+    const lastCol = includeFinance ? "F" : "C";
+    const reportDates = filteredLogs
+      .map((log) => normalizeDate(log.date))
+      .filter(Boolean)
+      .sort();
+    const fromDate = reportDates[0] || "";
+    const toDate = reportDates[reportDates.length - 1] || "";
+
+    worksheet.mergeCells(`A1:${lastCol}1`);
+    const titleCell = worksheet.getCell("A1");
+    titleCell.value = sheetTitle;
+    titleCell.font = { bold: true, size: 20 };
+    titleCell.alignment = { horizontal: "center", vertical: "middle" };
+    worksheet.getRow(1).height = 34;
+
+    worksheet.mergeCells(`A2:${lastCol}2`);
+    const datesCell = worksheet.getCell("A2");
+    datesCell.value = `תאריכי הדוח: ${formatExcelDate(
+      fromDate
+    )} עד ${formatExcelDate(toDate)}`;
+    datesCell.font = { bold: true, size: 12 };
+    datesCell.alignment = { horizontal: "center", vertical: "middle" };
+    worksheet.getRow(2).height = 24;
+
+    let row = 4;
+    employees.forEach((employee) => {
+      row = addEmployeeTable(worksheet, row, employee, includeFinance);
+    });
+
+    worksheet.pageSetup = {
+      orientation: "landscape",
+      paperSize: 9,
+      fitToPage: true,
+      fitToWidth: 1,
+      fitToHeight: 0,
+      margins: {
+        left: 0.25,
+        right: 0.25,
+        top: 0.5,
+        bottom: 0.5,
+        header: 0.2,
+        footer: 0.2,
+      },
+    };
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const file = new Blob([buffer], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+    saveAs(file, `${filenamePrefix}_${fromDate}_עד_${toDate}.xlsx`);
+  } catch (error) {
+    console.error("שגיאה ביצירת קובץ Excel:", error);
+    alert("הפקת קובץ Excel נכשלה.");
+  }
+}
+
+export function exportEmployeeWorkExcel(data, filteredLogs, filters) {
+  return exportEmployeeReportExcel(data, filteredLogs, filters, false, "דוח_עובדים");
+}
+
+export function exportEmployeeSummaryExcel(data, filteredLogs, filters) {
+  return exportEmployeeReportExcel(
+    data,
+    filteredLogs,
+    filters,
+    true,
+    "דוח_עובדים_סיכום"
+  );
 }
