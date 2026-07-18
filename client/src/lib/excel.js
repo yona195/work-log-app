@@ -608,7 +608,7 @@ function addEmployeeTable(worksheet, startRow, employee, includeFinance) {
   } else {
     worksheet.mergeCells(`A${row}:B${row}`);
     worksheet.getCell(`A${row}`).value = "סה״כ ימי עבודה";
-    worksheet.getCell(`C${row}`).value = employee.rows.length;
+    worksheet.getCell(`C${row}`).value = employee.daysWorked;
     const totalsRow = worksheet.getRow(row);
     totalsRow.height = 26;
     totalsRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {

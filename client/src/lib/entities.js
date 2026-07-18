@@ -75,10 +75,19 @@ function formatLocalDate(date) {
   return `${year}-${month}-${day}`;
 }
 
-// Rolling window: 3 months ago (same day) through today.
+// Rolling window: 3 months ago (same day, clamped to that month's last day
+// when it's shorter — e.g. "May 31" -> "Feb 28/29", not an overflow into
+// March) through today.
 export function getLastThreeMonthsRange() {
   const now = new Date();
-  const from = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate());
+  const targetMonth = now.getMonth() - 3;
+  const lastDayOfTargetMonth = new Date(
+    now.getFullYear(),
+    targetMonth + 1,
+    0
+  ).getDate();
+  const day = Math.min(now.getDate(), lastDayOfTargetMonth);
+  const from = new Date(now.getFullYear(), targetMonth, day);
   return { from: formatLocalDate(from), to: formatLocalDate(now) };
 }
 

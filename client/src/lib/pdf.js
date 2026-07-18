@@ -4,7 +4,7 @@ import {
   calculateEmployerBreakdown,
   calculateEmployeeBreakdown,
 } from "./reports.js";
-import { formatCurrency } from "./format.js";
+import { formatCurrency, normalizeDate } from "./format.js";
 
 // Opens a print-ready window with the filtered work-log report (RTL, A4
 // landscape). Mirrors the original createWorkLogPDF behaviour.
@@ -79,13 +79,16 @@ export function createWorkLogPDF(data, filteredLogs, reportEmployeesFor) {
     })
     .join("");
 
+  // Sort on ISO ("YYYY-MM-DD") dates — sorting the already-display-formatted
+  // "DD-MM-YYYY" strings is lexicographic, not chronological, and can show
+  // the range backwards (e.g. December before January).
   const reportDates = filteredLogs
-    .map((log) => formatDate(log.date))
+    .map((log) => normalizeDate(log.date))
     .filter(Boolean)
     .sort();
 
-  const fromDate = reportDates[0] || "";
-  const toDate = reportDates[reportDates.length - 1] || "";
+  const fromDate = formatDate(reportDates[0] || "");
+  const toDate = formatDate(reportDates[reportDates.length - 1] || "");
 
   printWindow.document.write(`
     <!DOCTYPE html>
@@ -255,13 +258,16 @@ export function buildEmployerReportHtml(
     })
     .join("");
 
+  // Sort on ISO ("YYYY-MM-DD") dates — sorting the already-display-formatted
+  // "DD-MM-YYYY" strings is lexicographic, not chronological, and can show
+  // the range backwards (e.g. December before January).
   const reportDates = filteredLogs
-    .map((log) => formatDate(log.date))
+    .map((log) => normalizeDate(log.date))
     .filter(Boolean)
     .sort();
 
-  const fromDate = reportDates[0] || "";
-  const toDate = reportDates[reportDates.length - 1] || "";
+  const fromDate = formatDate(reportDates[0] || "");
+  const toDate = formatDate(reportDates[reportDates.length - 1] || "");
 
   const printScript = autoPrint
     ? `<script>
@@ -418,7 +424,7 @@ export function buildEmployeeReportHtml(
               : `
                 <tr class="totals-row">
                   <td colspan="2">סה״כ ימי עבודה</td>
-                  <td>${employee.rows.length}</td>
+                  <td>${employee.daysWorked}</td>
                 </tr>
               `
           }
@@ -429,12 +435,15 @@ export function buildEmployeeReportHtml(
 
   const employees = calculateEmployeeBreakdown(data, filteredLogs, filters);
 
+  // Sort on ISO ("YYYY-MM-DD") dates — sorting the already-display-formatted
+  // "DD-MM-YYYY" strings is lexicographic, not chronological, and can show
+  // the range backwards (e.g. December before January).
   const reportDates = filteredLogs
-    .map((log) => formatDate(log.date))
+    .map((log) => normalizeDate(log.date))
     .filter(Boolean)
     .sort();
-  const fromDate = reportDates[0] || "";
-  const toDate = reportDates[reportDates.length - 1] || "";
+  const fromDate = formatDate(reportDates[0] || "");
+  const toDate = formatDate(reportDates[reportDates.length - 1] || "");
 
   const title = includeFinance ? "דוח עובדים - סיכום" : "דוח עובדים";
 

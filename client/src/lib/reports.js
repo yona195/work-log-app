@@ -384,7 +384,12 @@ export function calculateEmployeeBreakdown(data, logs, filters) {
     });
   });
 
-  return Array.from(employees.values()).sort((a, b) =>
-    a.name.localeCompare(b.name, "he")
-  );
+  return Array.from(employees.values())
+    .map((entry) => ({
+      ...entry,
+      // Distinct calendar dates, not row count — an employee logged at two
+      // sites on the same day is still one workday.
+      daysWorked: new Set(entry.rows.map((row) => row.date)).size,
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name, "he"));
 }
