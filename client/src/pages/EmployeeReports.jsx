@@ -16,16 +16,16 @@ export default function EmployeeReports() {
   const [to, setTo] = useState("");
   const [group, setGroup] = useState("");
 
-  // null = "untouched" (defaults to everything currently available); once
-  // the user checks/unchecks anything it becomes a real, explicit array —
-  // including possibly empty, which correctly means "select none".
-  const [selectedSubcontractorIds, setSelectedSubcontractorIds] = useState(null);
-  const [selectedEmployeeIds, setSelectedEmployeeIds] = useState(null);
+  // Starts empty on purpose — nothing is pre-checked; the user picks what
+  // they want. An empty array means "match nothing" (no report yet) until
+  // something is checked, rather than silently defaulting to "everyone".
+  const [selectedSubcontractorIds, setSelectedSubcontractorIds] = useState([]);
+  const [selectedEmployeeIds, setSelectedEmployeeIds] = useState([]);
 
   const handleGroupChange = (value) => {
     setGroup(value);
-    setSelectedSubcontractorIds(null);
-    setSelectedEmployeeIds(null);
+    setSelectedSubcontractorIds([]);
+    setSelectedEmployeeIds([]);
   };
 
   const relevantSubcontractors = useMemo(() => {
@@ -38,11 +38,8 @@ export default function EmployeeReports() {
     return subcontractors.filter((s) => idsWithEmployees.has(String(s.id)));
   }, [subcontractors, employees, group]);
 
-  const effectiveSubcontractorIds =
-    selectedSubcontractorIds ?? relevantSubcontractors.map((s) => s.id);
-
   const toggleSubcontractor = (id) => {
-    setSelectedSubcontractorIds(toggle(effectiveSubcontractorIds, id));
+    setSelectedSubcontractorIds(toggle(selectedSubcontractorIds, id));
   };
 
   const employeeOptions = useMemo(() => {
@@ -53,27 +50,22 @@ export default function EmployeeReports() {
       if (group === "all-subcontractors") {
         return (
           isSub &&
-          effectiveSubcontractorIds.includes(String(employee.subcontractorId || ""))
+          selectedSubcontractorIds.includes(String(employee.subcontractorId || ""))
         );
       }
       return true;
     });
-    // effectiveSubcontractorIds is derived from selectedSubcontractorIds + relevantSubcontractors
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [employees, group, selectedSubcontractorIds, relevantSubcontractors]);
+  }, [employees, group, selectedSubcontractorIds]);
 
   // A subcontractor selection change can make the previous employee
-  // selection stale (ids no longer in employeeOptions) — reset to "all".
+  // selection stale (ids no longer in employeeOptions) — start over empty.
   useEffect(() => {
-    setSelectedEmployeeIds(null);
+    setSelectedEmployeeIds([]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [group, selectedSubcontractorIds]);
 
-  const effectiveEmployeeIds =
-    selectedEmployeeIds ?? employeeOptions.map((e) => e.id);
-
   const toggleEmployee = (id) => {
-    setSelectedEmployeeIds(toggle(effectiveEmployeeIds, id));
+    setSelectedEmployeeIds(toggle(selectedEmployeeIds, id));
   };
 
   const filters = useMemo(
@@ -155,7 +147,7 @@ export default function EmployeeReports() {
                   <label className="checkbox-item" key={subcontractor.id}>
                     <input
                       type="checkbox"
-                      checked={effectiveSubcontractorIds.includes(subcontractor.id)}
+                      checked={selectedSubcontractorIds.includes(subcontractor.id)}
                       onChange={() => toggleSubcontractor(subcontractor.id)}
                     />
                     <span>{subcontractor.name}</span>
@@ -194,7 +186,7 @@ export default function EmployeeReports() {
               <label className="checkbox-item" key={employee.id}>
                 <input
                   type="checkbox"
-                  checked={effectiveEmployeeIds.includes(employee.id)}
+                  checked={selectedEmployeeIds.includes(employee.id)}
                   onChange={() => toggleEmployee(employee.id)}
                 />
                 <span>
@@ -206,7 +198,7 @@ export default function EmployeeReports() {
         </div>
 
         <p id="employeeCountText">
-          סה״כ עובדים שנבחרו: {effectiveEmployeeIds.length}
+          סה״כ עובדים שנבחרו: {selectedEmployeeIds.length}
         </p>
 
         <div className="report-actions">
