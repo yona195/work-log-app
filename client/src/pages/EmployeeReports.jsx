@@ -1,41 +1,91 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useData } from "../state/DataProvider.jsx";
 import { getEmployeeAffiliationName } from "../lib/entities.js";
 import { filterReportLogs } from "../lib/reports.js";
 import { createEmployeeWorkPDF, createEmployeeSummaryPDF } from "../lib/pdf.js";
 import { exportEmployeeWorkExcel, exportEmployeeSummaryExcel } from "../lib/excel.js";
 
-const EMPTY_FILTERS = {
-  from: "",
-  to: "",
-  group: "",
-  employeeId: "",
-};
+const toggle = (list, id) =>
+  list.includes(id) ? list.filter((x) => x !== id) : [...list, id];
 
 export default function EmployeeReports() {
   const { data } = useData();
-  const { employees } = data;
+  const { employees, subcontractors } = data;
 
-  const [filters, setFilters] = useState(EMPTY_FILTERS);
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+  const [group, setGroup] = useState("");
 
-  const setFilter = (key, value) =>
-    setFilters((prev) => {
-      const next = { ...prev, [key]: value };
-      // Changing the employee type invalidates a specific-employee choice
-      // from the previous type.
-      if (key === "group") next.employeeId = "";
-      return next;
-    });
+  // null = "untouched" (defaults to everything currently available); once
+  // the user checks/unchecks anything it becomes a real, explicit array —
+  // including possibly empty, which correctly means "select none".
+  const [selectedSubcontractorIds, setSelectedSubcontractorIds] = useState(null);
+  const [selectedEmployeeIds, setSelectedEmployeeIds] = useState(null);
+
+  const handleGroupChange = (value) => {
+    setGroup(value);
+    setSelectedSubcontractorIds(null);
+    setSelectedEmployeeIds(null);
+  };
+
+  const relevantSubcontractors = useMemo(() => {
+    if (group !== "all-subcontractors") return [];
+    const idsWithEmployees = new Set(
+      employees
+        .filter((e) => e.type !== "internal")
+        .map((e) => String(e.subcontractorId || ""))
+    );
+    return subcontractors.filter((s) => idsWithEmployees.has(String(s.id)));
+  }, [subcontractors, employees, group]);
+
+  const effectiveSubcontractorIds =
+    selectedSubcontractorIds ?? relevantSubcontractors.map((s) => s.id);
+
+  const toggleSubcontractor = (id) => {
+    setSelectedSubcontractorIds(toggle(effectiveSubcontractorIds, id));
+  };
 
   const employeeOptions = useMemo(() => {
     return employees.filter((employee) => {
       const isInternal = employee.type === "internal";
       const isSub = employee.type === "subcontractor" || employee.type === "external";
-      if (filters.group === "internal") return isInternal;
-      if (filters.group === "all-subcontractors") return isSub;
+      if (group === "internal") return isInternal;
+      if (group === "all-subcontractors") {
+        return (
+          isSub &&
+          effectiveSubcontractorIds.includes(String(employee.subcontractorId || ""))
+        );
+      }
       return true;
     });
-  }, [employees, filters.group]);
+    // effectiveSubcontractorIds is derived from selectedSubcontractorIds + relevantSubcontractors
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [employees, group, selectedSubcontractorIds, relevantSubcontractors]);
+
+  // A subcontractor selection change can make the previous employee
+  // selection stale (ids no longer in employeeOptions) — reset to "all".
+  useEffect(() => {
+    setSelectedEmployeeIds(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [group, selectedSubcontractorIds]);
+
+  const effectiveEmployeeIds =
+    selectedEmployeeIds ?? employeeOptions.map((e) => e.id);
+
+  const toggleEmployee = (id) => {
+    setSelectedEmployeeIds(toggle(effectiveEmployeeIds, id));
+  };
+
+  const filters = useMemo(
+    () => ({
+      from,
+      to,
+      group,
+      subcontractorId: group === "all-subcontractors" ? selectedSubcontractorIds : "",
+      employeeId: selectedEmployeeIds,
+    }),
+    [from, to, group, selectedSubcontractorIds, selectedEmployeeIds]
+  );
 
   const filteredLogs = useMemo(
     () => filterReportLogs(data, filters),
@@ -61,41 +111,103 @@ export default function EmployeeReports() {
         <h3>סינון דוח</h3>
 
         <label>מתאריך</label>
-        <input
-          type="date"
-          value={filters.from}
-          onChange={(e) => setFilter("from", e.target.value)}
-        />
+        <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
 
         <label>עד תאריך</label>
-        <input
-          type="date"
-          value={filters.to}
-          onChange={(e) => setFilter("to", e.target.value)}
-        />
+        <input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
 
         <label>סוג עובדים</label>
-        <select
-          value={filters.group}
-          onChange={(e) => setFilter("group", e.target.value)}
-        >
+        <select value={group} onChange={(e) => handleGroupChange(e.target.value)}>
           <option value="">כל העובדים</option>
           <option value="internal">העובדים שלי</option>
           <option value="all-subcontractors">עובדי קבלן</option>
         </select>
 
-        <label>עובד</label>
-        <select
-          value={filters.employeeId}
-          onChange={(e) => setFilter("employeeId", e.target.value)}
-        >
-          <option value="">כל העובדים בסוג שנבחר</option>
-          {employeeOptions.map((employee) => (
-            <option key={employee.id} value={employee.id}>
-              {employee.name} - {getEmployeeAffiliationName(data, employee)}
-            </option>
-          ))}
-        </select>
+        {group === "all-subcontractors" && (
+          <>
+            <div className="section-title-row">
+              <label>קבלן / קבלנים</label>
+              <div className="employee-actions">
+                <button
+                  type="button"
+                  className="secondary-btn"
+                  onClick={() =>
+                    setSelectedSubcontractorIds(relevantSubcontractors.map((s) => s.id))
+                  }
+                >
+                  בחר הכל
+                </button>
+                <button
+                  type="button"
+                  className="secondary-btn"
+                  onClick={() => setSelectedSubcontractorIds([])}
+                >
+                  נקה הכל
+                </button>
+              </div>
+            </div>
+
+            <div className="checkbox-list">
+              {relevantSubcontractors.length === 0 ? (
+                <div className="empty-message">אין קבלני משנה עם עובדים</div>
+              ) : (
+                relevantSubcontractors.map((subcontractor) => (
+                  <label className="checkbox-item" key={subcontractor.id}>
+                    <input
+                      type="checkbox"
+                      checked={effectiveSubcontractorIds.includes(subcontractor.id)}
+                      onChange={() => toggleSubcontractor(subcontractor.id)}
+                    />
+                    <span>{subcontractor.name}</span>
+                  </label>
+                ))
+              )}
+            </div>
+          </>
+        )}
+
+        <div className="section-title-row">
+          <label>עובדים</label>
+          <div className="employee-actions">
+            <button
+              type="button"
+              className="secondary-btn"
+              onClick={() => setSelectedEmployeeIds(employeeOptions.map((e) => e.id))}
+            >
+              בחר הכל
+            </button>
+            <button
+              type="button"
+              className="secondary-btn"
+              onClick={() => setSelectedEmployeeIds([])}
+            >
+              נקה הכל
+            </button>
+          </div>
+        </div>
+
+        <div className="checkbox-list">
+          {employeeOptions.length === 0 ? (
+            <div className="empty-message">אין עובדים תואמים</div>
+          ) : (
+            employeeOptions.map((employee) => (
+              <label className="checkbox-item" key={employee.id}>
+                <input
+                  type="checkbox"
+                  checked={effectiveEmployeeIds.includes(employee.id)}
+                  onChange={() => toggleEmployee(employee.id)}
+                />
+                <span>
+                  {employee.name} - {getEmployeeAffiliationName(data, employee)}
+                </span>
+              </label>
+            ))
+          )}
+        </div>
+
+        <p id="employeeCountText">
+          סה״כ עובדים שנבחרו: {effectiveEmployeeIds.length}
+        </p>
 
         <div className="report-actions">
           <div className="report-action-group">
@@ -129,7 +241,7 @@ export default function EmployeeReports() {
       <div className="card" style={{ marginTop: 20 }}>
         <p>
           <strong>דוחות לעובדים</strong> - טבלה לכל עובד עם התאריכים, אתרי
-          העבודה והמבנים שבהם עבד.
+          העבודה, המבנים שבהם עבד, וסה״כ ימי עבודה.
         </p>
         <p style={{ marginTop: 10 }}>
           <strong>דוחות עובדים סיכום</strong> - אותו דבר, בתוספת עלות, תשלום

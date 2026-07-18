@@ -415,7 +415,12 @@ export function buildEmployeeReportHtml(
                   <td>${escapeHtml(formatCurrency(employee.totalProfit))}</td>
                 </tr>
               `
-              : ""
+              : `
+                <tr class="totals-row">
+                  <td colspan="2">סה״כ ימי עבודה</td>
+                  <td>${employee.rows.length}</td>
+                </tr>
+              `
           }
         </tbody>
       </table>

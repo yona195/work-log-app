@@ -605,6 +605,27 @@ function addEmployeeTable(worksheet, startRow, employee, includeFinance) {
       if (colNumber >= 4) cell.numFmt = CURRENCY_FORMAT;
     });
     row += 1;
+  } else {
+    worksheet.mergeCells(`A${row}:B${row}`);
+    worksheet.getCell(`A${row}`).value = "סה״כ ימי עבודה";
+    worksheet.getCell(`C${row}`).value = employee.rows.length;
+    const totalsRow = worksheet.getRow(row);
+    totalsRow.height = 26;
+    totalsRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+      cell.font = { bold: true, size: 12 };
+      cell.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FFEFF6FF" },
+      };
+      cell.alignment = {
+        horizontal: colNumber === 1 ? "right" : "center",
+        vertical: "middle",
+      };
+      const thin = { style: "thin", color: { argb: "FFD1D5DB" } };
+      cell.border = { top: thin, bottom: thin, left: thin, right: thin };
+    });
+    row += 1;
   }
 
   return row + 1; // blank spacer before the next employee's table

@@ -38,13 +38,25 @@ export function groupLogsByMonth(logs) {
   return Array.from(groups.values()).sort((a, b) => a.key.localeCompare(b.key));
 }
 
+// A filter value can be a single id (string, "" = unrestricted — the
+// original contract) or an array of ids for multi-select filters. An
+// explicit empty array means "match nothing" (the user cleared every
+// checkbox), which is why it's kept distinct from "" / null / undefined.
+function toIdListFilter(value) {
+  if (Array.isArray(value)) return value.map(String);
+  return value ? [String(value)] : null;
+}
+
 /**
  * Employees of a log that match the report filters.
- * filters: { group, subcontractorId, employeeId }
+ * filters: { group, subcontractorId, employeeId } — subcontractorId/
+ * employeeId each accept either a single id or an array of ids.
  */
 export function getReportEmployees(data, log, filters) {
   const { group = "", subcontractorId = "", employeeId = "" } = filters;
   const employeeIds = getEmployeeIds(log);
+  const subcontractorIdList = toIdListFilter(subcontractorId);
+  const employeeIdList = toIdListFilter(employeeId);
 
   return data.employees.filter((employee) => {
     const existsInLog = employeeIds.includes(String(employee.id));
@@ -57,11 +69,11 @@ export function getReportEmployees(data, log, filters) {
     if (group === "all-subcontractors") matchesGroup = isSubcontractorEmployee;
 
     const matchesSubcontractor =
-      !subcontractorId ||
-      String(employee.subcontractorId || "") === String(subcontractorId);
+      subcontractorIdList === null ||
+      subcontractorIdList.includes(String(employee.subcontractorId || ""));
 
     const matchesEmployee =
-      !employeeId || String(employee.id) === String(employeeId);
+      employeeIdList === null || employeeIdList.includes(String(employee.id));
 
     return (
       existsInLog && matchesGroup && matchesSubcontractor && matchesEmployee
