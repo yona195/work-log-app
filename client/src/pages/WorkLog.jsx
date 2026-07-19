@@ -4,6 +4,7 @@ import { normalizeDate } from "../lib/format.js";
 import { isoRangeInclusive } from "../lib/calendar.js";
 import {
   getName,
+  getEmployeeIds,
   getEmployeeNames,
   getBuildingNames,
   activeOnly,
@@ -62,6 +63,27 @@ export default function WorkLog() {
   const toggle = (list, setList, id) =>
     setList(list.includes(id) ? list.filter((x) => x !== id) : [...list, id]);
 
+  // Catches the same employee accidentally being logged at the same site on
+  // the same date twice (e.g. from selecting overlapping date ranges) —
+  // matches on site + date only (not building/customer), since an employee
+  // can't really be in two places on the same day.
+  const findDuplicateConflicts = (targetSiteId, employeeIds, targetDates) => {
+    const dateSet = new Set(targetDates);
+    const conflicts = [];
+    workLogs.forEach((log) => {
+      if (String(log.siteId) !== String(targetSiteId)) return;
+      const logDate = normalizeDate(log.date);
+      if (!dateSet.has(logDate)) return;
+      const existingEmployeeIds = getEmployeeIds(log).map(String);
+      employeeIds.forEach((employeeId) => {
+        if (existingEmployeeIds.includes(String(employeeId))) {
+          conflicts.push({ employeeId, date: logDate });
+        }
+      });
+    });
+    return conflicts;
+  };
+
   const changeSite = (value) => {
     setSiteId(value);
     setSelectedBuildings([]);
@@ -97,6 +119,22 @@ export default function WorkLog() {
       isoRangeInclusive(range.start, range.end).forEach((iso) => dateSet.add(iso));
     });
     const dates = Array.from(dateSet).sort();
+
+    const conflicts = findDuplicateConflicts(siteId, selectedEmployees, dates);
+    if (conflicts.length > 0) {
+      const siteName = getName(sites, siteId);
+      const lines = Array.from(
+        new Set(
+          conflicts.map(
+            (c) => `${getName(data.employees, c.employeeId) || "עובד"} - ${c.date}`
+          )
+        )
+      );
+      alert(
+        `לא ניתן להוסיף: העובדים הבאים כבר רשומים באתר "${siteName}" בתאריך המצוין:\n${lines.join("\n")}`
+      );
+      return;
+    }
 
     setIsSubmitting(true);
     try {
