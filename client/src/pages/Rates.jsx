@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useData } from "../state/DataProvider.jsx";
-import { formatCurrency, normalizeDate, todayISO } from "../lib/format.js";
+import { formatCurrency, normalizeDate } from "../lib/format.js";
+import { todayISO } from "../lib/calendar.js";
 import {
   getName,
   getEmployeeAffiliationName,
