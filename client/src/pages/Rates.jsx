@@ -15,6 +15,7 @@ export default function Rates() {
   const [cost, setCost] = useState("");
   const [effectiveFrom, setEffectiveFrom] = useState(todayISO());
   const [showArchived, setShowArchived] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const activeCustomers = activeOnly(customers);
   const activeSites = activeOnly(sites);
@@ -67,6 +68,8 @@ export default function Rates() {
   };
 
   const addRates = async () => {
+    if (isSubmitting) return;
+
     const revenuePerWorker = Number(revenue);
     const costPerWorker = Number(cost);
 
@@ -103,62 +106,67 @@ export default function Rates() {
       return;
     }
 
-    let addedCount = 0;
-    let skippedCount = 0;
+    setIsSubmitting(true);
+    try {
+      let addedCount = 0;
+      let skippedCount = 0;
 
-    for (const customerId of selectedCustomerIds) {
-      for (const siteId of selectedSiteIds) {
-        for (const targetId of selectedTargetIds) {
-          const duplicate = rates.some((rate) => {
-            const sameBase =
-              String(rate.customerId || "") === String(customerId) &&
-              String(rate.siteId) === String(siteId) &&
-              String(rate.rateType) === String(rateType) &&
-              normalizeDate(rate.effectiveFrom) === effectiveFrom;
-            if (!sameBase) return false;
-            return rateType === "employee"
-              ? String(rate.employeeId || "") === String(targetId)
-              : String(rate.subcontractorId || "") === String(targetId);
-          });
+      for (const customerId of selectedCustomerIds) {
+        for (const siteId of selectedSiteIds) {
+          for (const targetId of selectedTargetIds) {
+            const duplicate = rates.some((rate) => {
+              const sameBase =
+                String(rate.customerId || "") === String(customerId) &&
+                String(rate.siteId) === String(siteId) &&
+                String(rate.rateType) === String(rateType) &&
+                normalizeDate(rate.effectiveFrom) === effectiveFrom;
+              if (!sameBase) return false;
+              return rateType === "employee"
+                ? String(rate.employeeId || "") === String(targetId)
+                : String(rate.subcontractorId || "") === String(targetId);
+            });
 
-          if (duplicate) {
-            skippedCount += 1;
-            continue;
+            if (duplicate) {
+              skippedCount += 1;
+              continue;
+            }
+
+            // eslint-disable-next-line no-await-in-loop
+            await addItem("rates", {
+              customerId,
+              siteId,
+              rateType,
+              subcontractorId: rateType === "subcontractor" ? targetId : "",
+              employeeId: rateType === "employee" ? targetId : "",
+              revenuePerWorker,
+              costPerWorker,
+              effectiveFrom,
+            });
+            addedCount += 1;
           }
-
-          // eslint-disable-next-line no-await-in-loop
-          await addItem("rates", {
-            customerId,
-            siteId,
-            rateType,
-            subcontractorId: rateType === "subcontractor" ? targetId : "",
-            employeeId: rateType === "employee" ? targetId : "",
-            revenuePerWorker,
-            costPerWorker,
-            effectiveFrom,
-          });
-          addedCount += 1;
         }
       }
-    }
 
-    if (addedCount === 0) {
-      alert("לא נוספו תעריפים. כל השילובים שנבחרו כבר קיימים.");
-      return;
-    }
+      if (addedCount === 0) {
+        alert("לא נוספו תעריפים. כל השילובים שנבחרו כבר קיימים.");
+        return;
+      }
 
-    setSelectedCustomerIds([]);
-    setSelectedSiteIds([]);
-    setSelectedTargetIds([]);
-    setRevenue("");
-    setCost("");
+      setSelectedCustomerIds([]);
+      setSelectedSiteIds([]);
+      setSelectedTargetIds([]);
+      setRevenue("");
+      setCost("");
 
-    if (skippedCount > 0) {
-      alert(
-        `נוספו ${addedCount} תעריפים. ${skippedCount} שילובים כבר היו קיימים ולא נוספו שוב.`
-      );
-    } else {
-      alert(`נוספו בהצלחה ${addedCount} תעריפים.`);
+      if (skippedCount > 0) {
+        alert(
+          `נוספו ${addedCount} תעריפים. ${skippedCount} שילובים כבר היו קיימים ולא נוספו שוב.`
+        );
+      } else {
+        alert(`נוספו בהצלחה ${addedCount} תעריפים.`);
+      }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -314,8 +322,13 @@ export default function Rates() {
           onChange={(e) => setEffectiveFrom(e.target.value)}
         />
 
-        <button className="primary-btn" type="button" onClick={addRates}>
-          הוסף תעריפים
+        <button
+          className="primary-btn"
+          type="button"
+          onClick={addRates}
+          disabled={isSubmitting}
+        >
+          {isSubmitting ? "מוסיף..." : "הוסף תעריפים"}
         </button>
       </div>
 

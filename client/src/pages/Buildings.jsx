@@ -9,10 +9,12 @@ export default function Buildings() {
   const [siteId, setSiteId] = useState("");
   const [name, setName] = useState("");
   const [showArchived, setShowArchived] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const visibleBuildings = showArchived ? buildings : activeOnly(buildings);
 
   const add = async () => {
+    if (isSubmitting) return;
     if (!siteId) {
       alert("נא לבחור אתר עבודה");
       return;
@@ -22,8 +24,13 @@ export default function Buildings() {
       alert("נא להזין שם מבנה");
       return;
     }
-    await addItem("buildings", { siteId, name: trimmed });
-    setName("");
+    setIsSubmitting(true);
+    try {
+      await addItem("buildings", { siteId, name: trimmed });
+      setName("");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const toggleArchive = async (building) => {
@@ -64,8 +71,13 @@ export default function Buildings() {
           onKeyDown={(e) => e.key === "Enter" && add()}
         />
 
-        <button className="primary-btn" type="button" onClick={add}>
-          הוסף מבנה
+        <button
+          className="primary-btn"
+          type="button"
+          onClick={add}
+          disabled={isSubmitting}
+        >
+          {isSubmitting ? "מוסיף..." : "הוסף מבנה"}
         </button>
       </div>
 

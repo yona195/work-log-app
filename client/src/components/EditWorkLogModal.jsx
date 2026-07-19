@@ -15,6 +15,7 @@ export default function EditWorkLogModal({ log, onClose }) {
   const [selectedBuildings, setSelectedBuildings] = useState(log.buildingIds || []);
   const [customerId, setCustomerId] = useState(log.customerId || "");
   const [notes, setNotes] = useState(log.notes || "");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Editing a log whose employee/site/building/customer was archived since
   // it was recorded — keep it selectable here too, so saving doesn't
@@ -65,6 +66,7 @@ export default function EditWorkLogModal({ log, onClose }) {
   };
 
   const save = async () => {
+    if (isSubmitting) return;
     if (
       !date ||
       selectedEmployees.length === 0 ||
@@ -77,15 +79,20 @@ export default function EditWorkLogModal({ log, onClose }) {
     }
     if (!confirm("לשמור את השינויים?")) return;
 
-    await updateItem("workLogs", log.id, {
-      date,
-      employeeIds: selectedEmployees,
-      buildingIds: selectedBuildings,
-      siteId,
-      customerId,
-      notes: notes.trim(),
-    });
-    onClose();
+    setIsSubmitting(true);
+    try {
+      await updateItem("workLogs", log.id, {
+        date,
+        employeeIds: selectedEmployees,
+        buildingIds: selectedBuildings,
+        siteId,
+        customerId,
+        notes: notes.trim(),
+      });
+      onClose();
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -174,8 +181,13 @@ export default function EditWorkLogModal({ log, onClose }) {
         ></textarea>
 
         <div className="modal-actions">
-          <button className="primary-btn" type="button" onClick={save}>
-            שמור
+          <button
+            className="primary-btn"
+            type="button"
+            onClick={save}
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? "שומר..." : "שמור"}
           </button>
           <button className="secondary-btn" type="button" onClick={onClose}>
             ביטול

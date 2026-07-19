@@ -40,6 +40,8 @@ export default function Employees() {
   const [subcontractorId, setSubcontractorId] = useState("");
   const [subName, setSubName] = useState("");
   const [showArchived, setShowArchived] = useState(false);
+  const [isAddingEmployee, setIsAddingEmployee] = useState(false);
+  const [isAddingSubcontractor, setIsAddingSubcontractor] = useState(false);
 
   const visibleEmployees = showArchived ? employees : activeOnly(employees);
   const visibleSubcontractors = showArchived
@@ -52,6 +54,7 @@ export default function Employees() {
   );
 
   const addEmployee = async () => {
+    if (isAddingEmployee) return;
     const trimmed = name.trim();
     if (!trimmed) {
       alert("נא להזין שם עובד");
@@ -61,24 +64,35 @@ export default function Employees() {
       alert("נא לבחור קבלן משנה");
       return;
     }
-    await addItem("employees", {
-      name: trimmed,
-      type,
-      subcontractorId: type === "subcontractor" ? subcontractorId : "",
-    });
-    setName("");
-    setSubcontractorId("");
-    setType("internal");
+    setIsAddingEmployee(true);
+    try {
+      await addItem("employees", {
+        name: trimmed,
+        type,
+        subcontractorId: type === "subcontractor" ? subcontractorId : "",
+      });
+      setName("");
+      setSubcontractorId("");
+      setType("internal");
+    } finally {
+      setIsAddingEmployee(false);
+    }
   };
 
   const addSubcontractor = async () => {
+    if (isAddingSubcontractor) return;
     const trimmed = subName.trim();
     if (!trimmed) {
       alert("נא להזין שם קבלן משנה");
       return;
     }
-    await addItem("subcontractors", { name: trimmed });
-    setSubName("");
+    setIsAddingSubcontractor(true);
+    try {
+      await addItem("subcontractors", { name: trimmed });
+      setSubName("");
+    } finally {
+      setIsAddingSubcontractor(false);
+    }
   };
 
   const toggleEmployeeArchive = async (employee) => {
@@ -153,8 +167,13 @@ export default function Employees() {
           </div>
         )}
 
-        <button className="primary-btn" type="button" onClick={addEmployee}>
-          הוסף עובד
+        <button
+          className="primary-btn"
+          type="button"
+          onClick={addEmployee}
+          disabled={isAddingEmployee}
+        >
+          {isAddingEmployee ? "מוסיף..." : "הוסף עובד"}
         </button>
       </div>
 
@@ -166,8 +185,13 @@ export default function Employees() {
           value={subName}
           onChange={(e) => setSubName(e.target.value)}
         />
-        <button className="primary-btn" type="button" onClick={addSubcontractor}>
-          הוסף קבלן משנה
+        <button
+          className="primary-btn"
+          type="button"
+          onClick={addSubcontractor}
+          disabled={isAddingSubcontractor}
+        >
+          {isAddingSubcontractor ? "מוסיף..." : "הוסף קבלן משנה"}
         </button>
       </div>
 

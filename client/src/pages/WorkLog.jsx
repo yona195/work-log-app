@@ -28,6 +28,7 @@ export default function WorkLog() {
   const [selectedBuildings, setSelectedBuildings] = useState([]);
   const [customerId, setCustomerId] = useState("");
   const [notes, setNotes] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const visibleEmployees = useMemo(() => {
     const text = search.trim().toLowerCase();
@@ -93,6 +94,10 @@ export default function WorkLog() {
   );
 
   const add = async () => {
+    // Guards against a double-click (or a slow request plus a second
+    // click before it lands) submitting the same entry/range twice.
+    if (isSubmitting) return;
+
     if (
       !date ||
       !endDate ||
@@ -111,24 +116,29 @@ export default function WorkLog() {
 
     const dates = datesInRange(date, endDate);
 
-    for (const logDate of dates) {
-      // eslint-disable-next-line no-await-in-loop
-      await addItem("workLogs", {
-        date: logDate,
-        employeeIds: selectedEmployees,
-        buildingIds: selectedBuildings,
-        siteId,
-        customerId,
-        notes: notes.trim(),
-      });
-    }
+    setIsSubmitting(true);
+    try {
+      for (const logDate of dates) {
+        // eslint-disable-next-line no-await-in-loop
+        await addItem("workLogs", {
+          date: logDate,
+          employeeIds: selectedEmployees,
+          buildingIds: selectedBuildings,
+          siteId,
+          customerId,
+          notes: notes.trim(),
+        });
+      }
 
-    setSelectedEmployees([]);
-    setSelectedBuildings([]);
-    setNotes("");
+      setSelectedEmployees([]);
+      setSelectedBuildings([]);
+      setNotes("");
 
-    if (dates.length > 1) {
-      alert(`נוספו ${dates.length} רשומות עבודה, אחת לכל יום בטווח.`);
+      if (dates.length > 1) {
+        alert(`נוספו ${dates.length} רשומות עבודה, אחת לכל יום בטווח.`);
+      }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -318,8 +328,13 @@ export default function WorkLog() {
           onChange={(e) => setNotes(e.target.value)}
         ></textarea>
 
-        <button className="primary-btn" type="button" onClick={add}>
-          הוסף ליומן
+        <button
+          className="primary-btn"
+          type="button"
+          onClick={add}
+          disabled={isSubmitting}
+        >
+          {isSubmitting ? "מוסיף..." : "הוסף ליומן"}
         </button>
       </div>
 

@@ -6,17 +6,24 @@ export default function SimpleManager({ collection, placeholder }) {
   const { data, addItem, updateItem } = useData();
   const [name, setName] = useState("");
   const [showArchived, setShowArchived] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const items = data[collection] || [];
   const visibleItems = showArchived ? items : activeOnly(items);
 
   const add = async () => {
+    if (isSubmitting) return;
     const trimmed = name.trim();
     if (!trimmed) {
       alert("נא להזין שם");
       return;
     }
-    await addItem(collection, { name: trimmed });
-    setName("");
+    setIsSubmitting(true);
+    try {
+      await addItem(collection, { name: trimmed });
+      setName("");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const toggleArchive = async (item) => {
@@ -44,8 +51,13 @@ export default function SimpleManager({ collection, placeholder }) {
           onChange={(e) => setName(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && add()}
         />
-        <button className="primary-btn" type="button" onClick={add}>
-          הוסף
+        <button
+          className="primary-btn"
+          type="button"
+          onClick={add}
+          disabled={isSubmitting}
+        >
+          {isSubmitting ? "מוסיף..." : "הוסף"}
         </button>
       </div>
 
