@@ -446,6 +446,18 @@ tbody tr:hover {
     background: #eff6ff;
 }
 
+/* Marks rows that came from splitting one work-log entry into several
+   (one per contractor) as belonging together — overrides the plain
+   even/odd striping above so the group reads as one consistent block. */
+tbody tr.history-split-row {
+    background: var(--color-primary-soft);
+    border-right: 3px solid var(--color-primary);
+}
+
+tbody tr.history-split-row:hover {
+    background: #dbeafe;
+}
+
 
 /* =========================================
    10. רשימות בחירה

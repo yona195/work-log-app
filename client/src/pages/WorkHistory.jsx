@@ -201,9 +201,12 @@ export default function WorkHistory() {
                     );
                     // Every split row still edits/deletes the whole log entry
                     // (all affiliations together) — there's only one
-                    // underlying record, just displayed as several rows.
+                    // underlying record, just displayed as several rows. The
+                    // accent bar marks them as belonging to the same entry
+                    // when a log actually got split into more than one row.
+                    const isSplit = affiliationGroups.length > 1;
                     return affiliationGroups.map((affiliationGroup, index) => (
-                      <tr key={`${log.id}-${index}`}>
+                      <tr key={`${log.id}-${index}`} className={isSplit ? "history-split-row" : undefined}>
                         <td dir="ltr">{formatExcelDate(log.date)}</td>
                         <td>{affiliationGroup.employees.map((e) => e.name).join(", ")}</td>
                         <td>{affiliationGroup.label}</td>
