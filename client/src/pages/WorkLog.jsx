@@ -6,6 +6,7 @@ import {
   getEmployeeNames,
   getBuildingNames,
   activeOnly,
+  activeEmployees,
 } from "../lib/entities.js";
 
 export default function WorkLog() {
@@ -14,7 +15,7 @@ export default function WorkLog() {
   // Pickers for a NEW entry must exclude archived records; the existing-logs
   // table below still needs the full (unfiltered) lists so it can keep
   // resolving names for entries that reference an already-archived record.
-  const employees = activeOnly(data.employees);
+  const employees = activeEmployees(data);
   const pickableSites = activeOnly(sites);
   const pickableCustomers = activeOnly(customers);
 

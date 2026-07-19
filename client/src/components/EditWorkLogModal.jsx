@@ -1,10 +1,10 @@
 import { useMemo, useState } from "react";
 import { useData } from "../state/DataProvider.jsx";
-import { activeOnly } from "../lib/entities.js";
+import { activeOnly, activeEmployees, isEmployeeArchived } from "../lib/entities.js";
 
 export default function EditWorkLogModal({ log, onClose }) {
   const { data, updateItem } = useData();
-  const employees = activeOnly(data.employees);
+  const employees = activeEmployees(data);
   const sites = activeOnly(data.sites);
   const buildings = activeOnly(data.buildings);
   const customers = activeOnly(data.customers);
@@ -23,7 +23,7 @@ export default function EditWorkLogModal({ log, onClose }) {
   const employeeOptions = useMemo(() => {
     const ids = new Set(employees.map((e) => e.id));
     const missing = (data.employees || []).filter(
-      (e) => e.archived && (log.employeeIds || []).includes(e.id) && !ids.has(e.id)
+      (e) => (log.employeeIds || []).includes(e.id) && !ids.has(e.id)
     );
     return [...employees, ...missing];
   }, [employees, data.employees, log.employeeIds]);
@@ -121,7 +121,9 @@ export default function EditWorkLogModal({ log, onClose }) {
                 />
                 <span>
                   {employee.name}
-                  {employee.archived ? " (בארכיון)" : ""}
+                  {isEmployeeArchived(employee, data.subcontractors)
+                    ? " (בארכיון)"
+                    : ""}
                 </span>
               </label>
             ))

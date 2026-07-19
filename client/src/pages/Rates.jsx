@@ -1,7 +1,12 @@
 import { useMemo, useState } from "react";
 import { useData } from "../state/DataProvider.jsx";
 import { formatCurrency, normalizeDate, todayISO } from "../lib/format.js";
-import { getName, getEmployeeAffiliationName, activeOnly } from "../lib/entities.js";
+import {
+  getName,
+  getEmployeeAffiliationName,
+  activeOnly,
+  activeEmployees,
+} from "../lib/entities.js";
 
 export default function Rates() {
   const { data, addItem, updateItem } = useData();
@@ -22,7 +27,7 @@ export default function Rates() {
 
   const targets =
     rateType === "employee"
-      ? activeOnly(employees).map((e) => ({
+      ? activeEmployees(data).map((e) => ({
           id: e.id,
           label: `${e.name} — ${getEmployeeAffiliationName(data, e)}`,
         }))

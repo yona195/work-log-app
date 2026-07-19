@@ -4,7 +4,7 @@ import RevenueCostBarChart from "../components/RevenueCostBarChart.jsx";
 import PeriodFilter, { useDateRangeFilter } from "../components/PeriodFilter.jsx";
 import { useData } from "../state/DataProvider.jsx";
 import { formatCurrency } from "../lib/format.js";
-import { getEmployeeAffiliationName } from "../lib/entities.js";
+import { getEmployeeAffiliationName, isEmployeeArchived } from "../lib/entities.js";
 import {
   calculateFinancialSummary,
   filterReportLogs,
@@ -136,7 +136,7 @@ export default function Reports() {
           {employeeOptions.map((employee) => (
             <option key={employee.id} value={employee.id}>
               {employee.name} - {getEmployeeAffiliationName(data, employee)}
-              {employee.archived ? " (בארכיון)" : ""}
+              {isEmployeeArchived(employee, subcontractors) ? " (בארכיון)" : ""}
             </option>
           ))}
         </select>

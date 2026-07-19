@@ -12,6 +12,30 @@ export function activeOnly(list) {
   return (list || []).filter((item) => !item.archived);
 }
 
+// An employee counts as archived not only when flagged directly, but also
+// when their own subcontractor was archived — archiving a subcontractor
+// must ripple down: you shouldn't be able to pick a defunct subcontractor's
+// employee for a fresh work log or rate. The employee's own `archived` flag
+// is left untouched, so restoring the subcontractor makes their employees
+// pickable again without any extra step.
+export function isEmployeeArchived(employee, subcontractors) {
+  if (!employee) return false;
+  if (employee.archived) return true;
+  if (employee.type === "internal") return false;
+  const subcontractor = (subcontractors || []).find(
+    (s) => String(s.id) === String(employee.subcontractorId)
+  );
+  return Boolean(subcontractor && subcontractor.archived);
+}
+
+// Excludes employees archived per isEmployeeArchived() — used for "pick for
+// a new record" pickers (adding a work log, creating a new rate).
+export function activeEmployees(data) {
+  return (data.employees || []).filter(
+    (employee) => !isEmployeeArchived(employee, data.subcontractors)
+  );
+}
+
 // work logs from the API carry arrays; still tolerate legacy string forms.
 function toIdArray(value, fallbackSingle) {
   if (Array.isArray(value)) {

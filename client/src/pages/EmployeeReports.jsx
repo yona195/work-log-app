@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useData } from "../state/DataProvider.jsx";
-import { getEmployeeAffiliationName } from "../lib/entities.js";
+import { getEmployeeAffiliationName, isEmployeeArchived } from "../lib/entities.js";
 import { filterReportLogs } from "../lib/reports.js";
 import { createEmployeeWorkPDF, createEmployeeSummaryPDF } from "../lib/pdf.js";
 import { exportEmployeeWorkExcel, exportEmployeeSummaryExcel } from "../lib/excel.js";
@@ -197,7 +197,7 @@ export default function EmployeeReports() {
                 />
                 <span>
                   {employee.name} - {getEmployeeAffiliationName(data, employee)}
-                  {employee.archived ? " (בארכיון)" : ""}
+                  {isEmployeeArchived(employee, subcontractors) ? " (בארכיון)" : ""}
                 </span>
               </label>
             ))
