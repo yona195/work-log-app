@@ -447,7 +447,7 @@ export default function Rates() {
                           type="button"
                           onClick={() => toggleRateArchive(rate)}
                         >
-                          {rate.archived ? "שחזר" : "העבר לארכיון"}
+                          {rate.archived ? "שחזר" : "לארכיון"}
                         </button>
                       </div>
                     </td>
