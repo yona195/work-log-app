@@ -7,9 +7,10 @@ import {
   activeOnly,
   activeEmployees,
 } from "../lib/entities.js";
+import EditRateModal from "../components/EditRateModal.jsx";
 
 export default function Rates() {
-  const { data, addItem, updateItem } = useData();
+  const { data, addItem, updateItem, deleteItem } = useData();
   const { sites, employees, subcontractors, customers, rates } = data;
 
   const [selectedCustomerIds, setSelectedCustomerIds] = useState([]);
@@ -18,6 +19,7 @@ export default function Rates() {
   const [selectedTargetIds, setSelectedTargetIds] = useState([]);
   const [revenue, setRevenue] = useState("");
   const [cost, setCost] = useState("");
+  const [editingRate, setEditingRate] = useState(null);
   const [effectiveFrom, setEffectiveFrom] = useState(todayISO());
   const [showArchived, setShowArchived] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -70,6 +72,17 @@ export default function Rates() {
       return;
     }
     await updateItem("rates", rate.id, { archived: true });
+  };
+
+  const deleteRate = async (rate) => {
+    if (
+      !confirm(
+        "למחוק את התעריף לצמיתות? בשונה מהעברה לארכיון, מחיקה תשפיע גם על חישובים כספיים היסטוריים שכבר השתמשו בתעריף הזה."
+      )
+    ) {
+      return;
+    }
+    await deleteItem("rates", rate.id);
   };
 
   const addRates = async () => {
@@ -413,9 +426,17 @@ export default function Rates() {
                     <td dir="ltr">{normalizeDate(rate.effectiveFrom)}</td>
                     <td>{rate.archived ? "בארכיון" : "פעיל"}</td>
                     <td>
-                      <button type="button" onClick={() => toggleRateArchive(rate)}>
-                        {rate.archived ? "שחזר" : "העבר לארכיון"}
-                      </button>
+                      <div className="report-row-actions">
+                        <button type="button" onClick={() => setEditingRate(rate)}>
+                          ערוך
+                        </button>
+                        <button type="button" onClick={() => deleteRate(rate)}>
+                          מחק
+                        </button>
+                        <button type="button" onClick={() => toggleRateArchive(rate)}>
+                          {rate.archived ? "שחזר" : "העבר לארכיון"}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -424,6 +445,10 @@ export default function Rates() {
           </table>
         )}
       </div>
+
+      {editingRate && (
+        <EditRateModal rate={editingRate} onClose={() => setEditingRate(null)} />
+      )}
     </>
   );
 }
