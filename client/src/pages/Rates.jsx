@@ -95,8 +95,9 @@ export default function Rates() {
         "he"
       );
       if (siteCompare !== 0) return siteCompare;
-      return String(a.effectiveFrom || "").localeCompare(
-        String(b.effectiveFrom || "")
+      // Newest effective date first within each site, oldest at the bottom.
+      return String(b.effectiveFrom || "").localeCompare(
+        String(a.effectiveFrom || "")
       );
     });
   }, [rates, sites, showArchived]);
