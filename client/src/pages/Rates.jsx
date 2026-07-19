@@ -111,10 +111,16 @@ export default function Rates() {
       let addedCount = 0;
       let skippedCount = 0;
 
+      // Archived rates are old history, not something a new rate should be
+      // treated as a duplicate of — otherwise a rate that happens to share
+      // a date/site/customer with something archived gets silently skipped
+      // and the user sees nothing added, with no error.
+      const activeRates = activeOnly(rates);
+
       for (const customerId of selectedCustomerIds) {
         for (const siteId of selectedSiteIds) {
           for (const targetId of selectedTargetIds) {
-            const duplicate = rates.some((rate) => {
+            const duplicate = activeRates.some((rate) => {
               const sameBase =
                 String(rate.customerId || "") === String(customerId) &&
                 String(rate.siteId) === String(siteId) &&
@@ -131,24 +137,29 @@ export default function Rates() {
               continue;
             }
 
-            // eslint-disable-next-line no-await-in-loop
-            await addItem("rates", {
-              customerId,
-              siteId,
-              rateType,
-              subcontractorId: rateType === "subcontractor" ? targetId : "",
-              employeeId: rateType === "employee" ? targetId : "",
-              revenuePerWorker,
-              costPerWorker,
-              effectiveFrom,
-            });
-            addedCount += 1;
+            try {
+              // eslint-disable-next-line no-await-in-loop
+              await addItem("rates", {
+                customerId,
+                siteId,
+                rateType,
+                subcontractorId: rateType === "subcontractor" ? targetId : "",
+                employeeId: rateType === "employee" ? targetId : "",
+                revenuePerWorker,
+                costPerWorker,
+                effectiveFrom,
+              });
+              addedCount += 1;
+            } catch (err) {
+              alert(`שגיאה בהוספת תעריף: ${err.message || "שגיאה לא ידועה"}`);
+              return;
+            }
           }
         }
       }
 
       if (addedCount === 0) {
-        alert("לא נוספו תעריפים. כל השילובים שנבחרו כבר קיימים.");
+        alert("לא נוספו תעריפים. כל השילובים שנבחרו כבר קיימים כתעריפים פעילים.");
         return;
       }
 
