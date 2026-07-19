@@ -176,7 +176,7 @@ export default function Reports() {
               <button className="primary-btn" type="button" onClick={handlePDF}>
                 דוח מזמין
               </button>
-              <button className="secondary-btn" type="button" onClick={handleExcel}>
+              <button className="excel-btn" type="button" onClick={handleExcel}>
                 אקסל מזמין
               </button>
             </div>
@@ -190,7 +190,7 @@ export default function Reports() {
               <button className="primary-btn" type="button" onClick={handleEmployerPDF}>
                 דוח מעסיק
               </button>
-              <button className="secondary-btn" type="button" onClick={handleEmployerExcel}>
+              <button className="excel-btn" type="button" onClick={handleEmployerExcel}>
                 אקסל מעסיק
               </button>
             </div>

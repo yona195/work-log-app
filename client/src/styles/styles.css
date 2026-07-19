@@ -326,7 +326,8 @@ textarea {
 ========================================= */
 
 .primary-btn,
-.secondary-btn {
+.secondary-btn,
+.excel-btn {
     min-height: 42px;
 
     padding: 10px 18px;
@@ -366,8 +367,20 @@ textarea {
     border-color: #93c5fd;
 }
 
+.excel-btn {
+    color: white;
+    background: var(--color-success);
+    border: 1px solid var(--color-success);
+}
+
+.excel-btn:hover {
+    background: #15803d;
+    border-color: #15803d;
+}
+
 .primary-btn:active,
-.secondary-btn:active {
+.secondary-btn:active,
+.excel-btn:active {
     transform: scale(0.98);
 }
 
@@ -1410,7 +1423,8 @@ body.loading .menu-overlay {
 }
 
 .report-action-group-buttons .primary-btn,
-.report-action-group-buttons .secondary-btn {
+.report-action-group-buttons .secondary-btn,
+.report-action-group-buttons .excel-btn {
     flex: 1 1 150px;
 }
 
@@ -1430,7 +1444,8 @@ body.loading .menu-overlay {
     }
 
     .report-action-group-buttons .primary-btn,
-    .report-action-group-buttons .secondary-btn {
+    .report-action-group-buttons .secondary-btn,
+    .report-action-group-buttons .excel-btn {
         flex: 1 1 auto;
     }
 }

@@ -215,7 +215,7 @@ export default function EmployeeReports() {
               <button className="primary-btn" type="button" onClick={handleWorkPDF}>
                 הפקת PDF
               </button>
-              <button className="secondary-btn" type="button" onClick={handleWorkExcel}>
+              <button className="excel-btn" type="button" onClick={handleWorkExcel}>
                 ייצוא לאקסל
               </button>
             </div>
@@ -229,7 +229,7 @@ export default function EmployeeReports() {
               <button className="primary-btn" type="button" onClick={handleSummaryPDF}>
                 הפקת PDF
               </button>
-              <button className="secondary-btn" type="button" onClick={handleSummaryExcel}>
+              <button className="excel-btn" type="button" onClick={handleSummaryExcel}>
                 ייצוא לאקסל
               </button>
             </div>
