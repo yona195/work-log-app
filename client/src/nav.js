@@ -1,26 +1,19 @@
 // Navigation model shared by the sidebar and the router.
 export const NAV_SECTIONS = [
   {
-    title: "עבודה יומית",
+    title: "ראשי",
     items: [
       { path: "/", icon: "dashboard", label: "סקירה כללית", title: "סקירה כללית" },
+    ],
+  },
+  {
+    title: "עבודה",
+    items: [
       {
         path: "/worklog",
         icon: "event_note",
-        label: "יומן עבודה",
-        title: "יומן עבודה",
-      },
-      {
-        path: "/reports",
-        icon: "description",
-        label: "דוחות מזמין",
-        title: "דוחות מזמין",
-      },
-      {
-        path: "/employee-reports",
-        icon: "badge",
-        label: "דוחות עובד",
-        title: "דוחות עובד",
+        label: "רישום עבודה",
+        title: "רישום עבודה",
       },
       {
         path: "/work-history",
@@ -31,9 +24,37 @@ export const NAV_SECTIONS = [
     ],
   },
   {
-    title: "הגדרות",
+    title: "דוחות",
     items: [
-      { path: "/employees", icon: "groups", label: "עובדים", title: "עובדים" },
+      {
+        path: "/reports",
+        icon: "description",
+        label: "דוחות למזמיני עבודה",
+        title: "דוחות למזמיני עבודה",
+      },
+      {
+        path: "/employee-reports",
+        icon: "badge",
+        label: "דוחות כוח אדם",
+        title: "דוחות כוח אדם",
+      },
+    ],
+  },
+  {
+    title: "ניהול",
+    items: [
+      {
+        path: "/employees",
+        icon: "groups",
+        label: "עובדים וקבלנים",
+        title: "עובדים וקבלנים",
+      },
+      {
+        path: "/customers",
+        icon: "person",
+        label: "מזמיני עבודה",
+        title: "מזמיני עבודה",
+      },
       {
         path: "/sites",
         icon: "location_city",
@@ -45,12 +66,6 @@ export const NAV_SECTIONS = [
         icon: "apartment",
         label: "מבנים",
         title: "מבנים",
-      },
-      {
-        path: "/customers",
-        icon: "person",
-        label: "מזמיני עבודה",
-        title: "מזמיני עבודה",
       },
       {
         path: "/rates",
