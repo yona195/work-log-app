@@ -11,12 +11,6 @@ export const NAV_SECTIONS = [
         title: "יומן עבודה",
       },
       {
-        path: "/work-history",
-        icon: "history",
-        label: "היסטוריית עבודה",
-        title: "היסטוריית עבודה",
-      },
-      {
         path: "/reports",
         icon: "description",
         label: "דוחות מזמין",
@@ -27,6 +21,12 @@ export const NAV_SECTIONS = [
         icon: "badge",
         label: "דוחות עובד",
         title: "דוחות עובד",
+      },
+      {
+        path: "/work-history",
+        icon: "history",
+        label: "היסטוריית עבודה",
+        title: "היסטוריית עבודה",
       },
     ],
   },

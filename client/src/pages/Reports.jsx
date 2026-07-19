@@ -173,7 +173,7 @@ export default function Reports() {
           <div className="report-action-group">
             <span className="report-action-group-title">אזור מזמין</span>
             <div className="report-action-group-buttons">
-              <button className="secondary-btn" type="button" onClick={handlePDF}>
+              <button className="primary-btn" type="button" onClick={handlePDF}>
                 דוח מזמין
               </button>
               <button className="secondary-btn" type="button" onClick={handleExcel}>
@@ -187,7 +187,7 @@ export default function Reports() {
           <div className="report-action-group">
             <span className="report-action-group-title">אזור מעסיק</span>
             <div className="report-action-group-buttons">
-              <button className="secondary-btn" type="button" onClick={handleEmployerPDF}>
+              <button className="primary-btn" type="button" onClick={handleEmployerPDF}>
                 דוח מעסיק
               </button>
               <button className="secondary-btn" type="button" onClick={handleEmployerExcel}>
