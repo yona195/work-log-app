@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import PeriodFilter, { useDateRangeFilter } from "../components/PeriodFilter.jsx";
-import PdfPreviewDrawer from "../components/PdfPreviewDrawer.jsx";
 import { useData } from "../state/DataProvider.jsx";
 import {
   getEmployeeAffiliationName,
@@ -10,6 +9,7 @@ import {
 import { filterReportLogs, getReportEmployees } from "../lib/reports.js";
 import { buildWorkLogReportHtml, buildEmployerReportHtml } from "../lib/pdf.js";
 import { exportToExcel, exportFinancialSummaryToExcel } from "../lib/excel.js";
+import { exportPdfInNewTab } from "../lib/pdfExport.js";
 
 const EMPTY_FILTERS = {
   group: "",
@@ -27,20 +27,23 @@ export default function Reports() {
   const [reportType, setReportType] = useState("customer"); // "customer" | "employer"
   const [filters, setFilters] = useState(EMPTY_FILTERS);
   const [showArchived, setShowArchived] = useState(false);
-  const [pdfPreview, setPdfPreview] = useState({ open: false, html: null, fileName: "" });
-  const closePdfPreview = () => setPdfPreview({ open: false, html: null, fileName: "" });
+  const [pdfLoading, setPdfLoading] = useState(false);
 
-  const setFilter = (key, value) =>
-    setFilters((prev) => {
-      const next = { ...prev, [key]: value };
-      // Mirror legacy behaviour: internal group clears/locks the subcontractor.
-      if (key === "group" && value === "internal") next.subcontractorId = "";
-      return next;
-    });
+  const setFilter = (key, value) => setFilters((prev) => ({ ...prev, [key]: value }));
+
+  // Switching workforce type invalidates whatever contractor/employee was
+  // picked under the previous type — never leave a hidden filter active.
+  const changeWorkforceType = (value) => {
+    setFilters((prev) => ({ ...prev, group: value, subcontractorId: "", employeeId: "" }));
+  };
+
+  const changeSubcontractor = (value) => {
+    setFilters((prev) => ({ ...prev, subcontractorId: value, employeeId: "" }));
+  };
 
   // Archived employees/subcontractors/sites/customers are hidden from these
   // filter lists by default so they don't clutter the common case; the
-  // "הצג פריטים בארכיון" checkbox brings them back for pulling a report
+  // "הצג גם פריטים מהארכיון" checkbox brings them back for pulling a report
   // that includes someone/something no longer active.
   const visibleSubcontractors = showArchived ? subcontractors : activeOnly(subcontractors);
   const visibleSites = showArchived ? sites : activeOnly(sites);
@@ -73,29 +76,23 @@ export default function Reports() {
 
   const reportEmployeesFor = (log) => getReportEmployees(data, log, effectiveFilters);
 
-  const handlePDF = () => {
-    if (filteredLogs.length === 0) {
-      alert("אין רשומות מתאימות להפקת PDF");
-      return;
-    }
-    const html = buildWorkLogReportHtml(data, filteredLogs, reportEmployeesFor, {
-      autoPrint: false,
+  const handlePDF = () =>
+    exportPdfInNewTab({
+      hasData: filteredLogs.length > 0,
+      buildHtml: () =>
+        buildWorkLogReportHtml(data, filteredLogs, reportEmployeesFor, { autoPrint: false }),
+      onLoadingChange: setPdfLoading,
     });
-    setPdfPreview({ open: true, html, fileName: "דוח מזמין" });
-  };
 
   const handleExcel = () => exportToExcel(data, filteredLogs, reportEmployeesFor);
 
-  const handleEmployerPDF = () => {
-    if (filteredLogs.length === 0) {
-      alert("אין רשומות מתאימות להפקת PDF");
-      return;
-    }
-    const html = buildEmployerReportHtml(data, filteredLogs, effectiveFilters, {
-      autoPrint: false,
+  const handleEmployerPDF = () =>
+    exportPdfInNewTab({
+      hasData: filteredLogs.length > 0,
+      buildHtml: () =>
+        buildEmployerReportHtml(data, filteredLogs, effectiveFilters, { autoPrint: false }),
+      onLoadingChange: setPdfLoading,
     });
-    setPdfPreview({ open: true, html, fileName: "דוח מעסיק" });
-  };
 
   const handleEmployerExcel = () =>
     exportFinancialSummaryToExcel(data, filteredLogs, effectiveFilters);
@@ -106,13 +103,15 @@ export default function Reports() {
   const periodValid =
     dateRange.period !== "custom" || Boolean(dateRange.customFrom && dateRange.customTo);
   const canExport = periodValid;
+  const showContractorField = filters.group === "all-subcontractors";
 
   return (
-    <>
-      <div className="card">
-        <h3>הגדרת הדוח</h3>
+    <div className="card">
+      <h3>הגדרת הדוח</h3>
 
-        <div className="filter-grid">
+      <div className="form-section">
+        <h4 className="form-section-title">פרטי הדוח</h4>
+        <div className="filter-grid filter-grid-3">
           <div className="filter-grid-item">
             <PeriodFilter
               period={dateRange.period}
@@ -157,37 +156,71 @@ export default function Reports() {
               ))}
             </select>
           </div>
+        </div>
+      </div>
 
-          <div className="filter-grid-item">
-            <label>שיוך עובדים</label>
-            <select
-              value={filters.group}
-              onChange={(e) => setFilter("group", e.target.value)}
-            >
-              <option value="">כל העובדים</option>
-              <option value="internal">העובדים שלי</option>
-              <option value="all-subcontractors">כל עובדי קבלני המשנה</option>
-            </select>
+      <div className="form-section">
+        <h4 className="form-section-title">כוח אדם בדוח</h4>
+        <div className="employee-actions">
+          <button
+            type="button"
+            className={filters.group === "" ? "primary-btn" : "secondary-btn"}
+            onClick={() => changeWorkforceType("")}
+          >
+            כל העובדים
+          </button>
+          <button
+            type="button"
+            className={filters.group === "internal" ? "primary-btn" : "secondary-btn"}
+            onClick={() => changeWorkforceType("internal")}
+          >
+            העובדים שלי
+          </button>
+          <button
+            type="button"
+            className={filters.group === "all-subcontractors" ? "primary-btn" : "secondary-btn"}
+            onClick={() => changeWorkforceType("all-subcontractors")}
+          >
+            עובדי קבלן
+          </button>
+        </div>
+
+        {showContractorField ? (
+          <div className="filter-grid filter-grid-2" style={{ marginTop: 14 }}>
+            <div className="filter-grid-item">
+              <label>קבלן משנה</label>
+              <select
+                value={filters.subcontractorId}
+                onChange={(e) => changeSubcontractor(e.target.value)}
+              >
+                <option value="">כל קבלני המשנה</option>
+                {visibleSubcontractors.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                    {s.archived ? " (בארכיון)" : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="filter-grid-item">
+              <label>עובד</label>
+              <select
+                value={filters.employeeId}
+                onChange={(e) => setFilter("employeeId", e.target.value)}
+              >
+                <option value="">כל העובדים</option>
+                {employeeOptions.map((employee) => (
+                  <option key={employee.id} value={employee.id}>
+                    {employee.name} - {getEmployeeAffiliationName(data, employee)}
+                    {isEmployeeArchived(employee, subcontractors) ? " (בארכיון)" : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
-
-          <div className="filter-grid-item">
-            <label>קבלן משנה</label>
-            <select
-              value={filters.subcontractorId}
-              disabled={filters.group === "internal"}
-              onChange={(e) => setFilter("subcontractorId", e.target.value)}
-            >
-              <option value="">כל קבלני המשנה</option>
-              {visibleSubcontractors.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                  {s.archived ? " (בארכיון)" : ""}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="filter-grid-item">
+        ) : (
+          <div style={{ marginTop: 14 }}>
             <label>עובד</label>
             <select
               value={filters.employeeId}
@@ -202,20 +235,24 @@ export default function Reports() {
               ))}
             </select>
           </div>
+        )}
 
-          <div className="filter-grid-item">
-            <label className="checkbox-item" style={{ display: "inline-flex", marginTop: 8 }}>
-              <input
-                type="checkbox"
-                checked={showArchived}
-                onChange={(e) => setShowArchived(e.target.checked)}
-              />
-              <span>הצג פריטים בארכיון ברשימות הסינון</span>
-            </label>
-          </div>
-        </div>
+        <label className="checkbox-item" style={{ display: "inline-flex", marginTop: 8 }}>
+          <input
+            type="checkbox"
+            checked={showArchived}
+            onChange={(e) => setShowArchived(e.target.checked)}
+          />
+          <span>הצג גם פריטים מהארכיון</span>
+        </label>
+      </div>
 
-        <label style={{ marginTop: 20 }}>סוג הדוח</label>
+      <hr className="form-divider" />
+
+      <div className="form-section">
+        <h4 className="form-section-title">הפקת הדוח</h4>
+
+        <label>סוג הדוח</label>
         <div className="employee-actions">
           <button
             type="button"
@@ -237,13 +274,13 @@ export default function Reports() {
           <button
             className="pdf-btn"
             type="button"
-            disabled={!canExport}
+            disabled={!canExport || pdfLoading}
             onClick={reportType === "customer" ? handlePDF : handleEmployerPDF}
           >
             <span className="material-symbols-rounded" aria-hidden="true">
               picture_as_pdf
             </span>
-            ייצוא PDF
+            {pdfLoading ? "מכין..." : "ייצוא PDF"}
           </button>
           <button
             className="excel-btn"
@@ -258,13 +295,6 @@ export default function Reports() {
           </button>
         </div>
       </div>
-
-      <PdfPreviewDrawer
-        open={pdfPreview.open}
-        html={pdfPreview.html}
-        fileName={pdfPreview.fileName}
-        onClose={closePdfPreview}
-      />
-    </>
+    </div>
   );
 }

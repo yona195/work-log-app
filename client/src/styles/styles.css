@@ -1566,10 +1566,38 @@ body.loading .menu-overlay {
     margin-bottom: 0;
 }
 
+/* Column count is explicit per section (set only where fields are actually
+   related), rather than one blanket grid for the whole form. */
 @media (min-width: 641px) {
-    .filter-grid {
+    .filter-grid-2 {
         grid-template-columns: 1fr 1fr;
     }
+
+    .filter-grid-3 {
+        grid-template-columns: 1fr 1fr 1fr;
+    }
+}
+
+.form-section {
+    margin-top: 24px;
+}
+
+.form-section:first-child {
+    margin-top: 0;
+}
+
+.form-section-title {
+    margin-bottom: 12px;
+
+    color: var(--color-text);
+    font-size: 15px;
+    font-weight: 700;
+}
+
+.form-divider {
+    margin: 24px 0 0;
+    border: none;
+    border-top: 1px solid var(--color-border);
 }
 
 .required-mark {
@@ -1753,111 +1781,6 @@ body.loading .menu-overlay {
     color: var(--color-primary-hover);
     background: var(--color-primary-soft);
     border-color: #93c5fd;
-}
-
-
-/* =========================================
-   תצוגה מקדימה של PDF
-========================================= */
-
-.pdf-drawer-overlay {
-    position: fixed;
-    inset: 0;
-    z-index: 2000;
-
-    background: rgba(15, 23, 42, 0.55);
-
-    animation: pdfDrawerFadeIn 0.2s ease;
-}
-
-.pdf-drawer {
-    position: fixed;
-    top: 0;
-    bottom: 0;
-    left: 0;
-    z-index: 2001;
-
-    display: flex;
-    flex-direction: column;
-
-    width: min(720px, 90vw);
-    height: 100%;
-
-    background: var(--color-surface);
-    box-shadow: var(--shadow-medium);
-
-    animation: pdfDrawerSlideIn 0.25s ease;
-}
-
-.pdf-drawer-toolbar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 10px;
-
-    padding: 16px 20px;
-
-    border-bottom: 1px solid var(--color-border);
-}
-
-.pdf-drawer-title {
-    font-size: 16px;
-    font-weight: 700;
-    color: var(--color-text);
-}
-
-.pdf-drawer-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-}
-
-.pdf-drawer-body {
-    flex: 1;
-    min-height: 0;
-
-    background: #525659;
-}
-
-.pdf-drawer-frame {
-    width: 100%;
-    height: 100%;
-    border: none;
-}
-
-.pdf-drawer-status {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
-
-    padding: 20px;
-
-    color: #f9fafb;
-    font-size: 15px;
-    font-weight: 600;
-    text-align: center;
-}
-
-.pdf-drawer-error {
-    color: #fca5a5;
-}
-
-@keyframes pdfDrawerFadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-}
-
-@keyframes pdfDrawerSlideIn {
-    from { transform: translateX(-100%); }
-    to { transform: translateX(0); }
-}
-
-@media (max-width: 700px) {
-    .pdf-drawer {
-        width: 100%;
-    }
 }
 
 

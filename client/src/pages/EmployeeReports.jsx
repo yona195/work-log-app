@@ -8,12 +8,10 @@ import { filterReportLogs } from "../lib/reports.js";
 import { buildEmployeeReportHtml } from "../lib/pdf.js";
 import { exportEmployeeWorkExcel, exportEmployeeSummaryExcel } from "../lib/excel.js";
 import PeriodFilter, { useDateRangeFilter } from "../components/PeriodFilter.jsx";
-import PdfPreviewDrawer from "../components/PdfPreviewDrawer.jsx";
+import { exportPdfInNewTab, NO_DATA_MESSAGE } from "../lib/pdfExport.js";
 
 const toggle = (list, id) =>
   list.includes(id) ? list.filter((x) => x !== id) : [...list, id];
-
-const NO_DATA_MESSAGE = "לא נמצאו נתונים עבור התקופה והבחירות שנבחרו.";
 
 export default function EmployeeReports() {
   const { data } = useData();
@@ -23,8 +21,8 @@ export default function EmployeeReports() {
   const [reportType, setReportType] = useState("work"); // "work" | "summary"
   const [group, setGroup] = useState("");
   const [showArchived, setShowArchived] = useState(false);
-  const [pdfPreview, setPdfPreview] = useState({ open: false, html: null, fileName: "" });
-  const closePdfPreview = () => setPdfPreview({ open: false, html: null, fileName: "" });
+  const [employeeSearch, setEmployeeSearch] = useState("");
+  const [pdfLoading, setPdfLoading] = useState(false);
 
   // Starts empty on purpose — nothing is pre-checked; the user picks what
   // they want. An empty array means "match nothing" (no report yet) until
@@ -55,20 +53,21 @@ export default function EmployeeReports() {
   };
 
   const employeeOptions = useMemo(() => {
+    const text = employeeSearch.trim().toLowerCase();
     return employees.filter((employee) => {
       if (!showArchived && isEmployeeArchived(employee, subcontractors)) return false;
       const isInternal = employee.type === "internal";
       const isSub = employee.type === "subcontractor" || employee.type === "external";
-      if (group === "internal") return isInternal;
+      if (group === "internal" && !isInternal) return false;
       if (group === "all-subcontractors") {
-        return (
-          isSub &&
-          selectedSubcontractorIds.includes(String(employee.subcontractorId || ""))
-        );
+        if (!isSub) return false;
+        if (!selectedSubcontractorIds.includes(String(employee.subcontractorId || "")))
+          return false;
       }
+      if (text && !employee.name.toLowerCase().includes(text)) return false;
       return true;
     });
-  }, [employees, subcontractors, group, selectedSubcontractorIds, showArchived]);
+  }, [employees, subcontractors, group, selectedSubcontractorIds, showArchived, employeeSearch]);
 
   // A subcontractor selection change can make the previous employee
   // selection stale (ids no longer in employeeOptions) — start over empty.
@@ -108,20 +107,19 @@ export default function EmployeeReports() {
   const handleWorkExcel = requireLogs(exportEmployeeWorkExcel);
   const handleSummaryExcel = requireLogs(exportEmployeeSummaryExcel);
 
-  const openEmployeePdfPreview = (includeFinance, title) => {
-    if (filteredLogs.length === 0) {
-      alert(NO_DATA_MESSAGE);
-      return;
-    }
-    const html = buildEmployeeReportHtml(data, filteredLogs, filters, {
-      includeFinance,
-      autoPrint: false,
+  const openEmployeePdfPreview = (includeFinance) =>
+    exportPdfInNewTab({
+      hasData: filteredLogs.length > 0,
+      buildHtml: () =>
+        buildEmployeeReportHtml(data, filteredLogs, filters, {
+          includeFinance,
+          autoPrint: false,
+        }),
+      onLoadingChange: setPdfLoading,
     });
-    setPdfPreview({ open: true, html, fileName: title });
-  };
 
-  const handleWorkPDF = () => openEmployeePdfPreview(false, "דוח עבודה לעובדים");
-  const handleSummaryPDF = () => openEmployeePdfPreview(true, "דוח עובדים מסכם");
+  const handleWorkPDF = () => openEmployeePdfPreview(false);
+  const handleSummaryPDF = () => openEmployeePdfPreview(true);
 
   // Mandatory fields: a complete period, and at least one employee selected
   // (selection starts empty by design, so "nothing checked" must block
@@ -130,13 +128,15 @@ export default function EmployeeReports() {
     dateRange.period !== "custom" || Boolean(dateRange.customFrom && dateRange.customTo);
   const employeesValid = selectedEmployeeIds.length > 0;
   const canExport = periodValid && employeesValid;
+  const showContractorField = group === "all-subcontractors";
 
   return (
-    <>
-      <div className="card">
-        <h3>הגדרת הדוח</h3>
+    <div className="card">
+      <h3>הגדרת הדוח</h3>
 
-        <div className="filter-grid">
+      <div className="form-section">
+        <h4 className="form-section-title">פרטי הדוח</h4>
+        <div className="filter-grid filter-grid-2">
           <div className="filter-grid-item">
             <PeriodFilter
               period={dateRange.period}
@@ -152,77 +152,50 @@ export default function EmployeeReports() {
 
           <div className="filter-grid-item">
             <label>סוג עובדים</label>
-            <select value={group} onChange={(e) => handleGroupChange(e.target.value)}>
-              <option value="">כל העובדים</option>
-              <option value="internal">העובדים שלי</option>
-              <option value="all-subcontractors">עובדי קבלן</option>
-            </select>
-          </div>
-
-          {group === "all-subcontractors" && (
-            <div className="filter-grid-item">
-              <div className="section-title-row">
-                <label>קבלן משנה</label>
-                <div className="employee-actions">
-                  <button
-                    type="button"
-                    className="secondary-btn"
-                    onClick={() =>
-                      setSelectedSubcontractorIds(relevantSubcontractors.map((s) => s.id))
-                    }
-                  >
-                    בחר הכל
-                  </button>
-                  <button
-                    type="button"
-                    className="secondary-btn"
-                    onClick={() => setSelectedSubcontractorIds([])}
-                  >
-                    נקה הכל
-                  </button>
-                </div>
-              </div>
-
-              <div className="checkbox-list">
-                {relevantSubcontractors.length === 0 ? (
-                  <div className="empty-message">אין קבלני משנה עם עובדים</div>
-                ) : (
-                  relevantSubcontractors.map((subcontractor) => (
-                    <label className="checkbox-item" key={subcontractor.id}>
-                      <input
-                        type="checkbox"
-                        checked={selectedSubcontractorIds.includes(subcontractor.id)}
-                        onChange={() => toggleSubcontractor(subcontractor.id)}
-                      />
-                      <span>
-                        {subcontractor.name}
-                        {subcontractor.archived ? " (בארכיון)" : ""}
-                      </span>
-                    </label>
-                  ))
-                )}
-              </div>
+            <div className="employee-actions">
+              <button
+                type="button"
+                className={group === "" ? "primary-btn" : "secondary-btn"}
+                onClick={() => handleGroupChange("")}
+              >
+                כל העובדים
+              </button>
+              <button
+                type="button"
+                className={group === "internal" ? "primary-btn" : "secondary-btn"}
+                onClick={() => handleGroupChange("internal")}
+              >
+                העובדים שלי
+              </button>
+              <button
+                type="button"
+                className={group === "all-subcontractors" ? "primary-btn" : "secondary-btn"}
+                onClick={() => handleGroupChange("all-subcontractors")}
+              >
+                עובדי קבלן
+              </button>
             </div>
-          )}
+          </div>
+        </div>
 
-          <div className="filter-grid-item">
+        {showContractorField && (
+          <div style={{ marginTop: 14 }}>
             <div className="section-title-row">
-              <label>
-                בחירת עובדים
-                <span className="required-mark"> *</span>
-              </label>
+              <label>קבלן משנה</label>
               <div className="employee-actions">
                 <button
                   type="button"
                   className="secondary-btn"
-                  onClick={() => setSelectedEmployeeIds(employeeOptions.map((e) => e.id))}
+                  onClick={() =>
+                    setSelectedSubcontractorIds(relevantSubcontractors.map((s) => s.id))
+                  }
                 >
                   בחר הכל
                 </button>
                 <button
                   type="button"
                   className="secondary-btn"
-                  onClick={() => setSelectedEmployeeIds([])}
+                  onClick={() => setSelectedSubcontractorIds([])}
                 >
                   נקה הכל
                 </button>
@@ -230,42 +203,104 @@ export default function EmployeeReports() {
             </div>
 
             <div className="checkbox-list">
-              {employeeOptions.length === 0 ? (
-                <div className="empty-message">אין עובדים תואמים</div>
+              {relevantSubcontractors.length === 0 ? (
+                <div className="empty-message">אין קבלני משנה עם עובדים</div>
               ) : (
-                employeeOptions.map((employee) => (
-                  <label className="checkbox-item" key={employee.id}>
+                relevantSubcontractors.map((subcontractor) => (
+                  <label className="checkbox-item" key={subcontractor.id}>
                     <input
                       type="checkbox"
-                      checked={selectedEmployeeIds.includes(employee.id)}
-                      onChange={() => toggleEmployee(employee.id)}
+                      checked={selectedSubcontractorIds.includes(subcontractor.id)}
+                      onChange={() => toggleSubcontractor(subcontractor.id)}
                     />
                     <span>
-                      {employee.name} - {getEmployeeAffiliationName(data, employee)}
-                      {isEmployeeArchived(employee, subcontractors) ? " (בארכיון)" : ""}
+                      {subcontractor.name}
+                      {subcontractor.archived ? " (בארכיון)" : ""}
                     </span>
                   </label>
                 ))
               )}
             </div>
-            {!employeesValid && (
-              <p className="field-error">יש לבחור לפחות עובד אחד</p>
-            )}
           </div>
+        )}
+      </div>
 
-          <div className="filter-grid-item">
-            <label className="checkbox-item" style={{ display: "inline-flex", marginTop: 8 }}>
-              <input
-                type="checkbox"
-                checked={showArchived}
-                onChange={(e) => setShowArchived(e.target.checked)}
-              />
-              <span>הצג פריטים בארכיון ברשימות הסינון</span>
-            </label>
+      <div className="form-section">
+        <h4 className="form-section-title">בחירת עובדים</h4>
+
+        <input
+          type="text"
+          placeholder="🔍 חפש עובד..."
+          value={employeeSearch}
+          onChange={(e) => setEmployeeSearch(e.target.value)}
+        />
+
+        <div className="section-title-row">
+          <label>
+            עובדים
+            <span className="required-mark"> *</span>
+          </label>
+          <div className="employee-actions">
+            <button
+              type="button"
+              className="secondary-btn"
+              onClick={() =>
+                setSelectedEmployeeIds((prev) => [
+                  ...new Set([...prev, ...employeeOptions.map((e) => e.id)]),
+                ])
+              }
+            >
+              בחר הכל
+            </button>
+            <button
+              type="button"
+              className="secondary-btn"
+              onClick={() => setSelectedEmployeeIds([])}
+            >
+              נקה הכל
+            </button>
           </div>
         </div>
 
-        <label style={{ marginTop: 20 }}>סוג הדוח</label>
+        <div className="checkbox-list">
+          {employeeOptions.length === 0 ? (
+            <div className="empty-message">אין עובדים תואמים</div>
+          ) : (
+            employeeOptions.map((employee) => (
+              <label className="checkbox-item" key={employee.id}>
+                <input
+                  type="checkbox"
+                  checked={selectedEmployeeIds.includes(employee.id)}
+                  onChange={() => toggleEmployee(employee.id)}
+                />
+                <span>
+                  {employee.name} - {getEmployeeAffiliationName(data, employee)}
+                  {isEmployeeArchived(employee, subcontractors) ? " (בארכיון)" : ""}
+                </span>
+              </label>
+            ))
+          )}
+        </div>
+        {!employeesValid && <p className="field-error">יש לבחור לפחות עובד אחד</p>}
+
+        <p id="employeeCountText">סה״כ עובדים שנבחרו: {selectedEmployeeIds.length}</p>
+
+        <label className="checkbox-item" style={{ display: "inline-flex", marginTop: 8 }}>
+          <input
+            type="checkbox"
+            checked={showArchived}
+            onChange={(e) => setShowArchived(e.target.checked)}
+          />
+          <span>הצג גם פריטים מהארכיון</span>
+        </label>
+      </div>
+
+      <hr className="form-divider" />
+
+      <div className="form-section">
+        <h4 className="form-section-title">הפקת הדוח</h4>
+
+        <label>סוג הדוח</label>
         <div className="employee-actions">
           <button
             type="button"
@@ -287,13 +322,13 @@ export default function EmployeeReports() {
           <button
             className="pdf-btn"
             type="button"
-            disabled={!canExport}
+            disabled={!canExport || pdfLoading}
             onClick={reportType === "work" ? handleWorkPDF : handleSummaryPDF}
           >
             <span className="material-symbols-rounded" aria-hidden="true">
               picture_as_pdf
             </span>
-            ייצוא PDF
+            {pdfLoading ? "מכין..." : "ייצוא PDF"}
           </button>
           <button
             className="excel-btn"
@@ -308,13 +343,6 @@ export default function EmployeeReports() {
           </button>
         </div>
       </div>
-
-      <PdfPreviewDrawer
-        open={pdfPreview.open}
-        html={pdfPreview.html}
-        fileName={pdfPreview.fileName}
-        onClose={closePdfPreview}
-      />
-    </>
+    </div>
   );
 }
