@@ -191,8 +191,14 @@ export default function Employees() {
     await deleteItem("subcontractors", subcontractor.id);
   };
 
+  // Includes both truly-unassigned employees (no subcontractorId) and
+  // orphaned ones (subcontractorId points at a subcontractor that no longer
+  // exists, e.g. from before cascading delete was added) — either way,
+  // there's no subcontractor card left to render them under otherwise,
+  // which made them invisible on this page.
+  const existingSubcontractorIds = new Set(subcontractors.map((s) => String(s.id)));
   const unassignedSubEmployees = subcontractorEmployees.filter(
-    (e) => !e.subcontractorId
+    (e) => !e.subcontractorId || !existingSubcontractorIds.has(String(e.subcontractorId))
   );
 
   return (
