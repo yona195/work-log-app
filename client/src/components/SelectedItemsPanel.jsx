@@ -9,7 +9,9 @@ export default function SelectedItemsPanel({ title, items, onRemove, onClearAll,
         {title} ({items.length})
       </label>
       {items.length === 0 ? (
-        <div className="empty-message">{emptyMessage}</div>
+        <div className="checkbox-list">
+          <div className="empty-message">{emptyMessage}</div>
+        </div>
       ) : (
         <>
           <div className="checkbox-list">

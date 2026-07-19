@@ -445,70 +445,76 @@ export default function WorkLog() {
             </div>
 
             <div className="filter-grid-item">
-              {siteId && (
-                <div className="buildings-section">
-                  <div className="section-title-row">
-                    <label>
-                      מבנה
-                      <span className="required-mark"> *</span>
-                    </label>
-                    <div className="building-actions">
-                      <button type="button" className="secondary-btn" onClick={selectAllBuildings}>
-                        בחר הכל
-                      </button>
-                      <button
-                        type="button"
-                        className="secondary-btn"
-                        onClick={() => setSelectedBuildings([])}
-                      >
-                        נקה הכל
-                      </button>
-                    </div>
-                  </div>
+              <div className={`buildings-section${siteId ? "" : " is-disabled"}`}>
+                <label>
+                  מבנה
+                  <span className="required-mark"> *</span>
+                </label>
 
-                  <input
-                    type="text"
-                    placeholder="🔍 חפש מבנה..."
-                    value={buildingSearch}
-                    onChange={(e) => setBuildingSearch(e.target.value)}
-                  />
+                <input
+                  type="text"
+                  placeholder="🔍 חפש מבנה..."
+                  value={buildingSearch}
+                  onChange={(e) => setBuildingSearch(e.target.value)}
+                  disabled={!siteId}
+                />
 
-                  <div className="checkbox-list">
-                    {siteBuildings.length === 0 ? (
-                      <div className="empty-message">אין מבנים באתר הזה</div>
-                    ) : (
-                      siteBuildings.map((building) => (
-                        <label className="checkbox-item" key={building.id}>
-                          <input
-                            type="checkbox"
-                            checked={selectedBuildings.includes(building.id)}
-                            onChange={() => toggleBuilding(building.id)}
-                          />
-                          <span>{building.name}</span>
-                        </label>
-                      ))
-                    )}
-                  </div>
-
-                  {selectedBuildings.length > 0 && (
-                    <div className="filter-chips">
-                      {selectedBuildings.map((id) => (
-                        <span className="filter-chip" key={id}>
-                          {getName(buildings, id) || "מבנה"}
-                          <button
-                            type="button"
-                            className="filter-chip-remove"
-                            onClick={() => toggleBuilding(id)}
-                            aria-label="הסר מבנה"
-                          >
-                            ×
-                          </button>
-                        </span>
-                      ))}
-                    </div>
+                <div className="checkbox-list">
+                  {!siteId ? (
+                    <div className="empty-message">יש לבחור אתר עבודה תחילה</div>
+                  ) : siteBuildings.length === 0 ? (
+                    <div className="empty-message">אין מבנים באתר הזה</div>
+                  ) : (
+                    siteBuildings.map((building) => (
+                      <label className="checkbox-item" key={building.id}>
+                        <input
+                          type="checkbox"
+                          checked={selectedBuildings.includes(building.id)}
+                          onChange={() => toggleBuilding(building.id)}
+                        />
+                        <span>{building.name}</span>
+                      </label>
+                    ))
                   )}
                 </div>
-              )}
+
+                {siteId && selectedBuildings.length > 0 && (
+                  <div className="filter-chips">
+                    {selectedBuildings.map((id) => (
+                      <span className="filter-chip" key={id}>
+                        {getName(buildings, id) || "מבנה"}
+                        <button
+                          type="button"
+                          className="filter-chip-remove"
+                          onClick={() => toggleBuilding(id)}
+                          aria-label="הסר מבנה"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                <div className="building-actions">
+                  <button
+                    type="button"
+                    className="secondary-btn"
+                    onClick={selectAllBuildings}
+                    disabled={!siteId}
+                  >
+                    בחר הכל
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary-btn"
+                    onClick={() => setSelectedBuildings([])}
+                    disabled={!siteId}
+                  >
+                    נקה הכל
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -568,7 +574,9 @@ export default function WorkLog() {
                       בחירת עובדי הקבלן
                       <span className="required-mark"> *</span>
                     </label>
-                    <div className="empty-message worklog-panel-empty">יש לבחור קבלן תחילה</div>
+                    <div className="checkbox-list">
+                      <div className="empty-message">יש לבחור קבלן תחילה</div>
+                    </div>
                   </div>
                 ) : (
                   <SelectionPanel

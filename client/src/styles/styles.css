@@ -482,43 +482,6 @@ tbody tr:hover {
     background: #eff6ff;
 }
 
-/* Marks rows that came from splitting one work-log entry into several
-   (one per contractor) as belonging together — overrides the plain
-   even/odd striping above so the group reads as one consistent block.
-   Cycled per split entry (not per row) so two adjacent split groups on
-   the same date don't blend into an indistinguishable single block. */
-tbody tr.history-split-row-0 {
-    background: var(--color-primary-soft);
-    border-right: 3px solid var(--color-primary);
-}
-tbody tr.history-split-row-0:hover {
-    background: #dbeafe;
-}
-
-tbody tr.history-split-row-1 {
-    background: #ecfdf5;
-    border-right: 3px solid var(--color-success);
-}
-tbody tr.history-split-row-1:hover {
-    background: #d1fae5;
-}
-
-tbody tr.history-split-row-2 {
-    background: #fffbeb;
-    border-right: 3px solid var(--color-warning);
-}
-tbody tr.history-split-row-2:hover {
-    background: #fef3c7;
-}
-
-tbody tr.history-split-row-3 {
-    background: #f5f3ff;
-    border-right: 3px solid #7c3aed;
-}
-tbody tr.history-split-row-3:hover {
-    background: #ede9fe;
-}
-
 /* Compact prev/label/next control, anchored to the visual left (flex-end
    in this RTL layout) under a list — doesn't grow with the list length,
    unlike one button per page. */
@@ -651,6 +614,15 @@ tbody tr.history-split-row-3:hover {
 
 .buildings-section {
     margin-top: 10px;
+}
+
+.buildings-section.is-disabled {
+    opacity: 0.6;
+}
+
+.buildings-section.is-disabled input:not([type="checkbox"]),
+.buildings-section.is-disabled button {
+    cursor: not-allowed;
 }
 
 .section-title-row {
@@ -2210,15 +2182,8 @@ body.loading .menu-overlay {
     width: 100%;
 }
 
-.worklog-workforce-grid .checkbox-list,
-.worklog-workforce-grid .worklog-panel-empty {
+.worklog-workforce-grid .checkbox-list {
     flex: 1;
-}
-
-.worklog-workforce-grid .worklog-panel-empty {
-    display: flex;
-    align-items: center;
-    justify-content: center;
 }
 
 .worklog-workforce-grid label:first-child {
@@ -2304,5 +2269,164 @@ body.loading .menu-overlay {
         padding: 3px 0;
 
         font-size: 14px;
+    }
+}
+
+
+/* =========================================
+   היסטוריית עבודה - כרטיס אחד לכל רשומה מקורית
+========================================= */
+
+.workhistory-cards-list {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+
+    margin-top: 16px;
+}
+
+.workhistory-card {
+    padding: 14px 16px;
+
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-right-width: 4px;
+    border-radius: var(--radius-medium);
+}
+
+.workhistory-card-accent-0 { border-right-color: var(--color-primary); }
+.workhistory-card-accent-1 { border-right-color: var(--color-success); }
+.workhistory-card-accent-2 { border-right-color: var(--color-warning); }
+.workhistory-card-accent-3 { border-right-color: #7c3aed; }
+
+.workhistory-card-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 6px 16px;
+
+    padding-bottom: 10px;
+    margin-bottom: 10px;
+
+    border-bottom: 1px solid var(--color-border);
+}
+
+.workhistory-card-header-main {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 6px 10px;
+
+    color: var(--color-text);
+    font-size: 15px;
+    font-weight: 700;
+}
+
+.workhistory-card-header-main span:not(:last-child)::after {
+    content: "|";
+    margin-inline-start: 10px;
+    color: var(--color-border);
+    font-weight: 400;
+}
+
+.workhistory-card-header-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 14px;
+
+    color: var(--color-muted);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.workhistory-card-groups {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.workhistory-card-group {
+    font-size: 14px;
+    line-height: 1.5;
+
+    overflow-wrap: break-word;
+}
+
+.workhistory-card-group-label {
+    color: var(--color-primary-hover);
+    font-weight: 700;
+}
+
+.workhistory-card-group-names {
+    color: var(--color-text);
+}
+
+.workhistory-card-notes {
+    margin-top: 8px;
+    padding-top: 8px;
+
+    border-top: 1px dashed var(--color-border);
+
+    color: var(--color-muted);
+    font-size: 13px;
+}
+
+.workhistory-pagination {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+
+    margin-top: 20px;
+    padding-top: 16px;
+
+    border-top: 1px solid var(--color-border);
+}
+
+.workhistory-page-size {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    color: var(--color-muted);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.workhistory-page-size .primary-btn,
+.workhistory-page-size .secondary-btn {
+    min-height: 30px;
+    padding: 4px 12px;
+    font-size: 13px;
+}
+
+.workhistory-page-nav {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.workhistory-page-info {
+    color: var(--color-muted);
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.pagination-nav-group {
+    display: flex;
+    gap: 8px;
+}
+
+@media (max-width: 640px) {
+    .workhistory-pagination {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .workhistory-page-nav {
+        justify-content: space-between;
     }
 }
