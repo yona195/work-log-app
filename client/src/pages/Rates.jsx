@@ -19,7 +19,6 @@ export default function Rates() {
 
   const [selectedCustomerIds, setSelectedCustomerIds] = useState([]);
   const [selectedSiteIds, setSelectedSiteIds] = useState([]);
-  const [rateType, setRateType] = useState("subcontractor");
   const [selectedTargetIds, setSelectedTargetIds] = useState([]);
   const [revenue, setRevenue] = useState("");
   const [cost, setCost] = useState("");
@@ -28,26 +27,20 @@ export default function Rates() {
   const [showArchived, setShowArchived] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Narrows the (potentially long) employee list for a personal rate: pick
-  // "עובד שלי" or a specific contractor first, then only that group's
-  // employees show up to select from — instead of one flat list mixing
-  // everyone together.
-  const [employeeGroup, setEmployeeGroup] = useState(""); // "" | "internal" | "subcontractor"
+  // "Employee source": every rate created here is a personal (per-employee)
+  // rate — pick "העובדים שלי" or a specific contractor first, then only
+  // that group's employees show up to select from.
+  const [employeeSource, setEmployeeSource] = useState("internal"); // "internal" | "subcontractor"
   const [employeeSubcontractorId, setEmployeeSubcontractorId] = useState("");
   const [employeeSearch, setEmployeeSearch] = useState("");
 
   const activeCustomers = activeOnly(customers);
   const activeSites = activeOnly(sites);
-
-  const subcontractorTargets = activeOnly(subcontractors).map((s) => ({
-    id: s.id,
-    label: s.name,
-  }));
+  const activeSubcontractors = activeOnly(subcontractors);
 
   const employeeTargets = useMemo(() => {
-    if (rateType !== "employee" || !employeeGroup) return [];
     let list = activeEmployees(data);
-    if (employeeGroup === "internal") {
+    if (employeeSource === "internal") {
       list = list.filter((e) => e.type === "internal");
     } else {
       if (!employeeSubcontractorId) return [];
@@ -60,23 +53,15 @@ export default function Rates() {
     const text = employeeSearch.trim().toLowerCase();
     if (text) list = list.filter((e) => e.name.toLowerCase().includes(text));
     return list.map((e) => ({ id: e.id, label: e.name }));
-  }, [rateType, employeeGroup, employeeSubcontractorId, employeeSearch, data]);
+  }, [employeeSource, employeeSubcontractorId, employeeSearch, data]);
 
   const toggle = (list, setList, id) =>
     setList(
       list.includes(id) ? list.filter((x) => x !== id) : [...list, id]
     );
 
-  const changeRateType = (value) => {
-    setRateType(value);
-    setSelectedTargetIds([]);
-    setEmployeeGroup("");
-    setEmployeeSubcontractorId("");
-    setEmployeeSearch("");
-  };
-
-  const changeEmployeeGroup = (value) => {
-    setEmployeeGroup(value);
+  const changeEmployeeSource = (value) => {
+    setEmployeeSource(value);
     setEmployeeSubcontractorId("");
     setSelectedTargetIds([]);
     setEmployeeSearch("");
@@ -150,16 +135,8 @@ export default function Rates() {
       alert("נא לבחור לפחות אתר עבודה אחד");
       return;
     }
-    if (rateType !== "employee" && rateType !== "subcontractor") {
-      alert("נא לבחור סוג תעריף");
-      return;
-    }
     if (selectedTargetIds.length === 0) {
-      alert(
-        rateType === "employee"
-          ? "נא לבחור לפחות עובד אחד"
-          : "נא לבחור לפחות קבלן משנה אחד"
-      );
+      alert("נא לבחור לפחות עובד אחד");
       return;
     }
     if (revenue === "" || !Number.isFinite(revenuePerWorker) || revenuePerWorker < 0) {
@@ -193,12 +170,10 @@ export default function Rates() {
               const sameBase =
                 String(rate.customerId || "") === String(customerId) &&
                 String(rate.siteId) === String(siteId) &&
-                String(rate.rateType) === String(rateType) &&
+                String(rate.rateType) === "employee" &&
                 normalizeDate(rate.effectiveFrom) === effectiveFrom;
               if (!sameBase) return false;
-              return rateType === "employee"
-                ? String(rate.employeeId || "") === String(targetId)
-                : String(rate.subcontractorId || "") === String(targetId);
+              return String(rate.employeeId || "") === String(targetId);
             });
 
             if (duplicate) {
@@ -211,9 +186,9 @@ export default function Rates() {
               await addItem("rates", {
                 customerId,
                 siteId,
-                rateType,
-                subcontractorId: rateType === "subcontractor" ? targetId : "",
-                employeeId: rateType === "employee" ? targetId : "",
+                rateType: "employee",
+                subcontractorId: "",
+                employeeId: targetId,
                 revenuePerWorker,
                 costPerWorker,
                 effectiveFrom,
@@ -327,20 +302,55 @@ export default function Rates() {
           </button>
         </div>
 
-        <label>סוג תעריף</label>
-        <select value={rateType} onChange={(e) => changeRateType(e.target.value)}>
-          <option value="subcontractor">קבלן משנה</option>
-          <option value="employee">עובד ספציפי</option>
-        </select>
+        <label>מקור עובדים</label>
+        <div className="employee-actions">
+          <button
+            type="button"
+            className={employeeSource === "internal" ? "primary-btn" : "secondary-btn"}
+            onClick={() => changeEmployeeSource("internal")}
+          >
+            העובדים שלי
+          </button>
+          <button
+            type="button"
+            className={employeeSource === "subcontractor" ? "primary-btn" : "secondary-btn"}
+            onClick={() => changeEmployeeSource("subcontractor")}
+          >
+            עובדי קבלן
+          </button>
+        </div>
 
-        {rateType === "subcontractor" ? (
+        {employeeSource === "subcontractor" && (
           <>
-            <label>בחר קבלני משנה</label>
+            <label>קבלן משנה</label>
+            <select
+              value={employeeSubcontractorId}
+              onChange={(e) => changeEmployeeSubcontractor(e.target.value)}
+            >
+              <option value="">בחר קבלן משנה</option>
+              {activeSubcontractors.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+          </>
+        )}
+
+        {(employeeSource === "internal" || employeeSubcontractorId) && (
+          <>
+            <label>בחר עובדים</label>
+            <input
+              type="text"
+              placeholder="🔍 חפש עובד..."
+              value={employeeSearch}
+              onChange={(e) => setEmployeeSearch(e.target.value)}
+            />
             <div className="checkbox-list">
-              {subcontractorTargets.length === 0 ? (
-                <p className="empty-message">אין קבלני משנה</p>
+              {employeeTargets.length === 0 ? (
+                <p className="empty-message">אין עובדים תואמים</p>
               ) : (
-                subcontractorTargets.map((target) => (
+                employeeTargets.map((target) => (
                   <label className="checkbox-item" key={target.id}>
                     <input
                       type="checkbox"
@@ -359,10 +369,10 @@ export default function Rates() {
                 type="button"
                 className="secondary-btn"
                 onClick={() =>
-                  setSelectedTargetIds(subcontractorTargets.map((t) => t.id))
+                  setSelectedTargetIds(employeeTargets.map((t) => t.id))
                 }
               >
-                בחר הכל
+                {employeeSource === "subcontractor" ? "בחר את כל עובדי הקבלן" : "בחר הכל"}
               </button>
               <button
                 type="button"
@@ -372,84 +382,7 @@ export default function Rates() {
                 נקה הכל
               </button>
             </div>
-          </>
-        ) : (
-          <>
-            <label>שיוך עובדים</label>
-            <select
-              value={employeeGroup}
-              onChange={(e) => changeEmployeeGroup(e.target.value)}
-            >
-              <option value="">בחר שיוך</option>
-              <option value="internal">עובד שלי</option>
-              <option value="subcontractor">עובדי קבלן</option>
-            </select>
-
-            {employeeGroup === "subcontractor" && (
-              <>
-                <label>קבלן משנה</label>
-                <select
-                  value={employeeSubcontractorId}
-                  onChange={(e) => changeEmployeeSubcontractor(e.target.value)}
-                >
-                  <option value="">בחר קבלן משנה</option>
-                  {subcontractorTargets.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.label}
-                    </option>
-                  ))}
-                </select>
-              </>
-            )}
-
-            {employeeGroup &&
-              (employeeGroup === "internal" || employeeSubcontractorId) && (
-                <>
-                  <label>בחר עובדים</label>
-                  <input
-                    type="text"
-                    placeholder="🔍 חפש עובד..."
-                    value={employeeSearch}
-                    onChange={(e) => setEmployeeSearch(e.target.value)}
-                  />
-                  <div className="checkbox-list">
-                    {employeeTargets.length === 0 ? (
-                      <p className="empty-message">אין עובדים תואמים</p>
-                    ) : (
-                      employeeTargets.map((target) => (
-                        <label className="checkbox-item" key={target.id}>
-                          <input
-                            type="checkbox"
-                            checked={selectedTargetIds.includes(target.id)}
-                            onChange={() =>
-                              toggle(selectedTargetIds, setSelectedTargetIds, target.id)
-                            }
-                          />
-                          <span>{target.label}</span>
-                        </label>
-                      ))
-                    )}
-                  </div>
-                  <div className="employee-actions">
-                    <button
-                      type="button"
-                      className="secondary-btn"
-                      onClick={() =>
-                        setSelectedTargetIds(employeeTargets.map((t) => t.id))
-                      }
-                    >
-                      בחר הכל
-                    </button>
-                    <button
-                      type="button"
-                      className="secondary-btn"
-                      onClick={() => setSelectedTargetIds([])}
-                    >
-                      נקה הכל
-                    </button>
-                  </div>
-                </>
-              )}
+            <p>סה״כ עובדים שנבחרו: {selectedTargetIds.length}</p>
           </>
         )}
 
