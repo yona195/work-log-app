@@ -6,6 +6,8 @@ import {
   isEmployeeArchived,
   getEmployeeAffiliationName,
 } from "../lib/entities.js";
+import { normalizeDate } from "../lib/format.js";
+import DatePicker from "./DatePicker.jsx";
 
 export default function EditRateModal({ rate, onClose }) {
   const { data, updateItem } = useData();
@@ -22,7 +24,7 @@ export default function EditRateModal({ rate, onClose }) {
   );
   const [revenue, setRevenue] = useState(String(rate.revenuePerWorker ?? ""));
   const [cost, setCost] = useState(String(rate.costPerWorker ?? ""));
-  const [effectiveFrom, setEffectiveFrom] = useState(rate.effectiveFrom || "");
+  const [effectiveFrom, setEffectiveFrom] = useState(normalizeDate(rate.effectiveFrom));
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Editing a rate whose customer/site/target was archived since it was
@@ -177,11 +179,7 @@ export default function EditRateModal({ rate, onClose }) {
         />
 
         <label>תאריך תחילת תעריף</label>
-        <input
-          type="date"
-          value={effectiveFrom}
-          onChange={(e) => setEffectiveFrom(e.target.value)}
-        />
+        <DatePicker mode="single" value={effectiveFrom} onChange={setEffectiveFrom} />
 
         <div className="modal-actions">
           <button

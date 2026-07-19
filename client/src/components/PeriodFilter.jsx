@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { getCurrentMonthRange, getLastThreeMonthsRange } from "../lib/entities.js";
+import DatePicker from "./DatePicker.jsx";
 
 // Shared by the report pages: a period preset (current month / last three
 // months / a custom date range) that resolves to a concrete { from, to }.
@@ -36,17 +37,14 @@ export default function PeriodFilter({
 
       {period === "custom" && (
         <div>
-          <label>מתאריך</label>
-          <input
-            type="date"
-            value={customFrom}
-            onChange={(e) => onCustomFromChange(e.target.value)}
-          />
-          <label>עד תאריך</label>
-          <input
-            type="date"
-            value={customTo}
-            onChange={(e) => onCustomToChange(e.target.value)}
+          <label>טווח תאריכים</label>
+          <DatePicker
+            mode="range"
+            value={{ from: customFrom, to: customTo }}
+            onChange={({ from, to }) => {
+              onCustomFromChange(from);
+              onCustomToChange(to);
+            }}
           />
         </div>
       )}

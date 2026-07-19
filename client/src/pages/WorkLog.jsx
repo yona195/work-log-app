@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useData } from "../state/DataProvider.jsx";
-import { normalizeDate, todayISO } from "../lib/format.js";
+import { normalizeDate } from "../lib/format.js";
+import { todayISO } from "../lib/calendar.js";
 import {
   getName,
   getEmployeeNames,
@@ -8,6 +9,7 @@ import {
   activeOnly,
   activeEmployees,
 } from "../lib/entities.js";
+import DatePicker from "../components/DatePicker.jsx";
 
 export default function WorkLog() {
   const { data, addItem, deleteItem } = useData();
@@ -19,8 +21,10 @@ export default function WorkLog() {
   const pickableSites = activeOnly(sites);
   const pickableCustomers = activeOnly(customers);
 
-  const [date, setDate] = useState(todayISO());
-  const [endDate, setEndDate] = useState(todayISO());
+  // Multi-select rather than a single from/to range, so the same
+  // employees/site/building/customer can be logged on several
+  // non-consecutive days (e.g. Sun+Wed+Thu) in one submit.
+  const [selectedDates, setSelectedDates] = useState([todayISO()]);
   const [group, setGroup] = useState("");
   const [search, setSearch] = useState("");
   const [selectedEmployees, setSelectedEmployees] = useState([]);
@@ -56,30 +60,6 @@ export default function WorkLog() {
   const toggle = (list, setList, id) =>
     setList(list.includes(id) ? list.filter((x) => x !== id) : [...list, id]);
 
-  // Builds the inclusive list of "YYYY-MM-DD" strings between two ISO dates
-  // using local date components (not UTC parsing) so day-boundary rollover
-  // in non-UTC timezones can't skip/duplicate a day.
-  const datesInRange = (fromISO, toISO) => {
-    const [fy, fm, fd] = fromISO.split("-").map(Number);
-    const [ty, tm, td] = toISO.split("-").map(Number);
-    const cursor = new Date(fy, fm - 1, fd);
-    const end = new Date(ty, tm - 1, td);
-    const dates = [];
-    while (cursor <= end) {
-      const y = cursor.getFullYear();
-      const m = String(cursor.getMonth() + 1).padStart(2, "0");
-      const d = String(cursor.getDate()).padStart(2, "0");
-      dates.push(`${y}-${m}-${d}`);
-      cursor.setDate(cursor.getDate() + 1);
-    }
-    return dates;
-  };
-
-  const changeStartDate = (value) => {
-    setDate(value);
-    setEndDate((prev) => (prev < value ? value : prev));
-  };
-
   const changeSite = (value) => {
     setSiteId(value);
     setSelectedBuildings([]);
@@ -100,22 +80,17 @@ export default function WorkLog() {
     if (isSubmitting) return;
 
     if (
-      !date ||
-      !endDate ||
+      selectedDates.length === 0 ||
       selectedEmployees.length === 0 ||
       !siteId ||
       selectedBuildings.length === 0 ||
       !customerId
     ) {
-      alert("נא למלא תאריך, עובד, אתר, מבנה ומזמין");
-      return;
-    }
-    if (endDate < date) {
-      alert("תאריך הסיום חייב להיות זהה או אחרי תאריך ההתחלה");
+      alert("נא לבחור תאריך, עובד, אתר, מבנה ומזמין");
       return;
     }
 
-    const dates = datesInRange(date, endDate);
+    const dates = selectedDates;
 
     setIsSubmitting(true);
     try {
@@ -160,21 +135,9 @@ export default function WorkLog() {
       <div className="card">
         <h3>הוספת רשומת עבודה</h3>
 
-        <label>מתאריך</label>
-        <input
-          type="date"
-          value={date}
-          onChange={(e) => changeStartDate(e.target.value)}
-        />
-
-        <label>עד תאריך</label>
-        <input
-          type="date"
-          value={endDate}
-          min={date}
-          onChange={(e) => setEndDate(e.target.value)}
-        />
-        <p>לרשומה של יום בודד, השאירו את שני התאריכים זהים.</p>
+        <label>תאריכים</label>
+        <DatePicker mode="multi" value={selectedDates} onChange={setSelectedDates} />
+        <p>אפשר לבחור כמה תאריכים נפרדים (לא בהכרח ברצף) - תיפתח רשומה לכל תאריך שנבחר.</p>
 
         <h4>בחירת עובדים</h4>
 

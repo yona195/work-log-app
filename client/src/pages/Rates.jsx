@@ -9,6 +9,7 @@ import {
 } from "../lib/entities.js";
 import EditRateModal from "../components/EditRateModal.jsx";
 import ActionsLegend from "../components/ActionsLegend.jsx";
+import DatePicker from "../components/DatePicker.jsx";
 
 export default function Rates() {
   const { data, addItem, updateItem, deleteItem } = useData();
@@ -346,11 +347,7 @@ export default function Rates() {
         />
 
         <label>תאריך תחילת התעריף</label>
-        <input
-          type="date"
-          value={effectiveFrom}
-          onChange={(e) => setEffectiveFrom(e.target.value)}
-        />
+        <DatePicker mode="single" value={effectiveFrom} onChange={setEffectiveFrom} />
 
         <button
           className="primary-btn"

@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import ProfitBarChart from "../components/ProfitBarChart.jsx";
 import RevenueCostBarChart from "../components/RevenueCostBarChart.jsx";
+import DatePicker from "../components/DatePicker.jsx";
 import { useData } from "../state/DataProvider.jsx";
 import { formatCurrency } from "../lib/format.js";
 import { getCurrentMonthRange } from "../lib/entities.js";
@@ -71,14 +72,10 @@ export default function Dashboard() {
     applyRange(value, customFrom, customTo);
   };
 
-  const handleCustomFromChange = (value) => {
-    setCustomFrom(value);
-    applyRange("custom", value, customTo);
-  };
-
-  const handleCustomToChange = (value) => {
-    setCustomTo(value);
-    applyRange("custom", customFrom, value);
+  const handleCustomRangeChange = ({ from, to }) => {
+    setCustomFrom(from);
+    setCustomTo(to);
+    applyRange("custom", from, to);
   };
 
   const { totals, workforce, sites, customers } = useMemo(() => {
@@ -112,17 +109,11 @@ export default function Dashboard() {
 
         {period === "custom" && (
           <div>
-            <label>מתאריך</label>
-            <input
-              type="date"
-              value={customFrom}
-              onChange={(e) => handleCustomFromChange(e.target.value)}
-            />
-            <label>עד תאריך</label>
-            <input
-              type="date"
-              value={customTo}
-              onChange={(e) => handleCustomToChange(e.target.value)}
+            <label>טווח תאריכים</label>
+            <DatePicker
+              mode="range"
+              value={{ from: customFrom, to: customTo }}
+              onChange={handleCustomRangeChange}
             />
           </div>
         )}

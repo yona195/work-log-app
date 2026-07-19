@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
 import { useData } from "../state/DataProvider.jsx";
 import { activeOnly, activeEmployees, isEmployeeArchived } from "../lib/entities.js";
+import { normalizeDate } from "../lib/format.js";
+import DatePicker from "./DatePicker.jsx";
 
 export default function EditWorkLogModal({ log, onClose }) {
   const { data, updateItem } = useData();
@@ -9,7 +11,7 @@ export default function EditWorkLogModal({ log, onClose }) {
   const buildings = activeOnly(data.buildings);
   const customers = activeOnly(data.customers);
 
-  const [date, setDate] = useState(log.date);
+  const [date, setDate] = useState(normalizeDate(log.date));
   const [selectedEmployees, setSelectedEmployees] = useState(log.employeeIds || []);
   const [siteId, setSiteId] = useState(log.siteId || "");
   const [selectedBuildings, setSelectedBuildings] = useState(log.buildingIds || []);
@@ -101,7 +103,7 @@ export default function EditWorkLogModal({ log, onClose }) {
         <h3>עריכת רשומת יומן</h3>
 
         <label>תאריך</label>
-        <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+        <DatePicker mode="single" value={date} onChange={setDate} />
 
         <div className="section-title-row">
           <label>עובדים</label>
