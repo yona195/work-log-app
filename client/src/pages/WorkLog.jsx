@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useData } from "../state/DataProvider.jsx";
 import { normalizeDate } from "../lib/format.js";
-import { todayISO, isoRangeInclusive } from "../lib/calendar.js";
+import { isoRangeInclusive } from "../lib/calendar.js";
 import {
   getName,
   getEmployeeNames,
@@ -23,10 +23,10 @@ export default function WorkLog() {
 
   // Multiple independent date ranges (not just one from/to), so the same
   // employees/site/building/customer can be logged for several separate
-  // spans (e.g. two different work weeks) in one submit.
-  const [selectedRanges, setSelectedRanges] = useState([
-    { start: todayISO(), end: todayISO() },
-  ]);
+  // spans (e.g. two different work weeks) in one submit. Starts empty —
+  // pre-selecting today by default meant clicking today again removed it
+  // instead of starting a range from it.
+  const [selectedRanges, setSelectedRanges] = useState([]);
   const [group, setGroup] = useState("");
   const [search, setSearch] = useState("");
   const [selectedEmployees, setSelectedEmployees] = useState([]);
