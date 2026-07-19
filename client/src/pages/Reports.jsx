@@ -4,7 +4,11 @@ import RevenueCostBarChart from "../components/RevenueCostBarChart.jsx";
 import PeriodFilter, { useDateRangeFilter } from "../components/PeriodFilter.jsx";
 import { useData } from "../state/DataProvider.jsx";
 import { formatCurrency } from "../lib/format.js";
-import { getEmployeeAffiliationName, isEmployeeArchived } from "../lib/entities.js";
+import {
+  getEmployeeAffiliationName,
+  isEmployeeArchived,
+  activeOnly,
+} from "../lib/entities.js";
 import {
   calculateFinancialSummary,
   filterReportLogs,
@@ -27,6 +31,7 @@ export default function Reports() {
 
   const dateRange = useDateRangeFilter();
   const [filters, setFilters] = useState(EMPTY_FILTERS);
+  const [showArchived, setShowArchived] = useState(false);
 
   const setFilter = (key, value) =>
     setFilters((prev) => {
@@ -36,8 +41,17 @@ export default function Reports() {
       return next;
     });
 
+  // Archived employees/subcontractors/sites/customers are hidden from these
+  // filter lists by default so they don't clutter the common case; the
+  // "הצג פריטים בארכיון" checkbox brings them back for pulling a report
+  // that includes someone/something no longer active.
+  const visibleSubcontractors = showArchived ? subcontractors : activeOnly(subcontractors);
+  const visibleSites = showArchived ? sites : activeOnly(sites);
+  const visibleCustomers = showArchived ? customers : activeOnly(customers);
+
   const employeeOptions = useMemo(() => {
     return employees.filter((employee) => {
+      if (!showArchived && isEmployeeArchived(employee, subcontractors)) return false;
       const isInternal = employee.type === "internal";
       const isSub = employee.type === "subcontractor" || employee.type === "external";
       let matchesGroup = true;
@@ -48,7 +62,7 @@ export default function Reports() {
         String(employee.subcontractorId || "") === String(filters.subcontractorId);
       return matchesGroup && matchesSub;
     });
-  }, [employees, filters.group, filters.subcontractorId]);
+  }, [employees, subcontractors, filters.group, filters.subcontractorId, showArchived]);
 
   const effectiveFilters = useMemo(
     () => ({ ...filters, from: dateRange.from, to: dateRange.to }),
@@ -102,6 +116,15 @@ export default function Reports() {
           onCustomToChange={dateRange.setCustomTo}
         />
 
+        <label className="checkbox-item" style={{ display: "inline-flex", marginTop: 8 }}>
+          <input
+            type="checkbox"
+            checked={showArchived}
+            onChange={(e) => setShowArchived(e.target.checked)}
+          />
+          <span>הצג פריטים בארכיון ברשימות הסינון</span>
+        </label>
+
         <label>שיוך עובדים</label>
         <select
           value={filters.group}
@@ -119,7 +142,7 @@ export default function Reports() {
           onChange={(e) => setFilter("subcontractorId", e.target.value)}
         >
           <option value="">כל קבלני המשנה</option>
-          {subcontractors.map((s) => (
+          {visibleSubcontractors.map((s) => (
             <option key={s.id} value={s.id}>
               {s.name}
               {s.archived ? " (בארכיון)" : ""}
@@ -147,7 +170,7 @@ export default function Reports() {
           onChange={(e) => setFilter("siteId", e.target.value)}
         >
           <option value="">כל האתרים</option>
-          {sites.map((site) => (
+          {visibleSites.map((site) => (
             <option key={site.id} value={site.id}>
               {site.name}
               {site.archived ? " (בארכיון)" : ""}
@@ -161,7 +184,7 @@ export default function Reports() {
           onChange={(e) => setFilter("customerId", e.target.value)}
         >
           <option value="">כל המזמינים</option>
-          {customers.map((customer) => (
+          {visibleCustomers.map((customer) => (
             <option key={customer.id} value={customer.id}>
               {customer.name}
               {customer.archived ? " (בארכיון)" : ""}

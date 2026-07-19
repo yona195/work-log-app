@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useData } from "../state/DataProvider.jsx";
-import { getEmployeeAffiliationName, isEmployeeArchived } from "../lib/entities.js";
+import {
+  getEmployeeAffiliationName,
+  isEmployeeArchived,
+} from "../lib/entities.js";
 import { filterReportLogs } from "../lib/reports.js";
 import { createEmployeeWorkPDF, createEmployeeSummaryPDF } from "../lib/pdf.js";
 import { exportEmployeeWorkExcel, exportEmployeeSummaryExcel } from "../lib/excel.js";
@@ -15,6 +18,7 @@ export default function EmployeeReports() {
 
   const dateRange = useDateRangeFilter();
   const [group, setGroup] = useState("");
+  const [showArchived, setShowArchived] = useState(false);
 
   // Starts empty on purpose — nothing is pre-checked; the user picks what
   // they want. An empty array means "match nothing" (no report yet) until
@@ -35,8 +39,10 @@ export default function EmployeeReports() {
         .filter((e) => e.type !== "internal")
         .map((e) => String(e.subcontractorId || ""))
     );
-    return subcontractors.filter((s) => idsWithEmployees.has(String(s.id)));
-  }, [subcontractors, employees, group]);
+    return subcontractors.filter(
+      (s) => idsWithEmployees.has(String(s.id)) && (showArchived || !s.archived)
+    );
+  }, [subcontractors, employees, group, showArchived]);
 
   const toggleSubcontractor = (id) => {
     setSelectedSubcontractorIds(toggle(selectedSubcontractorIds, id));
@@ -44,6 +50,7 @@ export default function EmployeeReports() {
 
   const employeeOptions = useMemo(() => {
     return employees.filter((employee) => {
+      if (!showArchived && isEmployeeArchived(employee, subcontractors)) return false;
       const isInternal = employee.type === "internal";
       const isSub = employee.type === "subcontractor" || employee.type === "external";
       if (group === "internal") return isInternal;
@@ -55,7 +62,7 @@ export default function EmployeeReports() {
       }
       return true;
     });
-  }, [employees, group, selectedSubcontractorIds]);
+  }, [employees, subcontractors, group, selectedSubcontractorIds, showArchived]);
 
   // A subcontractor selection change can make the previous employee
   // selection stale (ids no longer in employeeOptions) — start over empty.
@@ -110,6 +117,15 @@ export default function EmployeeReports() {
           onCustomFromChange={dateRange.setCustomFrom}
           onCustomToChange={dateRange.setCustomTo}
         />
+
+        <label className="checkbox-item" style={{ display: "inline-flex", marginTop: 8 }}>
+          <input
+            type="checkbox"
+            checked={showArchived}
+            onChange={(e) => setShowArchived(e.target.checked)}
+          />
+          <span>הצג פריטים בארכיון ברשימות הסינון</span>
+        </label>
 
         <label>סוג עובדים</label>
         <select value={group} onChange={(e) => handleGroupChange(e.target.value)}>
