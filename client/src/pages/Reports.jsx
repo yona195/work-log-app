@@ -9,7 +9,7 @@ import {
 import { filterReportLogs, getReportEmployees } from "../lib/reports.js";
 import { buildWorkLogReportHtml, buildEmployerReportHtml } from "../lib/pdf.js";
 import { exportToExcel, exportFinancialSummaryToExcel } from "../lib/excel.js";
-import { exportPdfInNewTab } from "../lib/pdfExport.js";
+import { exportPdfDirect } from "../lib/pdfExport.js";
 
 const EMPTY_FILTERS = {
   group: "",
@@ -77,8 +77,10 @@ export default function Reports() {
   const reportEmployeesFor = (log) => getReportEmployees(data, log, effectiveFilters);
 
   const handlePDF = () =>
-    exportPdfInNewTab({
+    exportPdfDirect({
       hasData: filteredLogs.length > 0,
+      logs: filteredLogs,
+      filenamePrefix: "יומן_עבודה",
       buildHtml: () =>
         buildWorkLogReportHtml(data, filteredLogs, reportEmployeesFor, { autoPrint: false }),
       onLoadingChange: setPdfLoading,
@@ -87,8 +89,10 @@ export default function Reports() {
   const handleExcel = () => exportToExcel(data, filteredLogs, reportEmployeesFor);
 
   const handleEmployerPDF = () =>
-    exportPdfInNewTab({
+    exportPdfDirect({
       hasData: filteredLogs.length > 0,
+      logs: filteredLogs,
+      filenamePrefix: "דוח_מעסיק",
       buildHtml: () =>
         buildEmployerReportHtml(data, filteredLogs, effectiveFilters, { autoPrint: false }),
       onLoadingChange: setPdfLoading,
@@ -280,7 +284,7 @@ export default function Reports() {
             <span className="material-symbols-rounded" aria-hidden="true">
               picture_as_pdf
             </span>
-            {pdfLoading ? "מכין..." : "ייצוא PDF"}
+            {pdfLoading ? "מכין את הקובץ..." : "ייצוא PDF"}
           </button>
           <button
             className="excel-btn"

@@ -1,25 +1,34 @@
 import puppeteer from "puppeteer";
 
-// Renders an already-built HTML report string into a real PDF buffer via
-// headless Chrome — shared by the monthly employer-report email and the
-// on-demand "ייצוא PDF" preview endpoint, so both produce byte-identical
-// output for the same HTML.
-export async function buildPdfBuffer(html) {
-  const browser = await puppeteer.launch({
+// Launching a fresh Chromium process per request was the dominant cost of
+// PDF export on Render (~14s cold-launch vs ~0.5-1s once warm) — the
+// browser process itself is now launched once and reused; each request
+// still gets its own page (closed when done) so requests stay isolated.
+let browserPromise = null;
+
+async function getBrowser() {
+  if (browserPromise) {
+    const browser = await browserPromise;
+    if (browser.connected) return browser;
+    browserPromise = null; // died since last use — relaunch below
+  }
+
+  browserPromise = puppeteer.launch({
     headless: true,
     args: ["--no-sandbox", "--disable-setuid-sandbox"],
   });
+  // A failed launch shouldn't be cached forever — let the next call retry.
+  browserPromise.catch(() => {
+    browserPromise = null;
+  });
+
+  return browserPromise;
+}
+
+export async function buildPdfBuffer(html) {
+  const browser = await getBrowser();
+  const page = await browser.newPage();
   try {
-    const page = await browser.newPage();
-    // The report HTML is fully self-contained (inline <style>, no external
-    // images/fonts/scripts), so there's nothing for the network to ever go
-    // idle from — "networkidle0" is a condition that can hang indefinitely
-    // with setContent() in constrained/sandboxed environments and was the
-    // actual cause of the reported "Navigation timeout of 30000 ms
-    // exceeded" failures. "domcontentloaded" fires as soon as the DOM
-    // (including inline styles) finishes parsing, which is all page.pdf()
-    // needs here, and resolves immediately instead of waiting on a network
-    // condition that never applies.
     await page.setContent(html, { waitUntil: "domcontentloaded" });
     return await page.pdf({
       format: "A4",
@@ -27,6 +36,21 @@ export async function buildPdfBuffer(html) {
       printBackground: true,
     });
   } finally {
+    await page.close();
+  }
+}
+
+// Best-effort cleanup for graceful shutdown (SIGTERM/SIGINT) — not required
+// for correctness (the OS reclaims the process either way), just avoids
+// leaving a headless Chromium process behind during a deploy/restart.
+export async function closeBrowser() {
+  if (!browserPromise) return;
+  try {
+    const browser = await browserPromise;
     await browser.close();
+  } catch {
+    // Already gone — nothing to do.
+  } finally {
+    browserPromise = null;
   }
 }

@@ -8,8 +8,7 @@ import { filterReportLogs } from "../lib/reports.js";
 import { buildEmployeeReportHtml } from "../lib/pdf.js";
 import { exportEmployeeWorkExcel, exportEmployeeSummaryExcel } from "../lib/excel.js";
 import PeriodFilter, { useDateRangeFilter } from "../components/PeriodFilter.jsx";
-import Dropdown from "../components/Dropdown.jsx";
-import { exportPdfInNewTab, NO_DATA_MESSAGE } from "../lib/pdfExport.js";
+import { exportPdfDirect, NO_DATA_MESSAGE } from "../lib/pdfExport.js";
 
 const toggle = (list, id) =>
   list.includes(id) ? list.filter((x) => x !== id) : [...list, id];
@@ -23,6 +22,7 @@ export default function EmployeeReports() {
   const [group, setGroup] = useState("");
   const [showArchived, setShowArchived] = useState(false);
   const [employeeSearch, setEmployeeSearch] = useState("");
+  const [contractorSearch, setContractorSearch] = useState("");
   const [pdfLoading, setPdfLoading] = useState(false);
 
   // Starts empty on purpose — nothing is pre-checked; the user picks what
@@ -44,10 +44,14 @@ export default function EmployeeReports() {
         .filter((e) => e.type !== "internal")
         .map((e) => String(e.subcontractorId || ""))
     );
+    const text = contractorSearch.trim().toLowerCase();
     return subcontractors.filter(
-      (s) => idsWithEmployees.has(String(s.id)) && (showArchived || !s.archived)
+      (s) =>
+        idsWithEmployees.has(String(s.id)) &&
+        (showArchived || !s.archived) &&
+        (!text || s.name.toLowerCase().includes(text))
     );
-  }, [subcontractors, employees, group, showArchived]);
+  }, [subcontractors, employees, group, showArchived, contractorSearch]);
 
   const toggleSubcontractor = (id) => {
     setSelectedSubcontractorIds(toggle(selectedSubcontractorIds, id));
@@ -108,9 +112,11 @@ export default function EmployeeReports() {
   const handleWorkExcel = requireLogs(exportEmployeeWorkExcel);
   const handleSummaryExcel = requireLogs(exportEmployeeSummaryExcel);
 
-  const openEmployeePdfPreview = (includeFinance) =>
-    exportPdfInNewTab({
+  const exportEmployeePdf = (includeFinance, filenamePrefix) =>
+    exportPdfDirect({
       hasData: filteredLogs.length > 0,
+      logs: filteredLogs,
+      filenamePrefix,
       buildHtml: () =>
         buildEmployeeReportHtml(data, filteredLogs, filters, {
           includeFinance,
@@ -119,8 +125,8 @@ export default function EmployeeReports() {
       onLoadingChange: setPdfLoading,
     });
 
-  const handleWorkPDF = () => openEmployeePdfPreview(false);
-  const handleSummaryPDF = () => openEmployeePdfPreview(true);
+  const handleWorkPDF = () => exportEmployeePdf(false, "דוח_עובדים");
+  const handleSummaryPDF = () => exportEmployeePdf(true, "דוח_עובדים_סיכום");
 
   // Mandatory fields: a complete period, and at least one employee selected
   // (selection starts empty by design, so "nothing checked" must block
@@ -131,19 +137,33 @@ export default function EmployeeReports() {
   const canExport = periodValid && employeesValid;
   const showContractorField = group === "all-subcontractors";
 
-  // Resolved against the full employee list (not employeeOptions, which is
-  // narrowed by the current search text) so the closed-dropdown summary
-  // still shows correct names for selections a search happens to be hiding.
-  const employeeSummary = useMemo(() => {
-    if (selectedEmployeeIds.length === 0) return "בחר עובדים";
-    if (selectedEmployeeIds.length <= 2) {
-      return selectedEmployeeIds
-        .map((id) => employees.find((e) => String(e.id) === String(id))?.name)
-        .filter(Boolean)
-        .join(", ");
-    }
-    return `נבחרו ${selectedEmployeeIds.length} עובדים`;
-  }, [selectedEmployeeIds, employees]);
+  const employeePanelItems = employeeOptions.map((employee) => ({
+    id: employee.id,
+    label: `${employee.name} - ${getEmployeeAffiliationName(data, employee)}${
+      isEmployeeArchived(employee, subcontractors) ? " (בארכיון)" : ""
+    }`,
+  }));
+
+  const selectAllEmployees = () =>
+    setSelectedEmployeeIds((prev) => [
+      ...new Set([...prev, ...employeeOptions.map((e) => e.id)]),
+    ]);
+
+  const employeePanel = (
+    <SelectionPanel
+      title="בחירת עובדים"
+      required
+      search={employeeSearch}
+      onSearchChange={setEmployeeSearch}
+      searchPlaceholder="🔍 חפש עובד..."
+      items={employeePanelItems}
+      selectedIds={selectedEmployeeIds}
+      onToggle={toggleEmployee}
+      onSelectAll={selectAllEmployees}
+      onClearAll={() => setSelectedEmployeeIds([])}
+      emptyMessage="אין עובדים תואמים"
+    />
+  );
 
   return (
     <div className="card">
@@ -192,108 +212,53 @@ export default function EmployeeReports() {
             </div>
           </div>
         </div>
-
-        {showContractorField && (
-          <div style={{ marginTop: 14 }}>
-            <div className="section-title-row">
-              <label>קבלן משנה</label>
-              <div className="employee-actions">
-                <button
-                  type="button"
-                  className="secondary-btn"
-                  onClick={() =>
-                    setSelectedSubcontractorIds(relevantSubcontractors.map((s) => s.id))
-                  }
-                >
-                  בחר הכל
-                </button>
-                <button
-                  type="button"
-                  className="secondary-btn"
-                  onClick={() => setSelectedSubcontractorIds([])}
-                >
-                  נקה הכל
-                </button>
-              </div>
-            </div>
-
-            <div className="checkbox-list">
-              {relevantSubcontractors.length === 0 ? (
-                <div className="empty-message">אין קבלני משנה עם עובדים</div>
-              ) : (
-                relevantSubcontractors.map((subcontractor) => (
-                  <label className="checkbox-item" key={subcontractor.id}>
-                    <input
-                      type="checkbox"
-                      checked={selectedSubcontractorIds.includes(subcontractor.id)}
-                      onChange={() => toggleSubcontractor(subcontractor.id)}
-                    />
-                    <span>
-                      {subcontractor.name}
-                      {subcontractor.archived ? " (בארכיון)" : ""}
-                    </span>
-                  </label>
-                ))
-              )}
-            </div>
-          </div>
-        )}
       </div>
 
       <div className="form-section">
         <h4 className="form-section-title">בחירת עובדים</h4>
 
-        <label>
-          עובדים
-          <span className="required-mark"> *</span>
-        </label>
-        <Dropdown label={employeeSummary}>
-          <input
-            type="text"
-            placeholder="🔍 חפש עובד..."
-            value={employeeSearch}
-            onChange={(e) => setEmployeeSearch(e.target.value)}
-          />
-          <div className="employee-actions">
-            <button
-              type="button"
-              className="secondary-btn"
-              onClick={() =>
-                setSelectedEmployeeIds((prev) => [
-                  ...new Set([...prev, ...employeeOptions.map((e) => e.id)]),
-                ])
-              }
-            >
-              בחר הכל
-            </button>
-            <button
-              type="button"
-              className="secondary-btn"
-              onClick={() => setSelectedEmployeeIds([])}
-            >
-              נקה הכל
-            </button>
+        {showContractorField ? (
+          <div className="filter-grid filter-grid-2">
+            <div className="filter-grid-item">
+              <SelectionPanel
+                title="בחירת קבלן"
+                search={contractorSearch}
+                onSearchChange={setContractorSearch}
+                searchPlaceholder="🔍 חפש קבלן..."
+                items={relevantSubcontractors.map((s) => ({
+                  id: s.id,
+                  label: `${s.name}${s.archived ? " (בארכיון)" : ""}`,
+                }))}
+                selectedIds={selectedSubcontractorIds}
+                onToggle={toggleSubcontractor}
+                onSelectAll={() =>
+                  setSelectedSubcontractorIds((prev) => [
+                    ...new Set([...prev, ...relevantSubcontractors.map((s) => s.id)]),
+                  ])
+                }
+                onClearAll={() => setSelectedSubcontractorIds([])}
+                emptyMessage="אין קבלני משנה עם עובדים"
+              />
+            </div>
+
+            <div className="filter-grid-item">
+              {selectedSubcontractorIds.length === 0 ? (
+                <>
+                  <label>
+                    בחירת עובדים
+                    <span className="required-mark"> *</span>
+                  </label>
+                  <div className="empty-message">יש לבחור קבלן תחילה</div>
+                </>
+              ) : (
+                employeePanel
+              )}
+            </div>
           </div>
-          <div className="checkbox-list">
-            {employeeOptions.length === 0 ? (
-              <div className="empty-message">אין עובדים תואמים</div>
-            ) : (
-              employeeOptions.map((employee) => (
-                <label className="checkbox-item" key={employee.id}>
-                  <input
-                    type="checkbox"
-                    checked={selectedEmployeeIds.includes(employee.id)}
-                    onChange={() => toggleEmployee(employee.id)}
-                  />
-                  <span>
-                    {employee.name} - {getEmployeeAffiliationName(data, employee)}
-                    {isEmployeeArchived(employee, subcontractors) ? " (בארכיון)" : ""}
-                  </span>
-                </label>
-              ))
-            )}
-          </div>
-        </Dropdown>
+        ) : (
+          employeePanel
+        )}
+
         {!employeesValid && <p className="field-error">יש לבחור לפחות עובד אחד</p>}
 
         <p id="employeeCountText">סה״כ עובדים שנבחרו: {selectedEmployeeIds.length}</p>
@@ -341,7 +306,7 @@ export default function EmployeeReports() {
             <span className="material-symbols-rounded" aria-hidden="true">
               picture_as_pdf
             </span>
-            {pdfLoading ? "מכין..." : "ייצוא PDF"}
+            {pdfLoading ? "מכין את הקובץ..." : "ייצוא PDF"}
           </button>
           <button
             className="excel-btn"
@@ -355,6 +320,63 @@ export default function EmployeeReports() {
             ייצוא אקסל
           </button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// Shared shell for the always-visible קבלן/עובדים selection lists: a
+// labeled search box, a scrollable checkbox list, and select-all/clear-all
+// directly below it — used both side-by-side (עובדי קבלן) and full width
+// (כל העובדים / העובדים שלי).
+function SelectionPanel({
+  title,
+  required = false,
+  search,
+  onSearchChange,
+  searchPlaceholder,
+  items,
+  selectedIds,
+  onToggle,
+  onSelectAll,
+  onClearAll,
+  emptyMessage,
+}) {
+  return (
+    <div>
+      <label>
+        {title}
+        {required && <span className="required-mark"> *</span>}
+      </label>
+      <input
+        type="text"
+        placeholder={searchPlaceholder}
+        value={search}
+        onChange={(e) => onSearchChange(e.target.value)}
+      />
+      <div className="checkbox-list">
+        {items.length === 0 ? (
+          <div className="empty-message">{emptyMessage}</div>
+        ) : (
+          items.map((item) => (
+            <label className="checkbox-item" key={item.id}>
+              <input
+                type="checkbox"
+                checked={selectedIds.includes(item.id)}
+                onChange={() => onToggle(item.id)}
+              />
+              <span>{item.label}</span>
+            </label>
+          ))
+        )}
+      </div>
+      <div className="employee-actions">
+        <button type="button" className="secondary-btn" onClick={onSelectAll}>
+          בחר הכל
+        </button>
+        <button type="button" className="secondary-btn" onClick={onClearAll}>
+          נקה הכל
+        </button>
       </div>
     </div>
   );

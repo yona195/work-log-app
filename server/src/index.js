@@ -17,6 +17,7 @@ import authRouter from "./routes/auth.js";
 import cronRouter from "./routes/cron.js";
 import dataRouter from "./routes/data.js";
 import pdfRouter from "./routes/pdf.js";
+import { closeBrowser } from "./lib/pdfRenderer.js";
 
 const app = express();
 
@@ -54,6 +55,15 @@ app.use((err, req, res, next) => {
 });
 
 const PORT = Number(process.env.PORT) || 4000;
+
+// Releases the shared headless-Chromium process (see pdfRenderer.js) on a
+// deploy/restart instead of leaving it to the OS.
+["SIGTERM", "SIGINT"].forEach((signal) => {
+  process.on(signal, async () => {
+    await closeBrowser();
+    process.exit(0);
+  });
+});
 
 initDb()
   .then(() => {
