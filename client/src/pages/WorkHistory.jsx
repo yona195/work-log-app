@@ -14,6 +14,11 @@ const EMPTY_FILTERS = {
   customerId: "",
 };
 
+const PAGE_SIZE = 20;
+// Cycled per split log entry (not per row) so two adjacent split groups
+// never land on the same color and blend together.
+const SPLIT_COLOR_COUNT = 4;
+
 // Splits a log's employees into one group per affiliation (internal /
 // each subcontractor) so a row never mixes employees from different
 // contractors — makes it obvious at a glance who worked for whom.
@@ -40,6 +45,7 @@ export default function WorkHistory() {
   const dateRange = useDateRangeFilter();
   const [filters, setFilters] = useState(EMPTY_FILTERS);
   const [editingLog, setEditingLog] = useState(null);
+  const [pageByMonth, setPageByMonth] = useState({});
 
   const setFilter = (key, value) =>
     setFilters((prev) => {
@@ -73,8 +79,6 @@ export default function WorkHistory() {
     [data, effectiveFilters]
   );
 
-  const reportEmployeesFor = (log) => getReportEmployees(data, log, effectiveFilters);
-
   // groupLogsByMonth (shared with the PDF/Excel exports, which want
   // chronological order) returns oldest-first — reverse both the months
   // and the days within each month here so the page itself reads
@@ -86,6 +90,37 @@ export default function WorkHistory() {
       logs: [...group.logs].reverse(),
     }));
   }, [filteredLogs]);
+
+  // Pre-splits every log into its affiliation-group rows and assigns each
+  // split entry a cycling color class, so rendering below is just a plain
+  // slice-and-map (needed for pagination) without recomputing any of this.
+  const monthSections = useMemo(() => {
+    let splitLogCounter = -1;
+    return monthGroups.map((group) => ({
+      key: group.key,
+      label: group.label,
+      rows: group.logs.flatMap((log) => {
+        const reportEmployees = getReportEmployees(data, log, effectiveFilters);
+        const affiliationGroups = groupEmployeesByAffiliation(data, reportEmployees);
+        const isSplit = affiliationGroups.length > 1;
+        if (isSplit) splitLogCounter += 1;
+        const colorClass = isSplit
+          ? `history-split-row-${splitLogCounter % SPLIT_COLOR_COUNT}`
+          : undefined;
+        return affiliationGroups.map((affiliationGroup, index) => ({
+          rowKey: `${log.id}-${index}`,
+          log,
+          totalEmployeeCount: reportEmployees.length,
+          affiliationGroup,
+          colorClass,
+        }));
+      }),
+    }));
+  }, [monthGroups, data, effectiveFilters]);
+
+  const getPage = (monthKey) => pageByMonth[monthKey] || 1;
+  const setPage = (monthKey, page) =>
+    setPageByMonth((prev) => ({ ...prev, [monthKey]: page }));
 
   return (
     <>
@@ -175,52 +210,45 @@ export default function WorkHistory() {
         {filteredLogs.length === 0 ? (
           <p>אין רשומות מתאימות.</p>
         ) : (
-          monthGroups.map((group) => (
-            <div key={group.key} style={{ marginTop: 20 }}>
-              <h3>{group.label}</h3>
-              <table>
-                <thead>
-                  <tr>
-                    <th>תאריך</th>
-                    <th>עובדים</th>
-                    <th>קבלן</th>
-                    <th>סה״כ עובדים</th>
-                    <th>אתר</th>
-                    <th>מבנה</th>
-                    <th>מזמין</th>
-                    <th>הערות</th>
-                    <th className="actions-column">פעולות</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {group.logs.flatMap((log) => {
-                    const reportEmployees = reportEmployeesFor(log);
-                    const affiliationGroups = groupEmployeesByAffiliation(
-                      data,
-                      reportEmployees
-                    );
-                    // Every split row still edits/deletes the whole log entry
-                    // (all affiliations together) — there's only one
-                    // underlying record, just displayed as several rows. The
-                    // accent bar marks them as belonging to the same entry
-                    // when a log actually got split into more than one row.
-                    const isSplit = affiliationGroups.length > 1;
-                    return affiliationGroups.map((affiliationGroup, index) => (
-                      <tr key={`${log.id}-${index}`} className={isSplit ? "history-split-row" : undefined}>
-                        <td dir="ltr">{formatExcelDate(log.date)}</td>
-                        <td>{affiliationGroup.employees.map((e) => e.name).join(", ")}</td>
-                        <td>{affiliationGroup.label}</td>
-                        <td>{affiliationGroup.employees.length}</td>
-                        <td>{getName(sites, log.siteId)}</td>
-                        <td>{getBuildingNames(data, log)}</td>
-                        <td>{getName(customers, log.customerId)}</td>
-                        <td>{log.notes || ""}</td>
+          monthSections.map((section) => {
+            const totalPages = Math.max(1, Math.ceil(section.rows.length / PAGE_SIZE));
+            const page = Math.min(getPage(section.key), totalPages);
+            const pageRows = section.rows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+            return (
+              <div key={section.key} style={{ marginTop: 20 }}>
+                <h3>{section.label}</h3>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>תאריך</th>
+                      <th>עובדים</th>
+                      <th>קבלן</th>
+                      <th>סה״כ עובדים</th>
+                      <th>אתר</th>
+                      <th>מבנה</th>
+                      <th>מזמין</th>
+                      <th>הערות</th>
+                      <th className="actions-column">פעולות</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pageRows.map((row) => (
+                      <tr key={row.rowKey} className={row.colorClass}>
+                        <td dir="ltr">{formatExcelDate(row.log.date)}</td>
+                        <td>{row.affiliationGroup.employees.map((e) => e.name).join(", ")}</td>
+                        <td>{row.affiliationGroup.label}</td>
+                        <td>{row.affiliationGroup.employees.length}</td>
+                        <td>{getName(sites, row.log.siteId)}</td>
+                        <td>{getBuildingNames(data, row.log)}</td>
+                        <td>{getName(customers, row.log.customerId)}</td>
+                        <td>{row.log.notes || ""}</td>
                         <td>
                           <div className="report-row-actions">
                             <button
                               className="edit-btn"
                               type="button"
-                              onClick={() => setEditingLog(log)}
+                              onClick={() => setEditingLog(row.log)}
                             >
                               ערוך
                             </button>
@@ -230,10 +258,10 @@ export default function WorkHistory() {
                               onClick={() => {
                                 if (
                                   confirm(
-                                    `למחוק את הרשומה כולה (${reportEmployees.length} עובדים מכל הקבלנים)?`
+                                    `למחוק את הרשומה כולה (${row.totalEmployeeCount} עובדים מכל הקבלנים)?`
                                   )
                                 ) {
-                                  deleteItem("workLogs", log.id);
+                                  deleteItem("workLogs", row.log.id);
                                 }
                               }}
                             >
@@ -242,12 +270,30 @@ export default function WorkHistory() {
                           </div>
                         </td>
                       </tr>
-                    ));
-                  })}
-                </tbody>
-              </table>
-            </div>
-          ))
+                    ))}
+                  </tbody>
+                </table>
+
+                {totalPages > 1 && (
+                  <div className="pagination">
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNumber) => (
+                      <button
+                        key={pageNumber}
+                        type="button"
+                        className={
+                          pageNumber === page ? "pagination-btn active" : "pagination-btn"
+                        }
+                        onClick={() => setPage(section.key, pageNumber)}
+                      >
+                        {(pageNumber - 1) * PAGE_SIZE + 1}-
+                        {Math.min(pageNumber * PAGE_SIZE, section.rows.length)}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })
         )}
       </div>
 
