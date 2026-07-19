@@ -19,7 +19,6 @@ export default function WorkLog() {
   const pickableCustomers = activeOnly(customers);
 
   const [date, setDate] = useState(todayISO());
-  const [isRange, setIsRange] = useState(false);
   const [endDate, setEndDate] = useState(todayISO());
   const [group, setGroup] = useState("");
   const [search, setSearch] = useState("");
@@ -74,6 +73,11 @@ export default function WorkLog() {
     return dates;
   };
 
+  const changeStartDate = (value) => {
+    setDate(value);
+    setEndDate((prev) => (prev < value ? value : prev));
+  };
+
   const changeSite = (value) => {
     setSiteId(value);
     setSelectedBuildings([]);
@@ -91,6 +95,7 @@ export default function WorkLog() {
   const add = async () => {
     if (
       !date ||
+      !endDate ||
       selectedEmployees.length === 0 ||
       !siteId ||
       selectedBuildings.length === 0 ||
@@ -99,19 +104,12 @@ export default function WorkLog() {
       alert("נא למלא תאריך, עובד, אתר, מבנה ומזמין");
       return;
     }
-
-    let dates = [date];
-    if (isRange) {
-      if (!endDate) {
-        alert("נא לבחור תאריך סיום לטווח");
-        return;
-      }
-      if (endDate < date) {
-        alert("תאריך הסיום חייב להיות זהה או אחרי תאריך ההתחלה");
-        return;
-      }
-      dates = datesInRange(date, endDate);
+    if (endDate < date) {
+      alert("תאריך הסיום חייב להיות זהה או אחרי תאריך ההתחלה");
+      return;
     }
+
+    const dates = datesInRange(date, endDate);
 
     for (const logDate of dates) {
       // eslint-disable-next-line no-await-in-loop
@@ -151,32 +149,21 @@ export default function WorkLog() {
       <div className="card">
         <h3>הוספת רשומת עבודה</h3>
 
-        <label>{isRange ? "מתאריך" : "תאריך"}</label>
-        <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+        <label>מתאריך</label>
+        <input
+          type="date"
+          value={date}
+          onChange={(e) => changeStartDate(e.target.value)}
+        />
 
-        <label className="checkbox-item" style={{ display: "inline-flex", marginTop: 8 }}>
-          <input
-            type="checkbox"
-            checked={isRange}
-            onChange={(e) => {
-              setIsRange(e.target.checked);
-              if (e.target.checked) setEndDate(date);
-            }}
-          />
-          <span>טווח תאריכים (מספר ימים ברצף)</span>
-        </label>
-
-        {isRange && (
-          <>
-            <label>עד תאריך</label>
-            <input
-              type="date"
-              value={endDate}
-              min={date}
-              onChange={(e) => setEndDate(e.target.value)}
-            />
-          </>
-        )}
+        <label>עד תאריך</label>
+        <input
+          type="date"
+          value={endDate}
+          min={date}
+          onChange={(e) => setEndDate(e.target.value)}
+        />
+        <p>לרשומה של יום בודד, השאירו את שני התאריכים זהים.</p>
 
         <h4>בחירת עובדים</h4>
 
