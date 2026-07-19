@@ -59,6 +59,14 @@ export default function WorkLog() {
     setBuildingSearch("");
   };
 
+  const sortedWorkLogs = useMemo(
+    () =>
+      [...workLogs].sort((a, b) =>
+        normalizeDate(b.date).localeCompare(normalizeDate(a.date))
+      ),
+    [workLogs]
+  );
+
   const add = async () => {
     if (
       !date ||
@@ -282,7 +290,7 @@ export default function WorkLog() {
               </tr>
             </thead>
             <tbody>
-              {workLogs.map((log) => (
+              {sortedWorkLogs.map((log) => (
                 <tr key={log.id}>
                   <td>{normalizeDate(log.date)}</td>
                   <td>{getEmployeeNames(data, log)}</td>
