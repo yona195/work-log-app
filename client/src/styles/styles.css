@@ -2123,15 +2123,6 @@ body.loading .menu-overlay {
     font-weight: 500;
 }
 
-.worklog-summary-card {
-    padding: 14px 16px;
-    margin-bottom: 16px;
-
-    background: var(--color-primary-soft);
-    border: 1px solid rgba(37, 99, 235, 0.16);
-    border-radius: var(--radius-medium);
-}
-
 .worklog-summary-row {
     display: flex;
     align-items: baseline;
@@ -2158,6 +2149,159 @@ body.loading .menu-overlay {
     font-size: 15px;
     font-weight: 700;
     text-align: center;
+}
+
+/* סיכום והוספה - שני פאנלים (סיכום רחב מימין, הערות צר משמאל) */
+
+.worklog-final-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
+
+    margin-bottom: 16px;
+}
+
+@media (min-width: 641px) {
+    .worklog-final-grid {
+        grid-template-columns: 2fr 1fr;
+        align-items: stretch;
+    }
+}
+
+.worklog-summary-panel,
+.worklog-notes-panel {
+    display: flex;
+    flex-direction: column;
+
+    padding: 16px;
+    border-radius: var(--radius-medium);
+}
+
+.worklog-summary-panel {
+    background: var(--color-primary-soft);
+    border: 1px solid rgba(37, 99, 235, 0.16);
+}
+
+.worklog-summary-panel h5 {
+    margin-bottom: 12px;
+
+    color: var(--color-text);
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.worklog-stat-cards {
+    display: flex;
+    gap: 12px;
+
+    margin-bottom: 14px;
+}
+
+.worklog-stat-card {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+
+    padding: 12px;
+
+    background: var(--color-surface);
+    border: 1px solid rgba(37, 99, 235, 0.16);
+    border-radius: var(--radius-small);
+
+    text-align: center;
+}
+
+.worklog-stat-value {
+    color: var(--color-primary-hover);
+    font-size: 22px;
+    font-weight: 700;
+}
+
+.worklog-stat-label {
+    color: var(--color-muted);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.worklog-notes-panel {
+    background: #f9fafb;
+    border: 1px solid var(--color-border);
+}
+
+.worklog-notes-panel label {
+    margin-top: 0;
+}
+
+.worklog-notes-panel textarea {
+    flex: 1;
+    margin-bottom: 0;
+}
+
+.worklog-compact-textarea {
+    min-height: 90px;
+}
+
+/* בחירת כוח אדם - פאנלים בגובה שווה, ושורת "עובד נבחר" בפאנל הבחירה */
+
+.worklog-workforce-grid .filter-grid-item {
+    display: flex;
+}
+
+.worklog-workforce-grid .filter-grid-item > div {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
+.worklog-workforce-grid .checkbox-list {
+    flex: 1;
+}
+
+.selected-item-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+
+    min-height: 44px;
+    padding: 10px 12px;
+    margin-bottom: 6px;
+
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-small);
+
+    font-size: 14px;
+}
+
+.selected-item-row:last-child {
+    margin-bottom: 0;
+}
+
+.selected-item-remove {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+
+    width: 24px;
+    height: 24px;
+    padding: 0;
+
+    background: #fef2f2;
+    color: var(--color-danger);
+    border: 1px solid #fecaca;
+    border-radius: 50%;
+
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.selected-item-remove:hover {
+    background: #fee2e2;
 }
 
 .worklog-recent-cards {

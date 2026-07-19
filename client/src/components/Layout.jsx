@@ -11,9 +11,13 @@ export default function Layout({ children }) {
   const current = NAV_ITEMS.find((item) => item.path === location.pathname);
   const title = current ? current.title : "יומן עבודה";
 
-  // Close the mobile menu on route change and on Escape.
+  // Close the mobile menu and reset scroll on route change — React Router
+  // doesn't do this on its own (unlike a full page navigation), so without
+  // it a page opened via a link/navigate() keeps whatever scroll offset the
+  // previous page was left at instead of opening at the top.
   useEffect(() => {
     setMenuOpen(false);
+    window.scrollTo(0, 0);
   }, [location.pathname]);
 
   useEffect(() => {
