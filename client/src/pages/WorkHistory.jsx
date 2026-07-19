@@ -14,6 +14,25 @@ const EMPTY_FILTERS = {
   customerId: "",
 };
 
+// Splits a log's employees into one group per affiliation (internal /
+// each subcontractor) so a row never mixes employees from different
+// contractors — makes it obvious at a glance who worked for whom.
+function groupEmployeesByAffiliation(data, reportEmployees) {
+  const groups = new Map();
+  reportEmployees.forEach((employee) => {
+    const key =
+      employee.type === "internal" ? "internal" : String(employee.subcontractorId || "");
+    if (!groups.has(key)) {
+      groups.set(key, {
+        label: getEmployeeAffiliationName(data, employee),
+        employees: [],
+      });
+    }
+    groups.get(key).employees.push(employee);
+  });
+  return Array.from(groups.values());
+}
+
 export default function WorkHistory() {
   const { data, deleteItem } = useData();
   const { subcontractors, sites, customers, employees } = data;
@@ -167,18 +186,21 @@ export default function WorkHistory() {
                   </tr>
                 </thead>
                 <tbody>
-                  {group.logs.map((log) => {
+                  {group.logs.flatMap((log) => {
                     const reportEmployees = reportEmployeesFor(log);
-                    return (
-                      <tr key={log.id}>
+                    const affiliationGroups = groupEmployeesByAffiliation(
+                      data,
+                      reportEmployees
+                    );
+                    // Every split row still edits/deletes the whole log entry
+                    // (all affiliations together) — there's only one
+                    // underlying record, just displayed as several rows.
+                    return affiliationGroups.map((affiliationGroup, index) => (
+                      <tr key={`${log.id}-${index}`}>
                         <td>{normalizeDate(log.date)}</td>
-                        <td>{reportEmployees.map((e) => e.name).join(", ")}</td>
-                        <td>
-                          {reportEmployees
-                            .map((e) => getEmployeeAffiliationName(data, e))
-                            .join(", ")}
-                        </td>
-                        <td>{reportEmployees.length}</td>
+                        <td>{affiliationGroup.employees.map((e) => e.name).join(", ")}</td>
+                        <td>{affiliationGroup.label}</td>
+                        <td>{affiliationGroup.employees.length}</td>
                         <td>{getName(sites, log.siteId)}</td>
                         <td>{getBuildingNames(data, log)}</td>
                         <td>{getName(customers, log.customerId)}</td>
@@ -196,7 +218,11 @@ export default function WorkHistory() {
                               className="delete-btn"
                               type="button"
                               onClick={() => {
-                                if (confirm("למחוק את הרשומה?")) {
+                                if (
+                                  confirm(
+                                    `למחוק את הרשומה כולה (${reportEmployees.length} עובדים מכל הקבלנים)?`
+                                  )
+                                ) {
                                   deleteItem("workLogs", log.id);
                                 }
                               }}
@@ -206,7 +232,7 @@ export default function WorkHistory() {
                           </div>
                         </td>
                       </tr>
-                    );
+                    ));
                   })}
                 </tbody>
               </table>
