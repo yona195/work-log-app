@@ -164,7 +164,10 @@ export function calculateFinancialSummary(data, logs, filters) {
   const workforceGroups = {};
   const siteGroups = {};
   const customerGroups = {};
-  const missingRates = [];
+  // Grouped by employee+site+customer (not date) so an employee missing a
+  // rate across many work days shows as one row with all the dates instead
+  // of one row per day.
+  const missingRatesMap = new Map();
 
   logs.forEach((log) => {
     const finance = calculateFilteredWorkLogFinance(data, log, filters);
@@ -222,17 +225,26 @@ export function calculateFinancialSummary(data, logs, filters) {
       const employee = data.employees.find(
         (e) => String(e.id) === String(missing.employeeId)
       );
-      missingRates.push({
-        employeeName: missing.employeeName,
-        affiliationName: employee
-          ? getEmployeeAffiliationName(data, employee)
-          : "שיוך לא ידוע",
-        siteName: getName(data.sites, log.siteId) || "אתר לא ידוע",
-        customerName: getName(data.customers, log.customerId) || "מזמין לא ידוע",
-        date: normalizeDate(log.date),
-      });
+      const key = [missing.employeeId, log.siteId, log.customerId].join("-");
+      if (!missingRatesMap.has(key)) {
+        missingRatesMap.set(key, {
+          employeeName: missing.employeeName,
+          affiliationName: employee
+            ? getEmployeeAffiliationName(data, employee)
+            : "שיוך לא ידוע",
+          siteName: getName(data.sites, log.siteId) || "אתר לא ידוע",
+          customerName: getName(data.customers, log.customerId) || "מזמין לא ידוע",
+          dates: new Set(),
+        });
+      }
+      missingRatesMap.get(key).dates.add(normalizeDate(log.date));
     });
   });
+
+  const missingRates = Array.from(missingRatesMap.values()).map((entry) => ({
+    ...entry,
+    dates: Array.from(entry.dates).sort(),
+  }));
 
   return {
     totalRevenue,

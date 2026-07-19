@@ -242,6 +242,9 @@ export function calculateProfitByCustomer(data, logs) {
   return Object.values(customers);
 }
 
+// Groups missing-rate warnings by employee+site+customer (not by date), so
+// an employee missing a rate across many work days shows as one row with
+// all the dates instead of one row per day.
 export function getMissingRatesForLogs(data, logs) {
   const missingMap = new Map();
 
@@ -262,20 +265,24 @@ export function getMissingRatesForLogs(data, logs) {
               "ללא קבלן";
       }
 
-      const key = [employee.employeeId, log.siteId, log.customerId, date].join("-");
+      const key = [employee.employeeId, log.siteId, log.customerId].join("-");
       if (!missingMap.has(key)) {
         missingMap.set(key, {
           employeeName: employee.employeeName,
           affiliationName,
           siteName: getName(data.sites, log.siteId) || "אתר לא ידוע",
           customerName: getName(data.customers, log.customerId) || "מזמין לא ידוע",
-          date,
+          dates: new Set(),
         });
       }
+      missingMap.get(key).dates.add(date);
     });
   });
 
-  return Array.from(missingMap.values());
+  return Array.from(missingMap.values()).map((entry) => ({
+    ...entry,
+    dates: Array.from(entry.dates).sort(),
+  }));
 }
 
 export { getEmployeeAffiliationName };

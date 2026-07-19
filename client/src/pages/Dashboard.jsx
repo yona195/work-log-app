@@ -193,17 +193,19 @@ export default function Dashboard() {
                   <th>שיוך / קבלן</th>
                   <th>אתר</th>
                   <th>מזמין</th>
-                  <th>תאריך</th>
+                  <th>תאריכים חסרים</th>
                 </tr>
               </thead>
               <tbody>
                 {missingRates.map((item, index) => (
-                  <tr key={`${item.employeeName}-${item.date}-${index}`}>
+                  <tr key={`${item.employeeName}-${item.siteName}-${item.customerName}-${index}`}>
                     <td>{item.employeeName}</td>
                     <td>{item.affiliationName}</td>
                     <td>{item.siteName}</td>
                     <td>{item.customerName}</td>
-                    <td dir="ltr">{item.date}</td>
+                    <td dir="ltr">
+                      {item.dates.join(", ")} ({item.dates.length})
+                    </td>
                   </tr>
                 ))}
               </tbody>
