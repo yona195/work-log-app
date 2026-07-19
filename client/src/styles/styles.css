@@ -325,6 +325,16 @@ textarea {
    8. כפתורים
 ========================================= */
 
+a.primary-btn,
+a.secondary-btn,
+a.excel-btn,
+a.pdf-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+}
+
 .primary-btn,
 .secondary-btn,
 .excel-btn,
@@ -2042,5 +2052,147 @@ body.loading .menu-overlay {
     .date-picker-popover {
         right: 50%;
         transform: translateX(50%);
+    }
+}
+
+
+/* =========================================
+   רישום עבודה - שבבי תאריכים, תקציר, רשומות אחרונות
+========================================= */
+
+.filter-chips {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+
+    margin-top: -6px;
+    margin-bottom: 12px;
+}
+
+.filter-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+
+    padding: 6px 10px;
+
+    background: var(--color-primary-soft);
+    border: 1px solid rgba(37, 99, 235, 0.16);
+    border-radius: 999px;
+
+    color: var(--color-text);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.filter-chip-remove {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 18px;
+    height: 18px;
+    padding: 0;
+
+    background: none;
+    border: none;
+
+    color: var(--color-primary);
+    font-size: 16px;
+    line-height: 1;
+
+    cursor: pointer;
+}
+
+.filter-chip-remove:hover {
+    color: #b91c1c;
+}
+
+.readonly-value {
+    padding: 11px 12px;
+    margin-bottom: 16px;
+
+    background: #f9fafb;
+    color: var(--color-text);
+
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-small);
+
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.worklog-summary-card {
+    padding: 14px 16px;
+    margin-bottom: 16px;
+
+    background: var(--color-primary-soft);
+    border: 1px solid rgba(37, 99, 235, 0.16);
+    border-radius: var(--radius-medium);
+}
+
+.worklog-summary-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+
+    padding: 4px 0;
+
+    font-size: 14px;
+}
+
+.worklog-summary-label {
+    color: var(--color-muted);
+    font-weight: 600;
+}
+
+.worklog-summary-highlight {
+    margin-top: 10px;
+    padding-top: 10px;
+
+    border-top: 1px dashed rgba(37, 99, 235, 0.25);
+
+    color: var(--color-primary-hover);
+    font-size: 15px;
+    font-weight: 700;
+    text-align: center;
+}
+
+.worklog-recent-cards {
+    display: none;
+}
+
+@media (max-width: 760px) {
+    .worklog-recent-table {
+        display: none;
+    }
+
+    .worklog-recent-cards {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+
+        margin-top: 16px;
+    }
+
+    .worklog-recent-card {
+        padding: 14px;
+
+        background: #f9fafb;
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-medium);
+    }
+
+    .worklog-recent-card-row {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 12px;
+
+        padding: 3px 0;
+
+        font-size: 14px;
     }
 }

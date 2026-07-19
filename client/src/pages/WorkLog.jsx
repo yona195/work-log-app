@@ -1,10 +1,13 @@
 import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { useData } from "../state/DataProvider.jsx";
 import { normalizeDate, formatExcelDate } from "../lib/format.js";
 import { isoRangeInclusive } from "../lib/calendar.js";
 import {
   getName,
   getEmployeeIds,
+  getBuildingIds,
+  getEmployeeAffiliationName,
   getEmployeeNames,
   getBuildingNames,
   activeOnly,
@@ -12,14 +15,23 @@ import {
 } from "../lib/entities.js";
 import DatePicker from "../components/DatePicker.jsx";
 import DuplicateConflictModal from "../components/DuplicateConflictModal.jsx";
-import Pagination, { usePagedList } from "../components/Pagination.jsx";
+import SelectionPanel from "../components/SelectionPanel.jsx";
+
+const VALIDATION_MESSAGE = "נא לבחור תאריך, עובד, אתר, מבנה ומזמין";
+
+function rangeLabel(range) {
+  return range.start === range.end
+    ? formatExcelDate(range.start)
+    : `${formatExcelDate(range.start)} - ${formatExcelDate(range.end)}`;
+}
 
 export default function WorkLog() {
-  const { data, addItem, deleteItem } = useData();
+  const { data, addItem, updateItem, deleteItem } = useData();
   const { subcontractors, sites, buildings, customers, workLogs } = data;
-  // Pickers for a NEW entry must exclude archived records; the existing-logs
-  // table below still needs the full (unfiltered) lists so it can keep
-  // resolving names for entries that reference an already-archived record.
+  // Pickers for a NEW entry must exclude archived records; the recent-
+  // records list below still needs the full (unfiltered) lists so it can
+  // keep resolving names for entries that reference an already-archived
+  // record.
   const employees = activeEmployees(data);
   const pickableSites = activeOnly(sites);
   const pickableCustomers = activeOnly(customers);
@@ -30,8 +42,10 @@ export default function WorkLog() {
   // pre-selecting today by default meant clicking today again removed it
   // instead of starting a range from it.
   const [selectedRanges, setSelectedRanges] = useState([]);
-  const [group, setGroup] = useState("");
-  const [search, setSearch] = useState("");
+  const [group, setGroup] = useState(""); // "" | "internal" | "all-subcontractors"
+  const [selectedContractorIds, setSelectedContractorIds] = useState([]);
+  const [contractorSearch, setContractorSearch] = useState("");
+  const [employeeSearch, setEmployeeSearch] = useState("");
   const [selectedEmployees, setSelectedEmployees] = useState([]);
   const [siteId, setSiteId] = useState("");
   const [buildingSearch, setBuildingSearch] = useState("");
@@ -40,40 +54,116 @@ export default function WorkLog() {
   const [notes, setNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [duplicateConflict, setDuplicateConflict] = useState(null);
+  const [editingLogId, setEditingLogId] = useState(null);
 
-  const visibleEmployees = useMemo(() => {
-    const text = search.trim().toLowerCase();
+  const changeWorkforceType = (value) => {
+    setGroup(value);
+    setSelectedContractorIds([]);
+    setSelectedEmployees([]);
+  };
+
+  const toggleContractor = (id) => {
+    setSelectedContractorIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+    setSelectedEmployees([]);
+  };
+
+  const relevantContractors = useMemo(() => {
+    if (group !== "all-subcontractors") return [];
+    const idsWithEmployees = new Set(
+      employees
+        .filter((e) => e.type !== "internal")
+        .map((e) => String(e.subcontractorId || ""))
+    );
+    const text = contractorSearch.trim().toLowerCase();
+    return activeOnly(subcontractors).filter(
+      (s) => idsWithEmployees.has(String(s.id)) && (!text || s.name.toLowerCase().includes(text))
+    );
+  }, [subcontractors, employees, group, contractorSearch]);
+
+  const employeeOptions = useMemo(() => {
+    const text = employeeSearch.trim().toLowerCase();
     return employees.filter((employee) => {
       const isInternal = employee.type === "internal";
-      let matchesGroup = true;
-      if (group === "internal") matchesGroup = isInternal;
-      else if (group === "all-subcontractors") matchesGroup = !isInternal;
-      else if (group)
-        matchesGroup = String(employee.subcontractorId || "") === String(group);
-      const matchesSearch = !text || employee.name.toLowerCase().includes(text);
-      return matchesGroup && matchesSearch;
+      if (group === "internal" && !isInternal) return false;
+      if (group === "all-subcontractors") {
+        if (isInternal) return false;
+        if (!selectedContractorIds.includes(String(employee.subcontractorId || "")))
+          return false;
+      }
+      if (text && !employee.name.toLowerCase().includes(text)) return false;
+      return true;
     });
-  }, [employees, group, search]);
+  }, [employees, group, selectedContractorIds, employeeSearch]);
+
+  const toggleEmployee = (id) =>
+    setSelectedEmployees((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+
+  const selectAllEmployees = () =>
+    setSelectedEmployees((prev) => [
+      ...new Set([...prev, ...employeeOptions.map((e) => e.id)]),
+    ]);
+
+  const allSiteBuildings = useMemo(() => {
+    if (!siteId) return [];
+    return activeOnly(buildings).filter((b) => String(b.siteId) === String(siteId));
+  }, [buildings, siteId]);
+
+  const hasSingleBuilding = allSiteBuildings.length === 1;
 
   const siteBuildings = useMemo(() => {
-    if (!siteId) return [];
     const text = buildingSearch.trim().toLowerCase();
-    return activeOnly(buildings)
-      .filter((b) => String(b.siteId) === String(siteId))
-      .filter((b) => !text || b.name.toLowerCase().includes(text));
-  }, [buildings, siteId, buildingSearch]);
+    return allSiteBuildings.filter((b) => !text || b.name.toLowerCase().includes(text));
+  }, [allSiteBuildings, buildingSearch]);
 
-  const toggle = (list, setList, id) =>
-    setList(list.includes(id) ? list.filter((x) => x !== id) : [...list, id]);
+  const toggleBuilding = (id) =>
+    setSelectedBuildings((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+
+  const selectAllBuildings = () =>
+    setSelectedBuildings((prev) => [
+      ...new Set([...prev, ...siteBuildings.map((b) => b.id)]),
+    ]);
+
+  // Changing the site clears whatever building selection belonged to the
+  // previous site — except when the new site has exactly one building,
+  // which is auto-selected and shown read-only instead of as a picker. If
+  // the site has ever been used with exactly one customer (via existing
+  // rates), that customer is auto-selected too — a convenience default the
+  // user can still override, not a new data relationship.
+  const changeSite = (value) => {
+    setSiteId(value);
+    setBuildingSearch("");
+    const buildingsAtSite = activeOnly(buildings).filter(
+      (b) => String(b.siteId) === String(value)
+    );
+    setSelectedBuildings(buildingsAtSite.length === 1 ? [buildingsAtSite[0].id] : []);
+
+    const relatedCustomerIds = [
+      ...new Set(
+        (data.rates || [])
+          .filter((r) => String(r.siteId) === String(value) && r.customerId)
+          .map((r) => String(r.customerId))
+      ),
+    ];
+    if (relatedCustomerIds.length === 1) setCustomerId(relatedCustomerIds[0]);
+  };
 
   // Catches the same employee accidentally being logged twice on the same
   // date — matches on date only, regardless of site: an employee can't
   // really work two different sites on the same day either, so a match at
-  // *any* site on that date is still a real conflict.
-  const findDuplicateConflicts = (employeeIds, targetDates) => {
+  // *any* site on that date is still a real conflict. `excludeLogId` skips
+  // the record currently being edited, so re-saving it without changes
+  // doesn't flag itself as a duplicate of itself.
+  const findDuplicateConflicts = (employeeIds, targetDates, excludeLogId = null) => {
     const dateSet = new Set(targetDates);
     const conflicts = [];
     workLogs.forEach((log) => {
+      if (excludeLogId && String(log.id) === String(excludeLogId)) return;
       const logDate = normalizeDate(log.date);
       if (!dateSet.has(logDate)) return;
       const existingEmployeeIds = getEmployeeIds(log).map(String);
@@ -86,26 +176,57 @@ export default function WorkLog() {
     return conflicts;
   };
 
-  const changeSite = (value) => {
-    setSiteId(value);
-    setSelectedBuildings([]);
-    setBuildingSearch("");
-  };
-
-  const sortedWorkLogs = useMemo(
+  const recentWorkLogs = useMemo(
     () =>
-      [...workLogs].sort((a, b) =>
-        normalizeDate(b.date).localeCompare(normalizeDate(a.date))
-      ),
+      [...workLogs]
+        .sort((a, b) => normalizeDate(b.date).localeCompare(normalizeDate(a.date)))
+        .slice(0, 5),
     [workLogs]
   );
 
-  const {
-    pageItems: pagedWorkLogs,
-    page: workLogsPage,
-    setPage: setWorkLogsPage,
-    totalPages: workLogsTotalPages,
-  } = usePagedList(sortedWorkLogs);
+  const uniqueDates = useMemo(() => {
+    const set = new Set();
+    selectedRanges.forEach((range) =>
+      isoRangeInclusive(range.start, range.end).forEach((iso) => set.add(iso))
+    );
+    return Array.from(set).sort();
+  }, [selectedRanges]);
+
+  const removeRange = (index) =>
+    setSelectedRanges((prev) => prev.filter((_, i) => i !== index));
+
+  const cancelEdit = () => {
+    setEditingLogId(null);
+    setSelectedRanges([]);
+    setGroup("");
+    setSelectedContractorIds([]);
+    setContractorSearch("");
+    setEmployeeSearch("");
+    setSelectedEmployees([]);
+    setSiteId("");
+    setBuildingSearch("");
+    setSelectedBuildings([]);
+    setCustomerId("");
+    setNotes("");
+  };
+
+  const startEdit = (log) => {
+    setEditingLogId(log.id);
+    setSelectedRanges([{ start: normalizeDate(log.date), end: normalizeDate(log.date) }]);
+    // Reset the workforce filter to "כל העובדים" so the loaded employees are
+    // guaranteed to be visible in the panel regardless of their affiliation.
+    setGroup("");
+    setSelectedContractorIds([]);
+    setContractorSearch("");
+    setEmployeeSearch("");
+    setSelectedEmployees(getEmployeeIds(log));
+    setSiteId(log.siteId || "");
+    setBuildingSearch("");
+    setSelectedBuildings(getBuildingIds(log));
+    setCustomerId(log.customerId || "");
+    setNotes(log.notes || "");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   const add = async () => {
     // Guards against a double-click (or a slow request plus a second
@@ -119,17 +240,18 @@ export default function WorkLog() {
       selectedBuildings.length === 0 ||
       !customerId
     ) {
-      alert("נא לבחור תאריך, עובד, אתר, מבנה ומזמין");
+      alert(VALIDATION_MESSAGE);
       return;
     }
 
-    const dateSet = new Set();
-    selectedRanges.forEach((range) => {
-      isoRangeInclusive(range.start, range.end).forEach((iso) => dateSet.add(iso));
-    });
-    const dates = Array.from(dateSet).sort();
+    if (editingLogId && uniqueDates.length > 1) {
+      alert("בעריכת רשומה ניתן לבחור תאריך אחד בלבד.");
+      return;
+    }
 
-    const conflicts = findDuplicateConflicts(selectedEmployees, dates);
+    const datesToUse = editingLogId ? uniqueDates.slice(0, 1) : uniqueDates;
+
+    const conflicts = findDuplicateConflicts(selectedEmployees, datesToUse, editingLogId);
     if (conflicts.length > 0) {
       const seen = new Set();
       const rows = [];
@@ -150,7 +272,20 @@ export default function WorkLog() {
 
     setIsSubmitting(true);
     try {
-      for (const logDate of dates) {
+      if (editingLogId) {
+        await updateItem("workLogs", editingLogId, {
+          date: datesToUse[0],
+          employeeIds: selectedEmployees,
+          buildingIds: selectedBuildings,
+          siteId,
+          customerId,
+          notes: notes.trim(),
+        });
+        cancelEdit();
+        return;
+      }
+
+      for (const logDate of datesToUse) {
         // eslint-disable-next-line no-await-in-loop
         await addItem("workLogs", {
           date: logDate,
@@ -166,251 +301,407 @@ export default function WorkLog() {
       setSelectedBuildings([]);
       setNotes("");
 
-      if (dates.length > 1) {
-        alert(`נוספו ${dates.length} רשומות עבודה, אחת לכל יום בטווח.`);
+      if (datesToUse.length > 1) {
+        alert(`נוספו ${datesToUse.length} רשומות עבודה, אחת לכל יום בטווח.`);
       }
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const selectAllVisibleEmployees = () =>
-    setSelectedEmployees((prev) => {
-      const ids = visibleEmployees.map((e) => e.id);
-      return Array.from(new Set([...prev, ...ids]));
-    });
+  const customerName = getName(customers, customerId);
+  const siteName = getName(sites, siteId);
+  const buildingNamesText = selectedBuildings
+    .map((id) => getName(buildings, id))
+    .filter(Boolean)
+    .join(", ");
 
-  const selectAllVisibleBuildings = () =>
-    setSelectedBuildings((prev) => {
-      const ids = siteBuildings.map((b) => b.id);
-      return Array.from(new Set([...prev, ...ids]));
-    });
+  const dateSummaryText =
+    uniqueDates.length === 0
+      ? "לא נבחרו תאריכים"
+      : selectedRanges.length === 1
+        ? rangeLabel(selectedRanges[0])
+        : `${uniqueDates.length} ימים ב-${selectedRanges.length} טווחים`;
 
   return (
     <>
       <div className="card">
-        <h3>הוספת רשומת עבודה</h3>
+        <h3>{editingLogId ? "עריכת רשומת עבודה" : "רישום עבודה"}</h3>
 
-        <label>תאריכים</label>
-        <DatePicker mode="multi-range" value={selectedRanges} onChange={setSelectedRanges} />
-        <p>אפשר לבחור כמה טווחי תאריכים נפרדים - תיפתח רשומה לכל יום בכל טווח שנבחר.</p>
+        <div className="form-section">
+          <h4 className="form-section-title">תאריכי העבודה</h4>
+          <DatePicker mode="multi-range" value={selectedRanges} onChange={setSelectedRanges} />
 
-        <h4>בחירת עובדים</h4>
-
-        <label>סינון לפי שיוך</label>
-        <select value={group} onChange={(e) => setGroup(e.target.value)}>
-          <option value="">כל העובדים</option>
-          <option value="internal">העובדים שלי</option>
-          <option value="all-subcontractors">כל עובדי קבלני המשנה</option>
-          {activeOnly(subcontractors).map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.name}
-            </option>
-          ))}
-        </select>
-
-        <input
-          type="text"
-          placeholder="🔍 חפש עובד..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-
-        <div className="employee-actions">
-          <button
-            type="button"
-            className="secondary-btn"
-            onClick={selectAllVisibleEmployees}
-          >
-            בחר הכל
-          </button>
-          <button
-            type="button"
-            className="secondary-btn"
-            onClick={() => setSelectedEmployees([])}
-          >
-            נקה הכל
-          </button>
-        </div>
-
-        <div className="checkbox-list">
-          {visibleEmployees.length === 0 ? (
-            <div className="empty-message">אין עובדים תואמים</div>
-          ) : (
-            visibleEmployees.map((employee) => {
-              const isInternal = employee.type === "internal";
-              const subName = getName(subcontractors, employee.subcontractorId);
-              return (
-                <label className="checkbox-item" key={employee.id}>
-                  <input
-                    type="checkbox"
-                    checked={selectedEmployees.includes(employee.id)}
-                    onChange={() =>
-                      toggle(
-                        selectedEmployees,
-                        setSelectedEmployees,
-                        employee.id
-                      )
-                    }
-                  />
-                  <span>
-                    {employee.name}{" "}
-                    {isInternal ? "- עובד שלי" : `- ${subName || "ללא קבלן"}`}
+          {selectedRanges.length > 0 && (
+            <>
+              <div className="filter-chips">
+                {selectedRanges.map((range, index) => (
+                  <span className="filter-chip" key={`${range.start}-${range.end}-${index}`}>
+                    {rangeLabel(range)}
+                    <button
+                      type="button"
+                      className="filter-chip-remove"
+                      onClick={() => removeRange(index)}
+                      aria-label="הסר טווח תאריכים"
+                    >
+                      ×
+                    </button>
                   </span>
-                </label>
-              );
-            })
+                ))}
+              </div>
+              <p>
+                נבחרו {uniqueDates.length} ימי עבודה
+                {selectedRanges.length > 1 ? ` · ${selectedRanges.length} טווחי תאריכים` : ""}
+              </p>
+            </>
           )}
         </div>
 
-        <p id="employeeCountText">
-          סה״כ עובדים שנבחרו: {selectedEmployees.length}
-        </p>
+        <hr className="form-divider" />
 
-        <label>אתר עבודה</label>
-        <select value={siteId} onChange={(e) => changeSite(e.target.value)}>
-          <option value="">בחר אתר</option>
-          {pickableSites.map((site) => (
-            <option key={site.id} value={site.id}>
-              {site.name}
-            </option>
-          ))}
-        </select>
-
-        {siteId && (
-          <div className="buildings-section">
-            <div className="section-title-row">
-              <label>מבנים</label>
-              <div className="building-actions">
-                <button
-                  type="button"
-                  className="secondary-btn"
-                  onClick={selectAllVisibleBuildings}
-                >
-                  בחר הכל
-                </button>
-                <button
-                  type="button"
-                  className="secondary-btn"
-                  onClick={() => setSelectedBuildings([])}
-                >
-                  נקה הכל
-                </button>
-              </div>
+        <div className="form-section">
+          <h4 className="form-section-title">מיקום העבודה</h4>
+          <div className="filter-grid filter-grid-2">
+            <div className="filter-grid-item">
+              <label>מזמין עבודה</label>
+              <select value={customerId} onChange={(e) => setCustomerId(e.target.value)}>
+                <option value="">בחר מזמין</option>
+                {pickableCustomers.map((customer) => (
+                  <option key={customer.id} value={customer.id}>
+                    {customer.name}
+                  </option>
+                ))}
+              </select>
             </div>
 
-            <input
-              type="text"
-              placeholder="🔍 חפש מבנה..."
-              value={buildingSearch}
-              onChange={(e) => setBuildingSearch(e.target.value)}
-            />
-
-            <div className="checkbox-list">
-              {siteBuildings.length === 0 ? (
-                <div className="empty-message">אין מבנים באתר הזה</div>
-              ) : (
-                siteBuildings.map((building) => (
-                  <label className="checkbox-item" key={building.id}>
-                    <input
-                      type="checkbox"
-                      checked={selectedBuildings.includes(building.id)}
-                      onChange={() =>
-                        toggle(
-                          selectedBuildings,
-                          setSelectedBuildings,
-                          building.id
-                        )
-                      }
-                    />
-                    <span>{building.name}</span>
-                  </label>
-                ))
-              )}
+            <div className="filter-grid-item">
+              <label>אתר עבודה</label>
+              <select value={siteId} onChange={(e) => changeSite(e.target.value)}>
+                <option value="">בחר אתר</option>
+                {pickableSites.map((site) => (
+                  <option key={site.id} value={site.id}>
+                    {site.name}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
-        )}
 
-        <label>מזמין עבודה</label>
-        <select value={customerId} onChange={(e) => setCustomerId(e.target.value)}>
-          <option value="">בחר מזמין</option>
-          {pickableCustomers.map((customer) => (
-            <option key={customer.id} value={customer.id}>
-              {customer.name}
-            </option>
-          ))}
-        </select>
+          {siteId &&
+            (hasSingleBuilding ? (
+              <div style={{ marginTop: 14 }}>
+                <label>מבנה</label>
+                <p className="readonly-value">{allSiteBuildings[0].name}</p>
+              </div>
+            ) : (
+              <div className="buildings-section" style={{ marginTop: 14 }}>
+                <div className="section-title-row">
+                  <label>מבנים</label>
+                  <div className="building-actions">
+                    <button type="button" className="secondary-btn" onClick={selectAllBuildings}>
+                      בחר הכל
+                    </button>
+                    <button
+                      type="button"
+                      className="secondary-btn"
+                      onClick={() => setSelectedBuildings([])}
+                    >
+                      נקה הכל
+                    </button>
+                  </div>
+                </div>
 
-        <label>הערות</label>
-        <textarea
-          placeholder="אופציונלי"
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-        ></textarea>
+                <input
+                  type="text"
+                  placeholder="🔍 חפש מבנה..."
+                  value={buildingSearch}
+                  onChange={(e) => setBuildingSearch(e.target.value)}
+                />
 
-        <button
-          className="primary-btn"
-          type="button"
-          onClick={add}
-          disabled={isSubmitting}
-        >
-          {isSubmitting ? "מוסיף..." : "הוסף ליומן"}
-        </button>
+                <div className="checkbox-list">
+                  {siteBuildings.length === 0 ? (
+                    <div className="empty-message">אין מבנים באתר הזה</div>
+                  ) : (
+                    siteBuildings.map((building) => (
+                      <label className="checkbox-item" key={building.id}>
+                        <input
+                          type="checkbox"
+                          checked={selectedBuildings.includes(building.id)}
+                          onChange={() => toggleBuilding(building.id)}
+                        />
+                        <span>{building.name}</span>
+                      </label>
+                    ))
+                  )}
+                </div>
+              </div>
+            ))}
+        </div>
+
+        <hr className="form-divider" />
+
+        <div className="form-section">
+          <h4 className="form-section-title">בחירת כוח אדם</h4>
+          <div className="employee-actions">
+            <button
+              type="button"
+              className={group === "" ? "primary-btn" : "secondary-btn"}
+              onClick={() => changeWorkforceType("")}
+            >
+              כל העובדים
+            </button>
+            <button
+              type="button"
+              className={group === "internal" ? "primary-btn" : "secondary-btn"}
+              onClick={() => changeWorkforceType("internal")}
+            >
+              העובדים שלי
+            </button>
+            <button
+              type="button"
+              className={group === "all-subcontractors" ? "primary-btn" : "secondary-btn"}
+              onClick={() => changeWorkforceType("all-subcontractors")}
+            >
+              עובדי קבלן
+            </button>
+          </div>
+
+          {group === "all-subcontractors" ? (
+            <div className="filter-grid filter-grid-2" style={{ marginTop: 14 }}>
+              <div className="filter-grid-item">
+                <SelectionPanel
+                  title="בחירת קבלן"
+                  search={contractorSearch}
+                  onSearchChange={setContractorSearch}
+                  searchPlaceholder="🔍 חפש קבלן..."
+                  items={relevantContractors.map((s) => ({ id: s.id, label: s.name }))}
+                  selectedIds={selectedContractorIds}
+                  onToggle={toggleContractor}
+                  onSelectAll={() =>
+                    setSelectedContractorIds((prev) => [
+                      ...new Set([...prev, ...relevantContractors.map((s) => s.id)]),
+                    ])
+                  }
+                  onClearAll={() => setSelectedContractorIds([])}
+                  emptyMessage="אין קבלני משנה עם עובדים"
+                />
+              </div>
+
+              <div className="filter-grid-item">
+                {selectedContractorIds.length === 0 ? (
+                  <>
+                    <label>
+                      בחירת עובדים
+                      <span className="required-mark"> *</span>
+                    </label>
+                    <div className="empty-message">יש לבחור קבלן תחילה</div>
+                  </>
+                ) : (
+                  <SelectionPanel
+                    title="בחירת עובדים"
+                    required
+                    search={employeeSearch}
+                    onSearchChange={setEmployeeSearch}
+                    searchPlaceholder="🔍 חפש עובד..."
+                    items={employeeOptions.map((e) => ({
+                      id: e.id,
+                      label: `${e.name} - ${getEmployeeAffiliationName(data, e)}`,
+                    }))}
+                    selectedIds={selectedEmployees}
+                    onToggle={toggleEmployee}
+                    onSelectAll={selectAllEmployees}
+                    onClearAll={() => setSelectedEmployees([])}
+                    emptyMessage="אין עובדים תואמים"
+                  />
+                )}
+              </div>
+            </div>
+          ) : (
+            <div style={{ marginTop: 14 }}>
+              <SelectionPanel
+                title="בחירת עובדים"
+                required
+                search={employeeSearch}
+                onSearchChange={setEmployeeSearch}
+                searchPlaceholder="🔍 חפש עובד..."
+                items={employeeOptions.map((e) => ({
+                  id: e.id,
+                  label: `${e.name} - ${getEmployeeAffiliationName(data, e)}`,
+                }))}
+                selectedIds={selectedEmployees}
+                onToggle={toggleEmployee}
+                onSelectAll={selectAllEmployees}
+                onClearAll={() => setSelectedEmployees([])}
+                emptyMessage="אין עובדים תואמים"
+              />
+            </div>
+          )}
+
+          <p id="employeeCountText">נבחרו {selectedEmployees.length} עובדים</p>
+        </div>
+
+        <hr className="form-divider" />
+
+        <div className="form-section">
+          <h4 className="form-section-title">סיכום והוספה</h4>
+
+          <div className="worklog-summary-card">
+            <div className="worklog-summary-row">
+              <span className="worklog-summary-label">תאריכים</span>
+              <span>{dateSummaryText}</span>
+            </div>
+            <div className="worklog-summary-row">
+              <span className="worklog-summary-label">מזמין עבודה</span>
+              <span>{customerName || "לא נבחר"}</span>
+            </div>
+            <div className="worklog-summary-row">
+              <span className="worklog-summary-label">אתר עבודה</span>
+              <span>{siteName || "לא נבחר"}</span>
+            </div>
+            {buildingNamesText && (
+              <div className="worklog-summary-row">
+                <span className="worklog-summary-label">מבנה</span>
+                <span>{buildingNamesText}</span>
+              </div>
+            )}
+            <div className="worklog-summary-row">
+              <span className="worklog-summary-label">עובדים</span>
+              <span>{selectedEmployees.length}</span>
+            </div>
+            <p className="worklog-summary-highlight">
+              {selectedEmployees.length} עובדים | {uniqueDates.length} ימי עבודה | ייווצרו{" "}
+              {editingLogId ? Math.min(uniqueDates.length, 1) : uniqueDates.length} רשומות
+            </p>
+          </div>
+
+          <label>הערות</label>
+          <textarea
+            placeholder="אופציונלי"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+          ></textarea>
+
+          <div className="employee-actions">
+            <button
+              className="primary-btn"
+              type="button"
+              onClick={add}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? "שומר..." : editingLogId ? "שמור שינויים" : "הוסף ליומן"}
+            </button>
+            {editingLogId && (
+              <button
+                className="secondary-btn"
+                type="button"
+                onClick={cancelEdit}
+                disabled={isSubmitting}
+              >
+                ביטול עריכה
+              </button>
+            )}
+          </div>
+        </div>
       </div>
 
       <div className="card" style={{ marginTop: 20 }}>
-        <h3>רשומות יומן</h3>
-        {workLogs.length === 0 ? (
-          <p>אין עדיין רשומות</p>
+        <div className="section-title-row">
+          <h3 style={{ marginBottom: 0 }}>רשומות אחרונות</h3>
+          <Link to="/work-history" className="secondary-btn">
+            לכל היסטוריית העבודה
+          </Link>
+        </div>
+
+        {recentWorkLogs.length === 0 ? (
+          <p style={{ marginTop: 16 }}>אין עדיין רשומות</p>
         ) : (
-          <table>
-            <thead>
-              <tr>
-                <th>תאריך</th>
-                <th>עובדים</th>
-                <th>סה״כ עובדים</th>
-                <th>אתר</th>
-                <th>מבנה</th>
-                <th>מזמין</th>
-                <th>הערות</th>
-                <th className="actions-column">פעולות</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pagedWorkLogs.map((log) => (
-                <tr key={log.id}>
-                  <td dir="ltr">{formatExcelDate(log.date)}</td>
-                  <td>{getEmployeeNames(data, log)}</td>
-                  <td>{(log.employeeIds || []).length || log.employeeCount || 1}</td>
-                  <td>{getName(sites, log.siteId)}</td>
-                  <td>{getBuildingNames(data, log)}</td>
-                  <td>{getName(customers, log.customerId)}</td>
-                  <td>{log.notes || ""}</td>
-                  <td>
-                    <div className="report-row-actions">
-                      <button
-                        className="delete-btn"
-                        type="button"
-                        onClick={() => {
-                          if (confirm("למחוק את הרשומה?")) {
-                            deleteItem("workLogs", log.id);
-                          }
-                        }}
-                      >
-                        מחק
-                      </button>
-                    </div>
-                  </td>
+          <>
+            <table className="worklog-recent-table">
+              <thead>
+                <tr>
+                  <th>תאריך</th>
+                  <th>עובדים</th>
+                  <th>אתר</th>
+                  <th>מבנה</th>
+                  <th>מזמין</th>
+                  <th className="actions-column">פעולות</th>
                 </tr>
+              </thead>
+              <tbody>
+                {recentWorkLogs.map((log) => (
+                  <tr key={log.id}>
+                    <td dir="ltr">{formatExcelDate(log.date)}</td>
+                    <td>{getEmployeeNames(data, log)}</td>
+                    <td>{getName(sites, log.siteId)}</td>
+                    <td>{getBuildingNames(data, log)}</td>
+                    <td>{getName(customers, log.customerId)}</td>
+                    <td>
+                      <div className="report-row-actions">
+                        <button className="edit-btn" type="button" onClick={() => startEdit(log)}>
+                          עריכה
+                        </button>
+                        <button
+                          className="delete-btn"
+                          type="button"
+                          onClick={() => {
+                            if (confirm("למחוק את הרשומה?")) {
+                              deleteItem("workLogs", log.id);
+                            }
+                          }}
+                        >
+                          מחיקה
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            <div className="worklog-recent-cards">
+              {recentWorkLogs.map((log) => (
+                <div className="worklog-recent-card" key={log.id}>
+                  <div className="worklog-recent-card-row">
+                    <span className="worklog-summary-label">תאריך</span>
+                    <span dir="ltr">{formatExcelDate(log.date)}</span>
+                  </div>
+                  <div className="worklog-recent-card-row">
+                    <span className="worklog-summary-label">עובדים</span>
+                    <span>{getEmployeeNames(data, log)}</span>
+                  </div>
+                  <div className="worklog-recent-card-row">
+                    <span className="worklog-summary-label">אתר</span>
+                    <span>{getName(sites, log.siteId)}</span>
+                  </div>
+                  <div className="worklog-recent-card-row">
+                    <span className="worklog-summary-label">מבנה</span>
+                    <span>{getBuildingNames(data, log)}</span>
+                  </div>
+                  <div className="worklog-recent-card-row">
+                    <span className="worklog-summary-label">מזמין</span>
+                    <span>{getName(customers, log.customerId)}</span>
+                  </div>
+                  <div className="report-row-actions" style={{ marginTop: 10 }}>
+                    <button className="edit-btn" type="button" onClick={() => startEdit(log)}>
+                      עריכה
+                    </button>
+                    <button
+                      className="delete-btn"
+                      type="button"
+                      onClick={() => {
+                        if (confirm("למחוק את הרשומה?")) {
+                          deleteItem("workLogs", log.id);
+                        }
+                      }}
+                    >
+                      מחיקה
+                    </button>
+                  </div>
+                </div>
               ))}
-            </tbody>
-          </table>
+            </div>
+          </>
         )}
-        <Pagination
-          page={workLogsPage}
-          totalPages={workLogsTotalPages}
-          onChange={setWorkLogsPage}
-        />
       </div>
 
       {duplicateConflict && (

@@ -8,6 +8,7 @@ import { filterReportLogs } from "../lib/reports.js";
 import { buildEmployeeReportHtml } from "../lib/pdf.js";
 import { exportEmployeeWorkExcel, exportEmployeeSummaryExcel } from "../lib/excel.js";
 import PeriodFilter, { useDateRangeFilter } from "../components/PeriodFilter.jsx";
+import SelectionPanel from "../components/SelectionPanel.jsx";
 import { exportPdfDirect, NO_DATA_MESSAGE } from "../lib/pdfExport.js";
 
 const toggle = (list, id) =>
@@ -320,63 +321,6 @@ export default function EmployeeReports() {
             ייצוא אקסל
           </button>
         </div>
-      </div>
-    </div>
-  );
-}
-
-// Shared shell for the always-visible קבלן/עובדים selection lists: a
-// labeled search box, a scrollable checkbox list, and select-all/clear-all
-// directly below it — used both side-by-side (עובדי קבלן) and full width
-// (כל העובדים / העובדים שלי).
-function SelectionPanel({
-  title,
-  required = false,
-  search,
-  onSearchChange,
-  searchPlaceholder,
-  items,
-  selectedIds,
-  onToggle,
-  onSelectAll,
-  onClearAll,
-  emptyMessage,
-}) {
-  return (
-    <div>
-      <label>
-        {title}
-        {required && <span className="required-mark"> *</span>}
-      </label>
-      <input
-        type="text"
-        placeholder={searchPlaceholder}
-        value={search}
-        onChange={(e) => onSearchChange(e.target.value)}
-      />
-      <div className="checkbox-list">
-        {items.length === 0 ? (
-          <div className="empty-message">{emptyMessage}</div>
-        ) : (
-          items.map((item) => (
-            <label className="checkbox-item" key={item.id}>
-              <input
-                type="checkbox"
-                checked={selectedIds.includes(item.id)}
-                onChange={() => onToggle(item.id)}
-              />
-              <span>{item.label}</span>
-            </label>
-          ))
-        )}
-      </div>
-      <div className="employee-actions">
-        <button type="button" className="secondary-btn" onClick={onSelectAll}>
-          בחר הכל
-        </button>
-        <button type="button" className="secondary-btn" onClick={onClearAll}>
-          נקה הכל
-        </button>
       </div>
     </div>
   );
