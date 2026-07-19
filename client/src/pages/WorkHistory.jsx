@@ -403,23 +403,44 @@ export default function WorkHistory() {
                     className={`workhistory-card workhistory-card-accent-${registration.accentIndex}`}
                   >
                     <div className="workhistory-card-header">
-                      <div className="workhistory-card-header-main">
-                        <span dir="ltr">{formatExcelDate(registration.log.date)}</span>
-                        <span>{getName(sites, registration.log.siteId) || "אתר לא ידוע"}</span>
-                        {buildingNamesText && <span>מבנה: {buildingNamesText}</span>}
+                      <div className="workhistory-card-header-info">
+                        <div className="workhistory-card-header-main">
+                          <span className="workhistory-card-date" dir="ltr">
+                            {formatExcelDate(registration.log.date)}
+                          </span>
+                          <span>{getName(sites, registration.log.siteId) || "אתר לא ידוע"}</span>
+                          {buildingNamesText && <span>מבנה: {buildingNamesText}</span>}
+                        </div>
+                        <div className="workhistory-card-header-meta">
+                          <span>
+                            מזמין: {getName(customers, registration.log.customerId) || "לא ידוע"}
+                          </span>
+                          <span>{registration.totalEmployeeCount} עובדים</span>
+                        </div>
                       </div>
-                      <div className="workhistory-card-header-meta">
-                        <span>
-                          מזמין: {getName(customers, registration.log.customerId) || "לא ידוע"}
-                        </span>
-                        <span>{registration.totalEmployeeCount} עובדים</span>
+
+                      <div className="report-row-actions workhistory-card-actions">
+                        <button
+                          className="edit-btn"
+                          type="button"
+                          onClick={() => setEditingLog(registration.log)}
+                        >
+                          עריכה
+                        </button>
+                        <button
+                          className="delete-btn"
+                          type="button"
+                          onClick={() => deleteRegistration(registration)}
+                        >
+                          מחיקה
+                        </button>
                       </div>
                     </div>
 
                     <div className="workhistory-card-groups">
                       {registration.affiliationGroups.map((group, index) => (
                         <div className="workhistory-card-group" key={index}>
-                          <span className="workhistory-card-group-label">{group.label}:</span>{" "}
+                          <span className="workhistory-card-group-label">{group.label}:</span>
                           <span className="workhistory-card-group-names">
                             {group.employees.map((e) => e.name).join(", ")}
                           </span>
@@ -430,23 +451,6 @@ export default function WorkHistory() {
                     {registration.log.notes && (
                       <p className="workhistory-card-notes">הערות: {registration.log.notes}</p>
                     )}
-
-                    <div className="report-row-actions" style={{ marginTop: 12 }}>
-                      <button
-                        className="edit-btn"
-                        type="button"
-                        onClick={() => setEditingLog(registration.log)}
-                      >
-                        עריכה
-                      </button>
-                      <button
-                        className="delete-btn"
-                        type="button"
-                        onClick={() => deleteRegistration(registration)}
-                      >
-                        מחיקה
-                      </button>
-                    </div>
                   </div>
                 );
               })}

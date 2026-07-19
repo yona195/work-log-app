@@ -2286,13 +2286,13 @@ body.loading .menu-overlay {
 .workhistory-cards-list {
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    gap: 10px;
 
     margin-top: 16px;
 }
 
 .workhistory-card {
-    padding: 14px 16px;
+    padding: 10px 14px;
 
     background: var(--color-surface);
     border: 1px solid var(--color-border);
@@ -2308,25 +2308,39 @@ body.loading .menu-overlay {
 .workhistory-card-header {
     display: flex;
     flex-wrap: wrap;
-    align-items: baseline;
+    align-items: center;
     justify-content: space-between;
     gap: 6px 16px;
 
-    padding-bottom: 10px;
-    margin-bottom: 10px;
+    padding-bottom: 8px;
+    margin-bottom: 8px;
 
     border-bottom: 1px solid var(--color-border);
+}
+
+.workhistory-card-header-info {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+
+    min-width: 0;
 }
 
 .workhistory-card-header-main {
     display: flex;
     flex-wrap: wrap;
     align-items: baseline;
-    gap: 6px 10px;
+    gap: 4px 10px;
 
     color: var(--color-text);
-    font-size: 15px;
-    font-weight: 700;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.workhistory-card-date {
+    color: var(--color-primary-hover);
+    font-size: 16px;
+    font-weight: 800;
 }
 
 .workhistory-card-header-main span:not(:last-child)::after {
@@ -2346,22 +2360,37 @@ body.loading .menu-overlay {
     font-weight: 600;
 }
 
+.workhistory-card-actions {
+    flex-shrink: 0;
+}
+
 .workhistory-card-groups {
     display: flex;
-    flex-direction: column;
-    gap: 4px;
+    flex-wrap: wrap;
+    gap: 6px 8px;
 }
 
 .workhistory-card-group {
-    font-size: 14px;
-    line-height: 1.5;
+    display: inline-flex;
+    align-items: baseline;
+    gap: 4px;
+    max-width: 100%;
 
+    padding: 4px 10px;
+
+    background: var(--color-background);
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+
+    font-size: 13px;
+    line-height: 1.4;
     overflow-wrap: break-word;
 }
 
 .workhistory-card-group-label {
     color: var(--color-primary-hover);
     font-weight: 700;
+    white-space: nowrap;
 }
 
 .workhistory-card-group-names {
@@ -2369,8 +2398,8 @@ body.loading .menu-overlay {
 }
 
 .workhistory-card-notes {
-    margin-top: 8px;
-    padding-top: 8px;
+    margin-top: 6px;
+    padding-top: 6px;
 
     border-top: 1px dashed var(--color-border);
 
