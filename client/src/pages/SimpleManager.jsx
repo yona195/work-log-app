@@ -1,13 +1,15 @@
 import { useState } from "react";
 import { useData } from "../state/DataProvider.jsx";
 import { activeOnly } from "../lib/entities.js";
-import SettingsHelpCard from "../components/SettingsHelpCard.jsx";
+import EditSimpleItemModal from "../components/EditSimpleItemModal.jsx";
+import ActionsLegend from "../components/ActionsLegend.jsx";
 
-export default function SimpleManager({ collection, placeholder, helpTitle, helpItems }) {
-  const { data, addItem, updateItem } = useData();
+export default function SimpleManager({ collection, placeholder, editTitle }) {
+  const { data, addItem, updateItem, deleteItem } = useData();
   const [name, setName] = useState("");
   const [showArchived, setShowArchived] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editingItem, setEditingItem] = useState(null);
   const items = data[collection] || [];
   const visibleItems = showArchived ? items : activeOnly(items);
 
@@ -42,10 +44,19 @@ export default function SimpleManager({ collection, placeholder, helpTitle, help
     await updateItem(collection, item.id, { archived: true });
   };
 
+  const deleteItemConfirmed = async (item) => {
+    if (
+      !confirm(
+        `למחוק את ${item.name} לצמיתות? בשונה מהעברה לארכיון, מחיקה תשפיע גם על דוחות והיסטוריה שכבר נרשמו עם הפריט הזה.`
+      )
+    ) {
+      return;
+    }
+    await deleteItem(collection, item.id);
+  };
+
   return (
     <>
-      {helpItems && <SettingsHelpCard title={helpTitle} items={helpItems} />}
-
       <div className="card">
         <h3>הוספה</h3>
         <input
@@ -96,9 +107,17 @@ export default function SimpleManager({ collection, placeholder, helpTitle, help
                   <td>{item.name}</td>
                   <td>{item.archived ? "בארכיון" : "פעיל"}</td>
                   <td>
-                    <button type="button" onClick={() => toggleArchive(item)}>
-                      {item.archived ? "שחזר" : "העבר לארכיון"}
-                    </button>
+                    <div className="report-row-actions">
+                      <button type="button" onClick={() => setEditingItem(item)}>
+                        ערוך
+                      </button>
+                      <button type="button" onClick={() => deleteItemConfirmed(item)}>
+                        מחק
+                      </button>
+                      <button type="button" onClick={() => toggleArchive(item)}>
+                        {item.archived ? "שחזר" : "העבר לארכיון"}
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -106,6 +125,17 @@ export default function SimpleManager({ collection, placeholder, helpTitle, help
           </table>
         )}
       </div>
+
+      <ActionsLegend />
+
+      {editingItem && (
+        <EditSimpleItemModal
+          title={editTitle}
+          initialName={editingItem.name}
+          onSave={(newName) => updateItem(collection, editingItem.id, { name: newName })}
+          onClose={() => setEditingItem(null)}
+        />
+      )}
     </>
   );
 }

@@ -1,27 +1,18 @@
 import { useState } from "react";
 import { useData } from "../state/DataProvider.jsx";
 import { getName, activeOnly } from "../lib/entities.js";
-import SettingsHelpCard from "../components/SettingsHelpCard.jsx";
-
-const HELP_ITEMS = [
-  {
-    label: "מבנה",
-    text: "תת-חלוקה של אתר עבודה - למשל בניין ספציפי בתוך פרויקט. כל מבנה משויך לאתר עבודה אחד.",
-  },
-  {
-    label: "שימוש ביומן עבודה",
-    text: "בעת רישום רשומת עבודה בוחרים גם אתר וגם מבנה, כדי לדעת בדיוק איפה בוצעה העבודה בתוך האתר.",
-  },
-];
+import EditBuildingModal from "../components/EditBuildingModal.jsx";
+import ActionsLegend from "../components/ActionsLegend.jsx";
 
 export default function Buildings() {
-  const { data, addItem, updateItem } = useData();
+  const { data, addItem, updateItem, deleteItem } = useData();
   const { buildings, sites } = data;
 
   const [siteId, setSiteId] = useState("");
   const [name, setName] = useState("");
   const [showArchived, setShowArchived] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editingBuilding, setEditingBuilding] = useState(null);
 
   const visibleBuildings = showArchived ? buildings : activeOnly(buildings);
 
@@ -60,10 +51,19 @@ export default function Buildings() {
     await updateItem("buildings", building.id, { archived: true });
   };
 
+  const deleteBuilding = async (building) => {
+    if (
+      !confirm(
+        `למחוק את ${building.name} לצמיתות? בשונה מהעברה לארכיון, מחיקה תשפיע גם על דוחות והיסטוריה שכבר נרשמו עם המבנה הזה.`
+      )
+    ) {
+      return;
+    }
+    await deleteItem("buildings", building.id);
+  };
+
   return (
     <>
-      <SettingsHelpCard title="מה זה מבנים?" items={HELP_ITEMS} />
-
       <div className="card">
         <h3>הוספת מבנה</h3>
 
@@ -129,9 +129,17 @@ export default function Buildings() {
                   <td>{getName(sites, building.siteId)}</td>
                   <td>{building.archived ? "בארכיון" : "פעיל"}</td>
                   <td>
-                    <button type="button" onClick={() => toggleArchive(building)}>
-                      {building.archived ? "שחזר" : "העבר לארכיון"}
-                    </button>
+                    <div className="report-row-actions">
+                      <button type="button" onClick={() => setEditingBuilding(building)}>
+                        ערוך
+                      </button>
+                      <button type="button" onClick={() => deleteBuilding(building)}>
+                        מחק
+                      </button>
+                      <button type="button" onClick={() => toggleArchive(building)}>
+                        {building.archived ? "שחזר" : "העבר לארכיון"}
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -139,6 +147,15 @@ export default function Buildings() {
           </table>
         )}
       </div>
+
+      <ActionsLegend />
+
+      {editingBuilding && (
+        <EditBuildingModal
+          building={editingBuilding}
+          onClose={() => setEditingBuilding(null)}
+        />
+      )}
     </>
   );
 }

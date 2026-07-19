@@ -8,26 +8,7 @@ import {
   activeEmployees,
 } from "../lib/entities.js";
 import EditRateModal from "../components/EditRateModal.jsx";
-import SettingsHelpCard from "../components/SettingsHelpCard.jsx";
-
-const HELP_ITEMS = [
-  {
-    label: "תעריף",
-    text: "כמה מקבלים (הכנסה) וכמה זה עולה (עלות) ליום עבודה, עבור שילוב של מזמין + אתר + עובד או קבלן משנה.",
-  },
-  {
-    label: "תעריף אישי מול תעריף כללי",
-    text: "תעריף אישי לעובד ספציפי תמיד גובר על תעריף כללי לקבלן המשנה שלו - גם אם התעריף הכללי הוזן קודם.",
-  },
-  {
-    label: "תאריך תחילת תעריף",
-    text: "קובע ממתי התעריף בתוקף. תעריף חדש לא משנה רטרואקטיבית ימי עבודה שכבר נרשמו לפני התאריך הזה - לשם כך צריך להוסיף תעריף עם תאריך תחילה מוקדם יותר.",
-  },
-  {
-    label: "ארכיון מול מחיקה",
-    text: "\"העבר לארכיון\" מתאים לתעריף שכבר לא בתוקף להבא, בלי לפגוע בחישובים היסטוריים. \"מחק\" הוא לצמיתות ומשפיע גם על חישובים ישנים - מיועד לתיקון טעות הזנה.",
-  },
-];
+import ActionsLegend from "../components/ActionsLegend.jsx";
 
 export default function Rates() {
   const { data, addItem, updateItem, deleteItem } = useData();
@@ -221,8 +202,6 @@ export default function Rates() {
 
   return (
     <>
-      <SettingsHelpCard title="מה זה תעריפים?" items={HELP_ITEMS} />
-
       <div className="card">
         <h3>הוספת תעריף</h3>
 
@@ -467,6 +446,8 @@ export default function Rates() {
           </table>
         )}
       </div>
+
+      <ActionsLegend />
 
       {editingRate && (
         <EditRateModal rate={editingRate} onClose={() => setEditingRate(null)} />

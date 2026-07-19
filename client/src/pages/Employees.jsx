@@ -1,24 +1,11 @@
 import { useState } from "react";
 import { useData } from "../state/DataProvider.jsx";
 import { activeOnly } from "../lib/entities.js";
-import SettingsHelpCard from "../components/SettingsHelpCard.jsx";
+import EditEmployeeModal from "../components/EditEmployeeModal.jsx";
+import EditSimpleItemModal from "../components/EditSimpleItemModal.jsx";
+import ActionsLegend from "../components/ActionsLegend.jsx";
 
-const HELP_ITEMS = [
-  {
-    label: "עובדים שלי",
-    text: "עובדים ששייכים אליך ישירות, ללא קבלן משנה.",
-  },
-  {
-    label: "עובדי קבלן משנה",
-    text: "עובדים שמשויכים לקבלן משנה ספציפי. קבלני המשנה עצמם מנוהלים גם הם בעמוד הזה, בכרטיס \"הוספת קבלן משנה\".",
-  },
-  {
-    label: "העברה לארכיון",
-    text: "מעבירים לארכיון במקום למחוק, כדי שדוחות ורשומות שכבר נרשמו לא ישתנו. עובד או קבלן בארכיון לא יופיע לבחירה ברשומות חדשות, אבל אפשר לשחזר אותו בכל רגע.",
-  },
-];
-
-function EmployeeTable({ employees, onToggleArchive }) {
+function EmployeeTable({ employees, onEdit, onDelete, onToggleArchive }) {
   return (
     <table>
       <thead>
@@ -36,9 +23,17 @@ function EmployeeTable({ employees, onToggleArchive }) {
             <td>{employee.name}</td>
             <td>{employee.archived ? "בארכיון" : "פעיל"}</td>
             <td>
-              <button type="button" onClick={() => onToggleArchive(employee)}>
-                {employee.archived ? "שחזר" : "העבר לארכיון"}
-              </button>
+              <div className="report-row-actions">
+                <button type="button" onClick={() => onEdit(employee)}>
+                  ערוך
+                </button>
+                <button type="button" onClick={() => onDelete(employee)}>
+                  מחק
+                </button>
+                <button type="button" onClick={() => onToggleArchive(employee)}>
+                  {employee.archived ? "שחזר" : "העבר לארכיון"}
+                </button>
+              </div>
             </td>
           </tr>
         ))}
@@ -48,7 +43,7 @@ function EmployeeTable({ employees, onToggleArchive }) {
 }
 
 export default function Employees() {
-  const { data, addItem, updateItem } = useData();
+  const { data, addItem, updateItem, deleteItem } = useData();
   const { employees, subcontractors } = data;
 
   const [name, setName] = useState("");
@@ -58,6 +53,8 @@ export default function Employees() {
   const [showArchived, setShowArchived] = useState(false);
   const [isAddingEmployee, setIsAddingEmployee] = useState(false);
   const [isAddingSubcontractor, setIsAddingSubcontractor] = useState(false);
+  const [editingEmployee, setEditingEmployee] = useState(null);
+  const [editingSubcontractor, setEditingSubcontractor] = useState(null);
 
   const visibleEmployees = showArchived ? employees : activeOnly(employees);
   const visibleSubcontractors = showArchived
@@ -126,6 +123,17 @@ export default function Employees() {
     await updateItem("employees", employee.id, { archived: true });
   };
 
+  const deleteEmployee = async (employee) => {
+    if (
+      !confirm(
+        `למחוק את ${employee.name} לצמיתות? בשונה מהעברה לארכיון, מחיקה תשפיע גם על דוחות והיסטוריה שכבר נרשמו עם העובד הזה.`
+      )
+    ) {
+      return;
+    }
+    await deleteItem("employees", employee.id);
+  };
+
   const toggleSubcontractorArchive = async (subcontractor) => {
     if (subcontractor.archived) {
       await updateItem("subcontractors", subcontractor.id, { archived: false });
@@ -141,14 +149,23 @@ export default function Employees() {
     await updateItem("subcontractors", subcontractor.id, { archived: true });
   };
 
+  const deleteSubcontractor = async (subcontractor) => {
+    if (
+      !confirm(
+        `למחוק את ${subcontractor.name} לצמיתות? בשונה מהעברה לארכיון, מחיקה תשפיע גם על דוחות והיסטוריה שכבר נרשמו עם הקבלן הזה.`
+      )
+    ) {
+      return;
+    }
+    await deleteItem("subcontractors", subcontractor.id);
+  };
+
   const unassignedSubEmployees = subcontractorEmployees.filter(
     (e) => !e.subcontractorId
   );
 
   return (
     <>
-      <SettingsHelpCard title="מה זה עובדים?" items={HELP_ITEMS} />
-
       <div className="card" style={{ marginTop: 20 }}>
         <h3>הוספת עובד</h3>
 
@@ -231,6 +248,8 @@ export default function Employees() {
         ) : (
           <EmployeeTable
             employees={internalEmployees}
+            onEdit={setEditingEmployee}
+            onDelete={deleteEmployee}
             onToggleArchive={toggleEmployeeArchive}
           />
         )}
@@ -255,18 +274,31 @@ export default function Employees() {
                 {subcontractor.name}
                 {subcontractor.archived ? " (בארכיון)" : ""} - סה״כ {list.length}
               </h3>
-              <button
-                type="button"
-                onClick={() => toggleSubcontractorArchive(subcontractor)}
-              >
-                {subcontractor.archived ? "שחזר קבלן" : "העבר קבלן לארכיון"}
-              </button>
+              <div className="report-row-actions">
+                <button
+                  type="button"
+                  onClick={() => setEditingSubcontractor(subcontractor)}
+                >
+                  ערוך קבלן
+                </button>
+                <button type="button" onClick={() => deleteSubcontractor(subcontractor)}>
+                  מחק קבלן
+                </button>
+                <button
+                  type="button"
+                  onClick={() => toggleSubcontractorArchive(subcontractor)}
+                >
+                  {subcontractor.archived ? "שחזר קבלן" : "העבר קבלן לארכיון"}
+                </button>
+              </div>
             </div>
             {list.length === 0 ? (
               <p>אין עובדים המשויכים לקבלן הזה.</p>
             ) : (
               <EmployeeTable
                 employees={list}
+                onEdit={setEditingEmployee}
+                onDelete={deleteEmployee}
                 onToggleArchive={toggleEmployeeArchive}
               />
             )}
@@ -279,6 +311,8 @@ export default function Employees() {
           <h3>עובדי קבלן שלא שויכו לקבלן</h3>
           <EmployeeTable
             employees={unassignedSubEmployees}
+            onEdit={setEditingEmployee}
+            onDelete={deleteEmployee}
             onToggleArchive={toggleEmployeeArchive}
           />
         </div>
@@ -296,6 +330,26 @@ export default function Employees() {
           סה״כ עובדים כללי: <strong>{internalEmployees.length + subcontractorEmployees.length}</strong>
         </p>
       </div>
+
+      <ActionsLegend />
+
+      {editingEmployee && (
+        <EditEmployeeModal
+          employee={editingEmployee}
+          onClose={() => setEditingEmployee(null)}
+        />
+      )}
+
+      {editingSubcontractor && (
+        <EditSimpleItemModal
+          title="עריכת קבלן משנה"
+          initialName={editingSubcontractor.name}
+          onSave={(newName) =>
+            updateItem("subcontractors", editingSubcontractor.id, { name: newName })
+          }
+          onClose={() => setEditingSubcontractor(null)}
+        />
+      )}
     </>
   );
 }
