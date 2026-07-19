@@ -40,7 +40,22 @@ function AuthenticatedApp() {
         <Route
           path="/sites"
           element={
-            <SimpleManager collection="sites" placeholder="שם אתר" key="sites" />
+            <SimpleManager
+              collection="sites"
+              placeholder="שם אתר"
+              key="sites"
+              helpTitle="מה זה אתרי עבודה?"
+              helpItems={[
+                {
+                  label: "אתר עבודה",
+                  text: "המיקום הפיזי שבו מתבצעת העבודה - למשל שם פרויקט או כתובת.",
+                },
+                {
+                  label: "קשר למבנים ולתעריפים",
+                  text: 'כל אתר יכול להכיל כמה "מבנים" (מנוהלים בעמוד מבנים), ומשמש גם לרישום יומן עבודה וגם להגדרת תעריפים.',
+                },
+              ]}
+            />
           }
         />
         <Route path="/buildings" element={<Buildings />} />
@@ -51,6 +66,17 @@ function AuthenticatedApp() {
               collection="customers"
               placeholder="שם מזמין"
               key="customers"
+              helpTitle="מה זה מזמיני עבודה?"
+              helpItems={[
+                {
+                  label: "מזמין עבודה",
+                  text: 'הלקוח שעבורו מתבצעת העבודה בפועל - מי ש"מזמין" את העבודה ומשלם עליה.',
+                },
+                {
+                  label: "קשר לתעריפים ולדוחות",
+                  text: 'לפי המזמין (יחד עם האתר) נקבע תעריף ההכנסה בעמוד תעריפים, וניתן להפיק לו דוחות ייעודיים בעמוד "דוחות מזמין".',
+                },
+              ]}
             />
           }
         />

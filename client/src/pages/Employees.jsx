@@ -1,6 +1,22 @@
 import { useState } from "react";
 import { useData } from "../state/DataProvider.jsx";
 import { activeOnly } from "../lib/entities.js";
+import SettingsHelpCard from "../components/SettingsHelpCard.jsx";
+
+const HELP_ITEMS = [
+  {
+    label: "עובדים שלי",
+    text: "עובדים ששייכים אליך ישירות, ללא קבלן משנה.",
+  },
+  {
+    label: "עובדי קבלן משנה",
+    text: "עובדים שמשויכים לקבלן משנה ספציפי. קבלני המשנה עצמם מנוהלים גם הם בעמוד הזה, בכרטיס \"הוספת קבלן משנה\".",
+  },
+  {
+    label: "העברה לארכיון",
+    text: "מעבירים לארכיון במקום למחוק, כדי שדוחות ורשומות שכבר נרשמו לא ישתנו. עובד או קבלן בארכיון לא יופיע לבחירה ברשומות חדשות, אבל אפשר לשחזר אותו בכל רגע.",
+  },
+];
 
 function EmployeeTable({ employees, onToggleArchive }) {
   return (
@@ -131,6 +147,8 @@ export default function Employees() {
 
   return (
     <>
+      <SettingsHelpCard title="מה זה עובדים?" items={HELP_ITEMS} />
+
       <div className="card" style={{ marginTop: 20 }}>
         <h3>הוספת עובד</h3>
 

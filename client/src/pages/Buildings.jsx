@@ -1,6 +1,18 @@
 import { useState } from "react";
 import { useData } from "../state/DataProvider.jsx";
 import { getName, activeOnly } from "../lib/entities.js";
+import SettingsHelpCard from "../components/SettingsHelpCard.jsx";
+
+const HELP_ITEMS = [
+  {
+    label: "מבנה",
+    text: "תת-חלוקה של אתר עבודה - למשל בניין ספציפי בתוך פרויקט. כל מבנה משויך לאתר עבודה אחד.",
+  },
+  {
+    label: "שימוש ביומן עבודה",
+    text: "בעת רישום רשומת עבודה בוחרים גם אתר וגם מבנה, כדי לדעת בדיוק איפה בוצעה העבודה בתוך האתר.",
+  },
+];
 
 export default function Buildings() {
   const { data, addItem, updateItem } = useData();
@@ -50,6 +62,8 @@ export default function Buildings() {
 
   return (
     <>
+      <SettingsHelpCard title="מה זה מבנים?" items={HELP_ITEMS} />
+
       <div className="card">
         <h3>הוספת מבנה</h3>
 

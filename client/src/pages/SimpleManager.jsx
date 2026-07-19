@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { useData } from "../state/DataProvider.jsx";
 import { activeOnly } from "../lib/entities.js";
+import SettingsHelpCard from "../components/SettingsHelpCard.jsx";
 
-export default function SimpleManager({ collection, placeholder }) {
+export default function SimpleManager({ collection, placeholder, helpTitle, helpItems }) {
   const { data, addItem, updateItem } = useData();
   const [name, setName] = useState("");
   const [showArchived, setShowArchived] = useState(false);
@@ -43,6 +44,8 @@ export default function SimpleManager({ collection, placeholder }) {
 
   return (
     <>
+      {helpItems && <SettingsHelpCard title={helpTitle} items={helpItems} />}
+
       <div className="card">
         <h3>הוספה</h3>
         <input
