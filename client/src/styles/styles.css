@@ -1536,7 +1536,7 @@ body.loading .menu-overlay {
 .report-row-actions {
     display: flex;
     gap: 8px;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     justify-content: center;
 }
 

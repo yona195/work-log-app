@@ -35,7 +35,7 @@ function EmployeeTable({ employees, onEdit, onDelete, onToggleArchive }) {
                   type="button"
                   onClick={() => onToggleArchive(employee)}
                 >
-                  {employee.archived ? "שחזר" : "לארכיון"}
+                  {employee.archived ? "שחזר" : "ארכיון"}
                 </button>
               </div>
             </td>
@@ -298,7 +298,7 @@ export default function Employees() {
                   type="button"
                   onClick={() => toggleSubcontractorArchive(subcontractor)}
                 >
-                  {subcontractor.archived ? "שחזר קבלן" : "לארכיון"}
+                  {subcontractor.archived ? "שחזר קבלן" : "ארכיון"}
                 </button>
               </div>
             </div>

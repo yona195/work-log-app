@@ -149,7 +149,7 @@ export default function Buildings() {
                         type="button"
                         onClick={() => toggleArchive(building)}
                       >
-                        {building.archived ? "שחזר" : "לארכיון"}
+                        {building.archived ? "שחזר" : "ארכיון"}
                       </button>
                     </div>
                   </td>

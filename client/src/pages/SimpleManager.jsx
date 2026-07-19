@@ -127,7 +127,7 @@ export default function SimpleManager({ collection, placeholder, editTitle }) {
                         type="button"
                         onClick={() => toggleArchive(item)}
                       >
-                        {item.archived ? "שחזר" : "לארכיון"}
+                        {item.archived ? "שחזר" : "ארכיון"}
                       </button>
                     </div>
                   </td>
