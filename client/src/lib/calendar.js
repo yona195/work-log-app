@@ -73,3 +73,24 @@ export function buildMonthWeeks(year, month) {
   }
   return weeks;
 }
+
+// Inclusive list of ISO dates between two (order-independent), using local
+// date components so day-boundary rollover in non-UTC timezones can't
+// skip/duplicate a day.
+export function isoRangeInclusive(startISO, endISO) {
+  const a = parseISO(startISO);
+  const b = parseISO(endISO);
+  if (!a || !b) return [];
+  const startsFirst = startISO <= endISO;
+  const from = startsFirst ? a : b;
+  const to = startsFirst ? b : a;
+
+  const cursor = new Date(from.year, from.month, from.day);
+  const last = new Date(to.year, to.month, to.day);
+  const result = [];
+  while (cursor <= last) {
+    result.push(toISO(cursor.getFullYear(), cursor.getMonth(), cursor.getDate()));
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return result;
+}

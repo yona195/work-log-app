@@ -1723,9 +1723,16 @@ body.loading .menu-overlay {
     overflow-x: auto;
 }
 
+.date-picker-hint {
+    margin-bottom: 12px;
+    font-size: 12px;
+    color: var(--color-muted);
+}
+
 .date-picker-months {
     display: flex;
     gap: 20px;
+    user-select: none;
 }
 
 .date-picker-month {

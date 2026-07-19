@@ -4,6 +4,7 @@ import {
   HEBREW_WEEKDAYS_SHORT,
   addMonths,
   buildMonthWeeks,
+  isoRangeInclusive,
   parseISO,
   todayISO,
 } from "../lib/calendar.js";
@@ -16,7 +17,19 @@ function formatDisplay(iso) {
   return `${day}/${month}/${parsed.year}`;
 }
 
-function MonthPanel({ year, month, onPrev, onNext, isSelected, isInRange, onDayClick, min, max }) {
+function MonthPanel({
+  year,
+  month,
+  onPrev,
+  onNext,
+  isSelected,
+  isInRange,
+  onDayClick,
+  onDayMouseDown,
+  onDayMouseEnter,
+  min,
+  max,
+}) {
   const weeks = useMemo(() => buildMonthWeeks(year, month), [year, month]);
   const today = todayISO();
 
@@ -66,6 +79,8 @@ function MonthPanel({ year, month, onPrev, onNext, isSelected, isInRange, onDayC
               className={classes.join(" ")}
               disabled={disabled}
               onClick={() => onDayClick(cell.iso)}
+              onMouseDown={() => onDayMouseDown(cell.iso)}
+              onMouseEnter={() => onDayMouseEnter(cell.iso)}
             >
               {cell.day}
             </button>
@@ -83,9 +98,11 @@ function MonthPanel({ year, month, onPrev, onNext, isSelected, isInRange, onDayC
  *  - "range": value is { from, to } (either can be ""). Two months shown;
  *    first click sets "from", the next sets "to" (or restarts "from" if the
  *    click lands before the current "from").
- *  - "multi": value is an array of ISO strings. Two months shown; every
- *    click toggles that date in/out of the array, for picking several
- *    non-consecutive dates in one go (e.g. a shift on scattered days).
+ *  - "multi": value is an array of ISO strings. Two months shown. A plain
+ *    click toggles that single date in/out. Dragging across days (mouse
+ *    down on one day, up on another) adds the whole dragged span to the
+ *    selection in one gesture — and can be repeated to add another,
+ *    separate span without losing the first (e.g. two work weeks).
  */
 export default function DatePicker({
   mode = "single",
@@ -104,6 +121,12 @@ export default function DatePicker({
   const seed = parseISO(seedISO) || parseISO(todayISO());
   const [anchor, setAnchor] = useState({ year: seed.year, month: seed.month });
 
+  // Multi-mode drag state. dragAnchorRef avoids stale closures in the
+  // document-level mouseup listener; dragPreview is real state so the
+  // in-progress span re-renders as the pointer moves.
+  const dragAnchorRef = useRef(null);
+  const [dragPreview, setDragPreview] = useState(null);
+
   useEffect(() => {
     function handleClickOutside(event) {
       if (containerRef.current && !containerRef.current.contains(event.target)) {
@@ -113,6 +136,33 @@ export default function DatePicker({
     if (open) document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [open]);
+
+  useEffect(() => {
+    if (mode !== "multi") return undefined;
+
+    function commitDrag() {
+      if (!dragAnchorRef.current) return;
+      dragAnchorRef.current = null;
+      setDragPreview((preview) => {
+        if (!preview) return null;
+        const current = new Set(Array.isArray(value) ? value : []);
+        if (preview.start === preview.end) {
+          // No real movement — a plain click just toggles that one day.
+          if (current.has(preview.start)) current.delete(preview.start);
+          else current.add(preview.start);
+        } else {
+          isoRangeInclusive(preview.start, preview.end).forEach((iso) =>
+            current.add(iso)
+          );
+        }
+        onChange(Array.from(current).sort());
+        return null;
+      });
+    }
+
+    document.addEventListener("mouseup", commitDrag);
+    return () => document.removeEventListener("mouseup", commitDrag);
+  }, [mode, value, onChange]);
 
   const monthCount = mode === "single" ? 1 : 2;
   const monthsToShow = useMemo(() => {
@@ -130,30 +180,42 @@ export default function DatePicker({
   };
 
   const isInRange = (iso) => {
-    if (mode !== "range" || !value?.from || !value?.to) return false;
-    return iso > value.from && iso < value.to;
+    if (mode === "range" && value?.from && value?.to) {
+      return iso > value.from && iso < value.to;
+    }
+    if (mode === "multi" && dragPreview) {
+      return isoRangeInclusive(dragPreview.start, dragPreview.end).includes(iso);
+    }
+    return false;
   };
 
   const handleDayClick = (iso) => {
+    // Multi mode is driven entirely by mousedown/mouseup (see below) so a
+    // single click can be told apart from a drag; this handler no-ops there.
+    if (mode === "multi") return;
     if (mode === "single") {
       onChange(iso);
       setOpen(false);
       return;
     }
-    if (mode === "range") {
-      if (!value?.from || (value.from && value.to)) {
-        onChange({ from: iso, to: "" });
-      } else if (iso < value.from) {
-        onChange({ from: iso, to: "" });
-      } else {
-        onChange({ from: value.from, to: iso });
-      }
-      return;
+    if (!value?.from || (value.from && value.to)) {
+      onChange({ from: iso, to: "" });
+    } else if (iso < value.from) {
+      onChange({ from: iso, to: "" });
+    } else {
+      onChange({ from: value.from, to: iso });
     }
-    const current = new Set(Array.isArray(value) ? value : []);
-    if (current.has(iso)) current.delete(iso);
-    else current.add(iso);
-    onChange(Array.from(current).sort());
+  };
+
+  const handleDayMouseDown = (iso) => {
+    if (mode !== "multi") return;
+    dragAnchorRef.current = iso;
+    setDragPreview({ start: iso, end: iso });
+  };
+
+  const handleDayMouseEnter = (iso) => {
+    if (mode !== "multi" || !dragAnchorRef.current) return;
+    setDragPreview({ start: dragAnchorRef.current, end: iso });
   };
 
   const displayText = useMemo(() => {
@@ -187,6 +249,11 @@ export default function DatePicker({
 
       {open && (
         <div className="date-picker-popover">
+          {mode === "multi" && (
+            <p className="date-picker-hint">
+              גררו על פני כמה ימים כדי לבחור טווח שלם - אפשר לחזור על זה כמה פעמים.
+            </p>
+          )}
           <div className="date-picker-months">
             {monthsToShow.map(({ year, month }) => (
               <MonthPanel
@@ -198,6 +265,8 @@ export default function DatePicker({
                 isSelected={isSelected}
                 isInRange={isInRange}
                 onDayClick={handleDayClick}
+                onDayMouseDown={handleDayMouseDown}
+                onDayMouseEnter={handleDayMouseEnter}
                 min={min}
                 max={max}
               />
