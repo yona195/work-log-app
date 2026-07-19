@@ -138,28 +138,55 @@ export default function Employees() {
     await deleteItem("employees", employee.id);
   };
 
+  // Actions on a subcontractor cascade to its own employees (archive/
+  // restore/delete all move together), but the reverse never happens —
+  // touching one employee must never affect their subcontractor or
+  // siblings.
+  const subcontractorEmployeesOf = (subcontractor) =>
+    employees.filter(
+      (e) => String(e.subcontractorId || "") === String(subcontractor.id)
+    );
+
   const toggleSubcontractorArchive = async (subcontractor) => {
+    const subEmployees = subcontractorEmployeesOf(subcontractor);
     if (subcontractor.archived) {
       await updateItem("subcontractors", subcontractor.id, { archived: false });
+      for (const employee of subEmployees) {
+        // eslint-disable-next-line no-await-in-loop
+        await updateItem("employees", employee.id, { archived: false });
+      }
       return;
     }
+    const employeeNote =
+      subEmployees.length > 0 ? ` וכל ${subEmployees.length} העובדים שלו` : "";
     if (
       !confirm(
-        `להעביר את ${subcontractor.name} לארכיון? הקבלן והעובדים המשויכים אליו לא יופיעו יותר לבחירה ברשומות חדשות, אבל הדוחות הקיימים לא ישתנו.`
+        `להעביר את ${subcontractor.name}${employeeNote} לארכיון? לא יופיעו יותר לבחירה ברשומות חדשות, אבל הדוחות הקיימים לא ישתנו.`
       )
     ) {
       return;
     }
     await updateItem("subcontractors", subcontractor.id, { archived: true });
+    for (const employee of subEmployees) {
+      // eslint-disable-next-line no-await-in-loop
+      await updateItem("employees", employee.id, { archived: true });
+    }
   };
 
   const deleteSubcontractor = async (subcontractor) => {
+    const subEmployees = subcontractorEmployeesOf(subcontractor);
+    const employeeNote =
+      subEmployees.length > 0 ? ` וכל ${subEmployees.length} העובדים שלו` : "";
     if (
       !confirm(
-        `למחוק את ${subcontractor.name} לצמיתות? בשונה מהעברה לארכיון, מחיקה תשפיע גם על דוחות והיסטוריה שכבר נרשמו עם הקבלן הזה.`
+        `למחוק את ${subcontractor.name}${employeeNote} לצמיתות? בשונה מהעברה לארכיון, מחיקה תשפיע גם על דוחות והיסטוריה שכבר נרשמו.`
       )
     ) {
       return;
+    }
+    for (const employee of subEmployees) {
+      // eslint-disable-next-line no-await-in-loop
+      await deleteItem("employees", employee.id);
     }
     await deleteItem("subcontractors", subcontractor.id);
   };

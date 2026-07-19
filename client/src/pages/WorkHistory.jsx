@@ -171,7 +171,11 @@ export default function WorkHistory() {
                     return (
                       <tr key={log.id}>
                         <td>{normalizeDate(log.date)}</td>
-                        <td>{reportEmployees.map((e) => e.name).join(", ")}</td>
+                        <td>
+                          {reportEmployees
+                            .map((e) => `${e.name} - ${getEmployeeAffiliationName(data, e)}`)
+                            .join(", ")}
+                        </td>
                         <td>{reportEmployees.length}</td>
                         <td>{getName(sites, log.siteId)}</td>
                         <td>{getBuildingNames(data, log)}</td>
