@@ -118,6 +118,15 @@ export default function WorkHistory() {
     }));
   }, [monthGroups, data, effectiveFilters]);
 
+  // Splitting a log by contractor turns one log into several table rows, so
+  // the count shown here must match what's actually being paginated below —
+  // not the raw log count, which would look inconsistent with page labels
+  // like "21-40" once split rows push the true row count higher.
+  const totalRows = useMemo(
+    () => monthSections.reduce((sum, section) => sum + section.rows.length, 0),
+    [monthSections]
+  );
+
   const getPage = (monthKey) => pageByMonth[monthKey] || 1;
   const setPage = (monthKey, page) =>
     setPageByMonth((prev) => ({ ...prev, [monthKey]: page }));
@@ -206,7 +215,7 @@ export default function WorkHistory() {
 
       <div className="card" style={{ marginTop: 20 }}>
         <h2>היסטוריית עבודה</h2>
-        <p>סה״כ רשומות: {filteredLogs.length}</p>
+        <p>סה״כ רשומות: {totalRows}</p>
         {filteredLogs.length === 0 ? (
           <p>אין רשומות מתאימות.</p>
         ) : (
