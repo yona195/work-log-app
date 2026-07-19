@@ -63,14 +63,22 @@ export async function exportPdfInNewTab({ hasData, buildHtml, onLoadingChange })
   onLoadingChange?.(true);
   try {
     const html = buildHtml();
+    // The server returns the PDF as a Blob in one response — no navigation
+    // event to wait for. Handing that Blob straight to an object URL and
+    // pointing the already-open tab at it is instant and synchronous.
     const blob = await api.renderPdf(html);
     const url = URL.createObjectURL(blob);
     newTab.location = url;
   } catch (error) {
     console.error("PDF export failed:", error);
-    newTab.document.open();
-    newTab.document.write(errorHtml("אירעה שגיאה בהפקת ה-PDF. נסה שוב."));
-    newTab.document.close();
+    const message = "אירעה שגיאה בהפקת ה-PDF. נסה שוב.";
+    if (newTab.closed) {
+      alert(message);
+    } else {
+      newTab.document.open();
+      newTab.document.write(errorHtml(message));
+      newTab.document.close();
+    }
   } finally {
     onLoadingChange?.(false);
   }

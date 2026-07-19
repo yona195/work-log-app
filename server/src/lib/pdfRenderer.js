@@ -11,7 +11,16 @@ export async function buildPdfBuffer(html) {
   });
   try {
     const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: "networkidle0" });
+    // The report HTML is fully self-contained (inline <style>, no external
+    // images/fonts/scripts), so there's nothing for the network to ever go
+    // idle from — "networkidle0" is a condition that can hang indefinitely
+    // with setContent() in constrained/sandboxed environments and was the
+    // actual cause of the reported "Navigation timeout of 30000 ms
+    // exceeded" failures. "domcontentloaded" fires as soon as the DOM
+    // (including inline styles) finishes parsing, which is all page.pdf()
+    // needs here, and resolves immediately instead of waiting on a network
+    // condition that never applies.
+    await page.setContent(html, { waitUntil: "domcontentloaded" });
     return await page.pdf({
       format: "A4",
       landscape: true,
