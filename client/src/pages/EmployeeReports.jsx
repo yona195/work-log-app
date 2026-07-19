@@ -12,13 +12,14 @@ import PeriodFilter, { useDateRangeFilter } from "../components/PeriodFilter.jsx
 const toggle = (list, id) =>
   list.includes(id) ? list.filter((x) => x !== id) : [...list, id];
 
+const NO_DATA_MESSAGE = "לא נמצאו נתונים עבור התקופה והבחירות שנבחרו.";
+
 export default function EmployeeReports() {
   const { data } = useData();
   const { employees, subcontractors } = data;
 
   const dateRange = useDateRangeFilter();
   const [reportType, setReportType] = useState("work"); // "work" | "summary"
-  const [advancedOpen, setAdvancedOpen] = useState(false);
   const [group, setGroup] = useState("");
   const [showArchived, setShowArchived] = useState(false);
 
@@ -95,7 +96,7 @@ export default function EmployeeReports() {
 
   const requireLogs = (fn) => () => {
     if (filteredLogs.length === 0) {
-      alert("אין רשומות מתאימות להפקת דוח");
+      alert(NO_DATA_MESSAGE);
       return;
     }
     fn(data, filteredLogs, filters);
@@ -106,69 +107,21 @@ export default function EmployeeReports() {
   const handleSummaryPDF = requireLogs(createEmployeeSummaryPDF);
   const handleSummaryExcel = requireLogs(exportEmployeeSummaryExcel);
 
-  const clearAllFilters = () => {
-    handleGroupChange("");
-    setShowArchived(false);
-  };
-
-  // Chips reflect only the advanced filters — the period lives in the
-  // primary row above "סינון מתקדם" and is never shown as a removable chip.
-  const chips = useMemo(() => {
-    const list = [];
-
-    if (group) {
-      list.push({
-        key: "group",
-        label: `סוג עובדים: ${group === "internal" ? "העובדים שלי" : "עובדי קבלן"}`,
-        onRemove: () => handleGroupChange(""),
-      });
-    }
-
-    if (group === "all-subcontractors") {
-      selectedSubcontractorIds.forEach((id) => {
-        const name = subcontractors.find((s) => String(s.id) === String(id))?.name;
-        list.push({
-          key: `subcontractor-${id}`,
-          label: `קבלן משנה: ${name || "לא נמצא"}`,
-          onRemove: () => toggleSubcontractor(id),
-        });
-      });
-    }
-
-    selectedEmployeeIds.forEach((id) => {
-      const name = employees.find((e) => String(e.id) === String(id))?.name;
-      list.push({
-        key: `employee-${id}`,
-        label: `עובד: ${name || "לא נמצא"}`,
-        onRemove: () => toggleEmployee(id),
-      });
-    });
-
-    if (showArchived) {
-      list.push({
-        key: "archived",
-        label: "כולל פריטים בארכיון",
-        onRemove: () => setShowArchived(false),
-      });
-    }
-
-    return list;
-  }, [
-    group,
-    selectedSubcontractorIds,
-    selectedEmployeeIds,
-    subcontractors,
-    employees,
-    showArchived,
-  ]);
+  // Mandatory fields: a complete period, and at least one employee selected
+  // (selection starts empty by design, so "nothing checked" must block
+  // export rather than silently mean "everyone").
+  const periodValid =
+    dateRange.period !== "custom" || Boolean(dateRange.customFrom && dateRange.customTo);
+  const employeesValid = selectedEmployeeIds.length > 0;
+  const canExport = periodValid && employeesValid;
 
   return (
     <>
       <div className="card">
-        <h3>סינון דוח</h3>
+        <h3>הגדרת הדוח</h3>
 
-        <div className="filter-row">
-          <div className="filter-row-item">
+        <div className="filter-grid">
+          <div className="filter-grid-item">
             <PeriodFilter
               period={dateRange.period}
               onPeriodChange={dateRange.setPeriod}
@@ -176,95 +129,72 @@ export default function EmployeeReports() {
               customTo={dateRange.customTo}
               onCustomFromChange={dateRange.setCustomFrom}
               onCustomToChange={dateRange.setCustomTo}
+              required
+              errorMessage={periodValid ? "" : "יש לבחור טווח תאריכים מלא"}
             />
           </div>
 
-          <div className="filter-row-item">
-            <label>סוג דוח</label>
-            <div className="employee-actions">
-              <button
-                type="button"
-                className={reportType === "work" ? "primary-btn" : "secondary-btn"}
-                onClick={() => setReportType("work")}
-              >
-                דוחות לעובדים
-              </button>
-              <button
-                type="button"
-                className={reportType === "summary" ? "primary-btn" : "secondary-btn"}
-                onClick={() => setReportType("summary")}
-              >
-                דוחות עובדים סיכום
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <button
-          type="button"
-          className="secondary-btn advanced-filters-toggle"
-          onClick={() => setAdvancedOpen((open) => !open)}
-        >
-          {advancedOpen ? "הסתר סינון מתקדם ▲" : "סינון מתקדם ▼"}
-        </button>
-
-        {advancedOpen && (
-          <div className="advanced-filters">
+          <div className="filter-grid-item">
             <label>סוג עובדים</label>
             <select value={group} onChange={(e) => handleGroupChange(e.target.value)}>
               <option value="">כל העובדים</option>
               <option value="internal">העובדים שלי</option>
               <option value="all-subcontractors">עובדי קבלן</option>
             </select>
+          </div>
 
-            {group === "all-subcontractors" && (
-              <>
-                <div className="section-title-row">
-                  <label>קבלן משנה</label>
-                  <div className="employee-actions">
-                    <button
-                      type="button"
-                      className="secondary-btn"
-                      onClick={() =>
-                        setSelectedSubcontractorIds(relevantSubcontractors.map((s) => s.id))
-                      }
-                    >
-                      בחר הכל
-                    </button>
-                    <button
-                      type="button"
-                      className="secondary-btn"
-                      onClick={() => setSelectedSubcontractorIds([])}
-                    >
-                      נקה הכל
-                    </button>
-                  </div>
+          {group === "all-subcontractors" && (
+            <div className="filter-grid-item">
+              <div className="section-title-row">
+                <label>קבלן משנה</label>
+                <div className="employee-actions">
+                  <button
+                    type="button"
+                    className="secondary-btn"
+                    onClick={() =>
+                      setSelectedSubcontractorIds(relevantSubcontractors.map((s) => s.id))
+                    }
+                  >
+                    בחר הכל
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary-btn"
+                    onClick={() => setSelectedSubcontractorIds([])}
+                  >
+                    נקה הכל
+                  </button>
                 </div>
+              </div>
 
-                <div className="checkbox-list">
-                  {relevantSubcontractors.length === 0 ? (
-                    <div className="empty-message">אין קבלני משנה עם עובדים</div>
-                  ) : (
-                    relevantSubcontractors.map((subcontractor) => (
-                      <label className="checkbox-item" key={subcontractor.id}>
-                        <input
-                          type="checkbox"
-                          checked={selectedSubcontractorIds.includes(subcontractor.id)}
-                          onChange={() => toggleSubcontractor(subcontractor.id)}
-                        />
-                        <span>
-                          {subcontractor.name}
-                          {subcontractor.archived ? " (בארכיון)" : ""}
-                        </span>
-                      </label>
-                    ))
-                  )}
-                </div>
-              </>
-            )}
+              <div className="checkbox-list">
+                {relevantSubcontractors.length === 0 ? (
+                  <div className="empty-message">אין קבלני משנה עם עובדים</div>
+                ) : (
+                  relevantSubcontractors.map((subcontractor) => (
+                    <label className="checkbox-item" key={subcontractor.id}>
+                      <input
+                        type="checkbox"
+                        checked={selectedSubcontractorIds.includes(subcontractor.id)}
+                        onChange={() => toggleSubcontractor(subcontractor.id)}
+                      />
+                      <span>
+                        {subcontractor.name}
+                        {subcontractor.archived ? " (בארכיון)" : ""}
+                      </span>
+                    </label>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
 
+          <div className="filter-grid-item">
             <div className="section-title-row">
-              <label>בחירת עובדים</label>
+              <label>
+                בחירת עובדים
+                <span className="required-mark"> *</span>
+              </label>
               <div className="employee-actions">
                 <button
                   type="button"
@@ -302,11 +232,12 @@ export default function EmployeeReports() {
                 ))
               )}
             </div>
+            {!employeesValid && (
+              <p className="field-error">יש לבחור לפחות עובד אחד</p>
+            )}
+          </div>
 
-            <p id="employeeCountText">
-              סה״כ עובדים שנבחרו: {selectedEmployeeIds.length}
-            </p>
-
+          <div className="filter-grid-item">
             <label className="checkbox-item" style={{ display: "inline-flex", marginTop: 8 }}>
               <input
                 type="checkbox"
@@ -316,33 +247,31 @@ export default function EmployeeReports() {
               <span>הצג פריטים בארכיון ברשימות הסינון</span>
             </label>
           </div>
-        )}
+        </div>
 
-        {chips.length > 0 && (
-          <div className="filter-chips">
-            {chips.map((chip) => (
-              <span className="filter-chip" key={chip.key}>
-                {chip.label}
-                <button
-                  type="button"
-                  className="filter-chip-remove"
-                  onClick={chip.onRemove}
-                  aria-label="הסר סינון"
-                >
-                  ×
-                </button>
-              </span>
-            ))}
-            <button type="button" className="secondary-btn" onClick={clearAllFilters}>
-              נקה את כל הסינונים
-            </button>
-          </div>
-        )}
+        <label style={{ marginTop: 20 }}>סוג הדוח</label>
+        <div className="employee-actions">
+          <button
+            type="button"
+            className={reportType === "work" ? "primary-btn" : "secondary-btn"}
+            onClick={() => setReportType("work")}
+          >
+            דוח עבודה לעובדים
+          </button>
+          <button
+            type="button"
+            className={reportType === "summary" ? "primary-btn" : "secondary-btn"}
+            onClick={() => setReportType("summary")}
+          >
+            דוח עובדים מסכם
+          </button>
+        </div>
 
         <div className="report-actions">
           <button
             className="primary-btn"
             type="button"
+            disabled={!canExport}
             onClick={reportType === "work" ? handleWorkPDF : handleSummaryPDF}
           >
             ייצוא PDF
@@ -350,20 +279,12 @@ export default function EmployeeReports() {
           <button
             className="excel-btn"
             type="button"
+            disabled={!canExport}
             onClick={reportType === "work" ? handleWorkExcel : handleSummaryExcel}
           >
             ייצוא אקסל
           </button>
         </div>
-      </div>
-
-      <div className="card" style={{ marginTop: 20 }}>
-        <p>
-          {reportType === "work"
-            ? "דוחות לעובדים - טבלה לכל עובד עם התאריכים, אתרי העבודה, המבנים שבהם עבד, וסה״כ ימי עבודה."
-            : "דוחות עובדים סיכום - אותו דבר, בתוספת עלות, תשלום ורווח/הפסד לכל יום ושורת סיכום לכל עובד."}
-        </p>
-        <p style={{ marginTop: 10 }}>סה״כ רשומות בטווח שנבחר: {filteredLogs.length}</p>
       </div>
     </>
   );

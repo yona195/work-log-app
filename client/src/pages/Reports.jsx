@@ -24,7 +24,6 @@ export default function Reports() {
 
   const dateRange = useDateRangeFilter();
   const [reportType, setReportType] = useState("customer"); // "customer" | "employer"
-  const [advancedOpen, setAdvancedOpen] = useState(false);
   const [filters, setFilters] = useState(EMPTY_FILTERS);
   const [showArchived, setShowArchived] = useState(false);
 
@@ -35,11 +34,6 @@ export default function Reports() {
       if (key === "group" && value === "internal") next.subcontractorId = "";
       return next;
     });
-
-  const clearAllFilters = () => {
-    setFilters(EMPTY_FILTERS);
-    setShowArchived(false);
-  };
 
   // Archived employees/subcontractors/sites/customers are hidden from these
   // filter lists by default so they don't clutter the common case; the
@@ -97,75 +91,20 @@ export default function Reports() {
   const handleEmployerExcel = () =>
     exportFinancialSummaryToExcel(data, filteredLogs, effectiveFilters);
 
-  // Chips reflect only the advanced filters — the period lives in the
-  // primary row above "סינון מתקדם" and is never shown as a removable chip.
-  const chips = useMemo(() => {
-    const list = [];
-
-    if (filters.group) {
-      list.push({
-        key: "group",
-        label: `שיוך עובדים: ${
-          filters.group === "internal" ? "העובדים שלי" : "כל עובדי קבלני המשנה"
-        }`,
-        onRemove: () => setFilter("group", ""),
-      });
-    }
-    if (filters.subcontractorId) {
-      const name = subcontractors.find(
-        (s) => String(s.id) === String(filters.subcontractorId)
-      )?.name;
-      list.push({
-        key: "subcontractor",
-        label: `קבלן משנה: ${name || "לא נמצא"}`,
-        onRemove: () => setFilter("subcontractorId", ""),
-      });
-    }
-    if (filters.employeeId) {
-      const name = employees.find(
-        (e) => String(e.id) === String(filters.employeeId)
-      )?.name;
-      list.push({
-        key: "employee",
-        label: `עובד: ${name || "לא נמצא"}`,
-        onRemove: () => setFilter("employeeId", ""),
-      });
-    }
-    if (filters.siteId) {
-      const name = sites.find((s) => String(s.id) === String(filters.siteId))?.name;
-      list.push({
-        key: "site",
-        label: `אתר: ${name || "לא נמצא"}`,
-        onRemove: () => setFilter("siteId", ""),
-      });
-    }
-    if (filters.customerId) {
-      const name = customers.find(
-        (c) => String(c.id) === String(filters.customerId)
-      )?.name;
-      list.push({
-        key: "customer",
-        label: `מזמין: ${name || "לא נמצא"}`,
-        onRemove: () => setFilter("customerId", ""),
-      });
-    }
-    if (showArchived) {
-      list.push({
-        key: "archived",
-        label: "כולל פריטים בארכיון",
-        onRemove: () => setShowArchived(false),
-      });
-    }
-    return list;
-  }, [filters, subcontractors, employees, sites, customers, showArchived]);
+  // The only mandatory field on this page — every narrowing filter below is
+  // legitimately optional (empty = "everyone"/"everything"), but a custom
+  // period with a missing endpoint is a genuinely incomplete selection.
+  const periodValid =
+    dateRange.period !== "custom" || Boolean(dateRange.customFrom && dateRange.customTo);
+  const canExport = periodValid;
 
   return (
     <>
       <div className="card">
-        <h3>סינון דוח</h3>
+        <h3>הגדרת הדוח</h3>
 
-        <div className="filter-row">
-          <div className="filter-row-item">
+        <div className="filter-grid">
+          <div className="filter-grid-item">
             <PeriodFilter
               period={dateRange.period}
               onPeriodChange={dateRange.setPeriod}
@@ -173,40 +112,44 @@ export default function Reports() {
               customTo={dateRange.customTo}
               onCustomFromChange={dateRange.setCustomFrom}
               onCustomToChange={dateRange.setCustomTo}
+              required
+              errorMessage={periodValid ? "" : "יש לבחור טווח תאריכים מלא"}
             />
           </div>
 
-          <div className="filter-row-item">
-            <label>סוג דוח</label>
-            <div className="employee-actions">
-              <button
-                type="button"
-                className={reportType === "customer" ? "primary-btn" : "secondary-btn"}
-                onClick={() => setReportType("customer")}
-              >
-                דוח מזמין
-              </button>
-              <button
-                type="button"
-                className={reportType === "employer" ? "primary-btn" : "secondary-btn"}
-                onClick={() => setReportType("employer")}
-              >
-                דוח מעסיק
-              </button>
-            </div>
+          <div className="filter-grid-item">
+            <label>מזמין עבודה</label>
+            <select
+              value={filters.customerId}
+              onChange={(e) => setFilter("customerId", e.target.value)}
+            >
+              <option value="">כל המזמינים</option>
+              {visibleCustomers.map((customer) => (
+                <option key={customer.id} value={customer.id}>
+                  {customer.name}
+                  {customer.archived ? " (בארכיון)" : ""}
+                </option>
+              ))}
+            </select>
           </div>
-        </div>
 
-        <button
-          type="button"
-          className="secondary-btn advanced-filters-toggle"
-          onClick={() => setAdvancedOpen((open) => !open)}
-        >
-          {advancedOpen ? "הסתר סינון מתקדם ▲" : "סינון מתקדם ▼"}
-        </button>
+          <div className="filter-grid-item">
+            <label>אתר עבודה</label>
+            <select
+              value={filters.siteId}
+              onChange={(e) => setFilter("siteId", e.target.value)}
+            >
+              <option value="">כל האתרים</option>
+              {visibleSites.map((site) => (
+                <option key={site.id} value={site.id}>
+                  {site.name}
+                  {site.archived ? " (בארכיון)" : ""}
+                </option>
+              ))}
+            </select>
+          </div>
 
-        {advancedOpen && (
-          <div className="advanced-filters">
+          <div className="filter-grid-item">
             <label>שיוך עובדים</label>
             <select
               value={filters.group}
@@ -216,7 +159,9 @@ export default function Reports() {
               <option value="internal">העובדים שלי</option>
               <option value="all-subcontractors">כל עובדי קבלני המשנה</option>
             </select>
+          </div>
 
+          <div className="filter-grid-item">
             <label>קבלן משנה</label>
             <select
               value={filters.subcontractorId}
@@ -231,7 +176,9 @@ export default function Reports() {
                 </option>
               ))}
             </select>
+          </div>
 
+          <div className="filter-grid-item">
             <label>עובד</label>
             <select
               value={filters.employeeId}
@@ -245,35 +192,9 @@ export default function Reports() {
                 </option>
               ))}
             </select>
+          </div>
 
-            <label>אתר עבודה</label>
-            <select
-              value={filters.siteId}
-              onChange={(e) => setFilter("siteId", e.target.value)}
-            >
-              <option value="">כל האתרים</option>
-              {visibleSites.map((site) => (
-                <option key={site.id} value={site.id}>
-                  {site.name}
-                  {site.archived ? " (בארכיון)" : ""}
-                </option>
-              ))}
-            </select>
-
-            <label>מזמין עבודה</label>
-            <select
-              value={filters.customerId}
-              onChange={(e) => setFilter("customerId", e.target.value)}
-            >
-              <option value="">כל המזמינים</option>
-              {visibleCustomers.map((customer) => (
-                <option key={customer.id} value={customer.id}>
-                  {customer.name}
-                  {customer.archived ? " (בארכיון)" : ""}
-                </option>
-              ))}
-            </select>
-
+          <div className="filter-grid-item">
             <label className="checkbox-item" style={{ display: "inline-flex", marginTop: 8 }}>
               <input
                 type="checkbox"
@@ -283,33 +204,31 @@ export default function Reports() {
               <span>הצג פריטים בארכיון ברשימות הסינון</span>
             </label>
           </div>
-        )}
+        </div>
 
-        {chips.length > 0 && (
-          <div className="filter-chips">
-            {chips.map((chip) => (
-              <span className="filter-chip" key={chip.key}>
-                {chip.label}
-                <button
-                  type="button"
-                  className="filter-chip-remove"
-                  onClick={chip.onRemove}
-                  aria-label="הסר סינון"
-                >
-                  ×
-                </button>
-              </span>
-            ))}
-            <button type="button" className="secondary-btn" onClick={clearAllFilters}>
-              נקה את כל הסינונים
-            </button>
-          </div>
-        )}
+        <label style={{ marginTop: 20 }}>סוג הדוח</label>
+        <div className="employee-actions">
+          <button
+            type="button"
+            className={reportType === "customer" ? "primary-btn" : "secondary-btn"}
+            onClick={() => setReportType("customer")}
+          >
+            דוח מזמין
+          </button>
+          <button
+            type="button"
+            className={reportType === "employer" ? "primary-btn" : "secondary-btn"}
+            onClick={() => setReportType("employer")}
+          >
+            דוח מעסיק
+          </button>
+        </div>
 
         <div className="report-actions">
           <button
             className="primary-btn"
             type="button"
+            disabled={!canExport}
             onClick={reportType === "customer" ? handlePDF : handleEmployerPDF}
           >
             ייצוא PDF
@@ -317,6 +236,7 @@ export default function Reports() {
           <button
             className="excel-btn"
             type="button"
+            disabled={!canExport}
             onClick={reportType === "customer" ? handleExcel : handleEmployerExcel}
           >
             ייצוא אקסל

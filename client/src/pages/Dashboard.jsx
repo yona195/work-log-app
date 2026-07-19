@@ -142,44 +142,11 @@ export default function Dashboard() {
         </div>
 
         <div className="card" style={{ marginTop: 20 }}>
-          <h3>הכנסות מול הוצאות לפי כוח אדם</h3>
-          {workforce.length === 0 ? (
-            <p className="dashboard-empty-text">
-              אין נתונים מתאימים בתקופה שנבחרה.
-            </p>
-          ) : (
-            <RevenueCostBarChart groups={workforce} />
-          )}
-        </div>
-
-        <div className="card" style={{ marginTop: 20 }}>
-          <h3>רווח לפי אתר עבודה</h3>
-          {sites.length === 0 ? (
-            <p className="dashboard-empty-text">
-              אין נתונים מתאימים בתקופה שנבחרה.
-            </p>
-          ) : (
-            <ProfitBarChart groups={sites} label="רווח" />
-          )}
-        </div>
-
-        <div className="card" style={{ marginTop: 20 }}>
-          <h3>רווח לפי מזמין עבודה</h3>
-          {customers.length === 0 ? (
-            <p className="dashboard-empty-text">
-              אין נתונים מתאימים בתקופה שנבחרה.
-            </p>
-          ) : (
-            <ProfitBarChart groups={customers} label="רווח" />
-          )}
-        </div>
-
-        <div className="card" style={{ marginTop: 20 }}>
-          <h2>פירוט כספי</h2>
+          <h3>כוח אדם</h3>
 
           <h4>סיכום לפי כוח אדם</h4>
           {workforce.length === 0 ? (
-            <p>אין נתונים כספיים מתאימים.</p>
+            <p className="dashboard-empty-text">אין נתונים כספיים מתאימים.</p>
           ) : (
             <table>
               <thead>
@@ -203,9 +170,22 @@ export default function Dashboard() {
             </table>
           )}
 
-          <h4 style={{ marginTop: 20 }}>סיכום לפי אתר עבודה</h4>
+          <h4 style={{ marginTop: 20 }}>הכנסות מול הוצאות לפי כוח אדם</h4>
+          {workforce.length === 0 ? (
+            <p className="dashboard-empty-text">
+              אין נתונים מתאימים בתקופה שנבחרה.
+            </p>
+          ) : (
+            <RevenueCostBarChart groups={workforce} />
+          )}
+        </div>
+
+        <div className="card" style={{ marginTop: 20 }}>
+          <h3>אתרי עבודה</h3>
+
+          <h4>סיכום לפי אתר עבודה</h4>
           {sites.length === 0 ? (
-            <p>אין נתונים לפי אתרים.</p>
+            <p className="dashboard-empty-text">אין נתונים לפי אתרים.</p>
           ) : (
             <table>
               <thead>
@@ -229,9 +209,22 @@ export default function Dashboard() {
             </table>
           )}
 
-          <h4 style={{ marginTop: 20 }}>סיכום לפי מזמין עבודה</h4>
+          <h4 style={{ marginTop: 20 }}>רווח לפי אתר עבודה</h4>
+          {sites.length === 0 ? (
+            <p className="dashboard-empty-text">
+              אין נתונים מתאימים בתקופה שנבחרה.
+            </p>
+          ) : (
+            <ProfitBarChart groups={sites} label="רווח" />
+          )}
+        </div>
+
+        <div className="card" style={{ marginTop: 20 }}>
+          <h3>מזמיני עבודה</h3>
+
+          <h4>סיכום לפי מזמין עבודה</h4>
           {customers.length === 0 ? (
-            <p>אין נתונים לפי מזמינים.</p>
+            <p className="dashboard-empty-text">אין נתונים לפי מזמינים.</p>
           ) : (
             <table>
               <thead>
@@ -253,6 +246,15 @@ export default function Dashboard() {
                 ))}
               </tbody>
             </table>
+          )}
+
+          <h4 style={{ marginTop: 20 }}>רווח לפי מזמין עבודה</h4>
+          {customers.length === 0 ? (
+            <p className="dashboard-empty-text">
+              אין נתונים מתאימים בתקופה שנבחרה.
+            </p>
+          ) : (
+            <ProfitBarChart groups={customers} label="רווח" />
           )}
         </div>
 

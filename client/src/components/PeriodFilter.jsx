@@ -25,10 +25,15 @@ export default function PeriodFilter({
   customTo,
   onCustomFromChange,
   onCustomToChange,
+  required = false,
+  errorMessage = "",
 }) {
   return (
     <>
-      <label>תקופה</label>
+      <label>
+        תקופה
+        {required && <span className="required-mark"> *</span>}
+      </label>
       <select value={period} onChange={(e) => onPeriodChange(e.target.value)}>
         <option value="current-month">החודש הנוכחי</option>
         <option value="last-three-months">שלושה חודשים אחרונים</option>
@@ -48,6 +53,8 @@ export default function PeriodFilter({
           />
         </div>
       )}
+
+      {errorMessage && <p className="field-error">{errorMessage}</p>}
     </>
   );
 }
