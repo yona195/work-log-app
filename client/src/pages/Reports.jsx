@@ -193,31 +193,37 @@ export default function Reports() {
       <div className="card">
         <h3>סינון דוח</h3>
 
-        <PeriodFilter
-          period={dateRange.period}
-          onPeriodChange={dateRange.setPeriod}
-          customFrom={dateRange.customFrom}
-          customTo={dateRange.customTo}
-          onCustomFromChange={dateRange.setCustomFrom}
-          onCustomToChange={dateRange.setCustomTo}
-        />
+        <div className="filter-row">
+          <div className="filter-row-item">
+            <PeriodFilter
+              period={dateRange.period}
+              onPeriodChange={dateRange.setPeriod}
+              customFrom={dateRange.customFrom}
+              customTo={dateRange.customTo}
+              onCustomFromChange={dateRange.setCustomFrom}
+              onCustomToChange={dateRange.setCustomTo}
+            />
+          </div>
 
-        <label>סוג דוח</label>
-        <div className="employee-actions">
-          <button
-            type="button"
-            className={reportType === "customer" ? "primary-btn" : "secondary-btn"}
-            onClick={() => setReportType("customer")}
-          >
-            דוח מזמין
-          </button>
-          <button
-            type="button"
-            className={reportType === "employer" ? "primary-btn" : "secondary-btn"}
-            onClick={() => setReportType("employer")}
-          >
-            דוח מעסיק
-          </button>
+          <div className="filter-row-item">
+            <label>סוג דוח</label>
+            <div className="employee-actions">
+              <button
+                type="button"
+                className={reportType === "customer" ? "primary-btn" : "secondary-btn"}
+                onClick={() => setReportType("customer")}
+              >
+                דוח מזמין
+              </button>
+              <button
+                type="button"
+                className={reportType === "employer" ? "primary-btn" : "secondary-btn"}
+                onClick={() => setReportType("employer")}
+              >
+                דוח מעסיק
+              </button>
+            </div>
+          </div>
         </div>
 
         <button

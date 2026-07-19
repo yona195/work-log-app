@@ -1520,8 +1520,30 @@ body.loading .menu-overlay {
     background: var(--color-border);
 }
 
+.filter-row {
+    display: flex;
+    flex-direction: column;
+    gap: 4px 28px;
+}
+
+.filter-row-item {
+    flex: 1 1 260px;
+    min-width: 0;
+}
+
+.filter-row-item .employee-actions {
+    margin-bottom: 0;
+}
+
+@media (min-width: 641px) {
+    .filter-row {
+        flex-direction: row;
+        align-items: flex-start;
+    }
+}
+
 .advanced-filters-toggle {
-    margin-top: 12px;
+    margin-top: 4px;
 }
 
 .advanced-filters {
@@ -1529,6 +1551,10 @@ body.loading .menu-overlay {
     padding-top: 14px;
 
     border-top: 1px dashed var(--color-border);
+}
+
+.advanced-filters > label:first-child {
+    margin-top: 0;
 }
 
 .filter-chips {
