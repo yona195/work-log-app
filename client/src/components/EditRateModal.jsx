@@ -14,14 +14,13 @@ export default function EditRateModal({ rate, onClose }) {
   const customers = activeOnly(data.customers);
   const sites = activeOnly(data.sites);
   const employees = activeEmployees(data);
-  const subcontractors = activeOnly(data.subcontractors);
 
   const [customerId, setCustomerId] = useState(rate.customerId || "");
   const [siteId, setSiteId] = useState(rate.siteId || "");
-  const [rateType, setRateType] = useState(rate.rateType || "subcontractor");
-  const [targetId, setTargetId] = useState(
-    rate.rateType === "employee" ? rate.employeeId || "" : rate.subcontractorId || ""
-  );
+  // Every rate is employee-specific now. A legacy general (subcontractor-type)
+  // rate has no employeeId, so it starts unselected and picking one converts
+  // it to a personal rate on save.
+  const [targetId, setTargetId] = useState(rate.employeeId || "");
   const [revenue, setRevenue] = useState(String(rate.revenuePerWorker ?? ""));
   const [cost, setCost] = useState(String(rate.costPerWorker ?? ""));
   const [effectiveFrom, setEffectiveFrom] = useState(normalizeDate(rate.effectiveFrom));
@@ -45,32 +44,16 @@ export default function EditRateModal({ rate, onClose }) {
   }, [sites, data.sites, rate.siteId]);
 
   const targetOptions = useMemo(() => {
-    if (rateType === "employee") {
-      const ids = new Set(employees.map((e) => e.id));
-      const missing = (data.employees || []).filter(
-        (e) => String(e.id) === String(rate.employeeId) && !ids.has(e.id)
-      );
-      return [...employees, ...missing].map((e) => ({
-        id: e.id,
-        label: `${e.name} — ${getEmployeeAffiliationName(data, e)}`,
-        archived: isEmployeeArchived(e, data.subcontractors),
-      }));
-    }
-    const ids = new Set(subcontractors.map((s) => s.id));
-    const missing = (data.subcontractors || []).filter(
-      (s) => String(s.id) === String(rate.subcontractorId) && !ids.has(s.id)
+    const ids = new Set(employees.map((e) => e.id));
+    const missing = (data.employees || []).filter(
+      (e) => String(e.id) === String(rate.employeeId) && !ids.has(e.id)
     );
-    return [...subcontractors, ...missing].map((s) => ({
-      id: s.id,
-      label: s.name,
-      archived: Boolean(s.archived),
+    return [...employees, ...missing].map((e) => ({
+      id: e.id,
+      label: `${e.name} — ${getEmployeeAffiliationName(data, e)}`,
+      archived: isEmployeeArchived(e, data.subcontractors),
     }));
-  }, [rateType, employees, subcontractors, data, rate.employeeId, rate.subcontractorId]);
-
-  const changeRateType = (value) => {
-    setRateType(value);
-    setTargetId("");
-  };
+  }, [employees, data, rate.employeeId]);
 
   const save = async () => {
     if (isSubmitting) return;
@@ -101,9 +84,9 @@ export default function EditRateModal({ rate, onClose }) {
       await updateItem("rates", rate.id, {
         customerId,
         siteId,
-        rateType,
-        subcontractorId: rateType === "subcontractor" ? targetId : "",
-        employeeId: rateType === "employee" ? targetId : "",
+        rateType: "employee",
+        subcontractorId: "",
+        employeeId: targetId,
         revenuePerWorker,
         costPerWorker,
         effectiveFrom,
@@ -141,15 +124,9 @@ export default function EditRateModal({ rate, onClose }) {
           ))}
         </select>
 
-        <label>סוג תעריף</label>
-        <select value={rateType} onChange={(e) => changeRateType(e.target.value)}>
-          <option value="subcontractor">קבלן משנה</option>
-          <option value="employee">עובד ספציפי</option>
-        </select>
-
-        <label>{rateType === "employee" ? "עובד" : "קבלן משנה"}</label>
+        <label>עובד</label>
         <select value={targetId} onChange={(e) => setTargetId(e.target.value)}>
-          <option value="">{rateType === "employee" ? "בחר עובד" : "בחר קבלן משנה"}</option>
+          <option value="">בחר עובד</option>
           {targetOptions.map((target) => (
             <option key={target.id} value={target.id}>
               {target.label}

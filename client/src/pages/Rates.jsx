@@ -443,7 +443,6 @@ export default function Rates() {
                 <th>#</th>
                 <th>מזמין עבודה</th>
                 <th>אתר</th>
-                <th>סוג</th>
                 <th>עובד / קבלן</th>
                 <th>שיוך</th>
                 <th>הכנסה</th>
@@ -477,7 +476,6 @@ export default function Rates() {
                     <td>{ratesStartIndex + index + 1}</td>
                     <td>{getName(customers, rate.customerId) || "מזמין לא נמצא"}</td>
                     <td>{getName(sites, rate.siteId) || "אתר לא נמצא"}</td>
-                    <td>{isEmployeeRate ? "תעריף אישי" : "תעריף כללי"}</td>
                     <td>{targetName || "לא נמצא"}</td>
                     <td>{affiliationName}</td>
                     <td>{formatCurrency(revenueValue)}</td>
