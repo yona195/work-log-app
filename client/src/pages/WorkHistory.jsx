@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import PeriodFilter, { useDateRangeFilter } from "../components/PeriodFilter.jsx";
 import EditWorkLogModal from "../components/EditWorkLogModal.jsx";
 import { useData } from "../state/DataProvider.jsx";
-import { normalizeDate } from "../lib/format.js";
+import { formatExcelDate } from "../lib/format.js";
 import { getName, getBuildingNames, getEmployeeAffiliationName } from "../lib/entities.js";
 import { filterReportLogs, getReportEmployees, groupLogsByMonth } from "../lib/reports.js";
 
@@ -75,10 +75,17 @@ export default function WorkHistory() {
 
   const reportEmployeesFor = (log) => getReportEmployees(data, log, effectiveFilters);
 
-  const monthGroups = useMemo(
-    () => groupLogsByMonth(filteredLogs),
-    [filteredLogs]
-  );
+  // groupLogsByMonth (shared with the PDF/Excel exports, which want
+  // chronological order) returns oldest-first — reverse both the months
+  // and the days within each month here so the page itself reads
+  // newest-first without touching that shared ordering.
+  const monthGroups = useMemo(() => {
+    const ascending = groupLogsByMonth(filteredLogs);
+    return [...ascending].reverse().map((group) => ({
+      ...group,
+      logs: [...group.logs].reverse(),
+    }));
+  }, [filteredLogs]);
 
   return (
     <>
@@ -197,7 +204,7 @@ export default function WorkHistory() {
                     // underlying record, just displayed as several rows.
                     return affiliationGroups.map((affiliationGroup, index) => (
                       <tr key={`${log.id}-${index}`}>
-                        <td>{normalizeDate(log.date)}</td>
+                        <td dir="ltr">{formatExcelDate(log.date)}</td>
                         <td>{affiliationGroup.employees.map((e) => e.name).join(", ")}</td>
                         <td>{affiliationGroup.label}</td>
                         <td>{affiliationGroup.employees.length}</td>

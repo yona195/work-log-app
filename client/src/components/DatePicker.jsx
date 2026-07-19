@@ -64,28 +64,43 @@ function MonthPanel({
       </div>
 
       <div className="date-picker-days">
-        {weeks.flat().map((cell) => {
-          const disabled = (min && cell.iso < min) || (max && cell.iso > max);
-          const classes = ["date-picker-day"];
-          if (!cell.inMonth) classes.push("is-outside");
-          if (cell.iso === today) classes.push("is-today");
-          if (isSelected(cell.iso)) classes.push("is-selected");
-          else if (isInRange(cell.iso)) classes.push("is-in-range");
-          if (disabled) classes.push("is-disabled");
-          return (
-            <button
-              key={cell.iso}
-              type="button"
-              className={classes.join(" ")}
-              disabled={disabled}
-              onClick={() => onDayClick(cell.iso)}
-              onMouseDown={() => onDayMouseDown(cell.iso)}
-              onMouseEnter={() => onDayMouseEnter(cell.iso)}
-            >
-              {cell.day}
-            </button>
-          );
-        })}
+        {weeks.map((week, weekIndex) =>
+          week.map((cell, dayIndex) => {
+            const disabled = (min && cell.iso < min) || (max && cell.iso > max);
+            const selected = isSelected(cell.iso);
+            const classes = ["date-picker-day"];
+            if (!cell.inMonth) classes.push("is-outside");
+            if (cell.iso === today) classes.push("is-today");
+            if (selected) classes.push("is-selected");
+            else if (isInRange(cell.iso)) classes.push("is-in-range");
+            if (disabled) classes.push("is-disabled");
+
+            // Merges consecutive selected days in the same week row into one
+            // connected block instead of separate dots — a right-hand
+            // neighbour (index - 1) is the chronologically previous day, a
+            // left-hand one (index + 1) is the next day (RTL grid order).
+            if (selected) {
+              const prevCell = dayIndex > 0 ? week[dayIndex - 1] : null;
+              const nextCell = dayIndex < week.length - 1 ? week[dayIndex + 1] : null;
+              if (prevCell && isSelected(prevCell.iso)) classes.push("connects-prev");
+              if (nextCell && isSelected(nextCell.iso)) classes.push("connects-next");
+            }
+
+            return (
+              <button
+                key={cell.iso}
+                type="button"
+                className={classes.join(" ")}
+                disabled={disabled}
+                onClick={() => onDayClick(cell.iso)}
+                onMouseDown={() => onDayMouseDown(cell.iso)}
+                onMouseEnter={() => onDayMouseEnter(cell.iso)}
+              >
+                {cell.day}
+              </button>
+            );
+          })
+        )}
       </div>
     </div>
   );
