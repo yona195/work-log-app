@@ -130,13 +130,25 @@ export default function Buildings() {
                   <td>{building.archived ? "בארכיון" : "פעיל"}</td>
                   <td>
                     <div className="report-row-actions">
-                      <button type="button" onClick={() => setEditingBuilding(building)}>
+                      <button
+                        className="edit-btn"
+                        type="button"
+                        onClick={() => setEditingBuilding(building)}
+                      >
                         ערוך
                       </button>
-                      <button type="button" onClick={() => deleteBuilding(building)}>
+                      <button
+                        className="delete-btn"
+                        type="button"
+                        onClick={() => deleteBuilding(building)}
+                      >
                         מחק
                       </button>
-                      <button type="button" onClick={() => toggleArchive(building)}>
+                      <button
+                        className="archive-btn"
+                        type="button"
+                        onClick={() => toggleArchive(building)}
+                      >
                         {building.archived ? "שחזר" : "העבר לארכיון"}
                       </button>
                     </div>

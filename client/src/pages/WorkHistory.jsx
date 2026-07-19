@@ -179,10 +179,15 @@ export default function WorkHistory() {
                         <td>{log.notes || ""}</td>
                         <td>
                           <div className="report-row-actions">
-                            <button type="button" onClick={() => setEditingLog(log)}>
+                            <button
+                              className="edit-btn"
+                              type="button"
+                              onClick={() => setEditingLog(log)}
+                            >
                               ערוך
                             </button>
                             <button
+                              className="delete-btn"
                               type="button"
                               onClick={() => {
                                 if (confirm("למחוק את הרשומה?")) {

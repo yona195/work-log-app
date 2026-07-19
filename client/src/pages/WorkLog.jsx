@@ -368,16 +368,19 @@ export default function WorkLog() {
                   <td>{getName(customers, log.customerId)}</td>
                   <td>{log.notes || ""}</td>
                   <td>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (confirm("למחוק את הרשומה?")) {
-                          deleteItem("workLogs", log.id);
-                        }
-                      }}
-                    >
-                      מחק
-                    </button>
+                    <div className="report-row-actions">
+                      <button
+                        className="delete-btn"
+                        type="button"
+                        onClick={() => {
+                          if (confirm("למחוק את הרשומה?")) {
+                            deleteItem("workLogs", log.id);
+                          }
+                        }}
+                      >
+                        מחק
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

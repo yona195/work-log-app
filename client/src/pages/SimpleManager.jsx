@@ -108,13 +108,25 @@ export default function SimpleManager({ collection, placeholder, editTitle }) {
                   <td>{item.archived ? "בארכיון" : "פעיל"}</td>
                   <td>
                     <div className="report-row-actions">
-                      <button type="button" onClick={() => setEditingItem(item)}>
+                      <button
+                        className="edit-btn"
+                        type="button"
+                        onClick={() => setEditingItem(item)}
+                      >
                         ערוך
                       </button>
-                      <button type="button" onClick={() => deleteItemConfirmed(item)}>
+                      <button
+                        className="delete-btn"
+                        type="button"
+                        onClick={() => deleteItemConfirmed(item)}
+                      >
                         מחק
                       </button>
-                      <button type="button" onClick={() => toggleArchive(item)}>
+                      <button
+                        className="archive-btn"
+                        type="button"
+                        onClick={() => toggleArchive(item)}
+                      >
                         {item.archived ? "שחזר" : "העבר לארכיון"}
                       </button>
                     </div>

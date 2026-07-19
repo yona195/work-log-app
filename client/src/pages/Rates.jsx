@@ -428,13 +428,25 @@ export default function Rates() {
                     <td>{rate.archived ? "בארכיון" : "פעיל"}</td>
                     <td>
                       <div className="report-row-actions">
-                        <button type="button" onClick={() => setEditingRate(rate)}>
+                        <button
+                          className="edit-btn"
+                          type="button"
+                          onClick={() => setEditingRate(rate)}
+                        >
                           ערוך
                         </button>
-                        <button type="button" onClick={() => deleteRate(rate)}>
+                        <button
+                          className="delete-btn"
+                          type="button"
+                          onClick={() => deleteRate(rate)}
+                        >
                           מחק
                         </button>
-                        <button type="button" onClick={() => toggleRateArchive(rate)}>
+                        <button
+                          className="archive-btn"
+                          type="button"
+                          onClick={() => toggleRateArchive(rate)}
+                        >
                           {rate.archived ? "שחזר" : "העבר לארכיון"}
                         </button>
                       </div>

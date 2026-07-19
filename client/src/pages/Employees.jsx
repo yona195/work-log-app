@@ -24,13 +24,17 @@ function EmployeeTable({ employees, onEdit, onDelete, onToggleArchive }) {
             <td>{employee.archived ? "בארכיון" : "פעיל"}</td>
             <td>
               <div className="report-row-actions">
-                <button type="button" onClick={() => onEdit(employee)}>
+                <button className="edit-btn" type="button" onClick={() => onEdit(employee)}>
                   ערוך
                 </button>
-                <button type="button" onClick={() => onDelete(employee)}>
+                <button className="delete-btn" type="button" onClick={() => onDelete(employee)}>
                   מחק
                 </button>
-                <button type="button" onClick={() => onToggleArchive(employee)}>
+                <button
+                  className="archive-btn"
+                  type="button"
+                  onClick={() => onToggleArchive(employee)}
+                >
                   {employee.archived ? "שחזר" : "העבר לארכיון"}
                 </button>
               </div>
@@ -276,15 +280,21 @@ export default function Employees() {
               </h3>
               <div className="report-row-actions">
                 <button
+                  className="edit-btn"
                   type="button"
                   onClick={() => setEditingSubcontractor(subcontractor)}
                 >
                   ערוך קבלן
                 </button>
-                <button type="button" onClick={() => deleteSubcontractor(subcontractor)}>
+                <button
+                  className="delete-btn"
+                  type="button"
+                  onClick={() => deleteSubcontractor(subcontractor)}
+                >
                   מחק קבלן
                 </button>
                 <button
+                  className="archive-btn"
                   type="button"
                   onClick={() => toggleSubcontractorArchive(subcontractor)}
                 >
