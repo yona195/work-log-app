@@ -1,19 +1,12 @@
 import { useMemo, useState } from "react";
-import ProfitBarChart from "../components/ProfitBarChart.jsx";
-import RevenueCostBarChart from "../components/RevenueCostBarChart.jsx";
 import PeriodFilter, { useDateRangeFilter } from "../components/PeriodFilter.jsx";
 import { useData } from "../state/DataProvider.jsx";
-import { formatCurrency, formatExcelDate } from "../lib/format.js";
 import {
   getEmployeeAffiliationName,
   isEmployeeArchived,
   activeOnly,
 } from "../lib/entities.js";
-import {
-  calculateFinancialSummary,
-  filterReportLogs,
-  getReportEmployees,
-} from "../lib/reports.js";
+import { filterReportLogs, getReportEmployees } from "../lib/reports.js";
 import { createWorkLogPDF, createFinancialSummaryPDF } from "../lib/pdf.js";
 import { exportToExcel, exportFinancialSummaryToExcel } from "../lib/excel.js";
 
@@ -23,11 +16,6 @@ const EMPTY_FILTERS = {
   employeeId: "",
   siteId: "",
   customerId: "",
-};
-
-const PERIOD_LABELS = {
-  "current-month": "החודש הנוכחי",
-  "last-three-months": "שלושה חודשים אחרונים",
 };
 
 export default function Reports() {
@@ -48,14 +36,7 @@ export default function Reports() {
       return next;
     });
 
-  const resetPeriod = () => {
-    dateRange.setPeriod("current-month");
-    dateRange.setCustomFrom("");
-    dateRange.setCustomTo("");
-  };
-
   const clearAllFilters = () => {
-    resetPeriod();
     setFilters(EMPTY_FILTERS);
     setShowArchived(false);
   };
@@ -95,11 +76,6 @@ export default function Reports() {
 
   const reportEmployeesFor = (log) => getReportEmployees(data, log, effectiveFilters);
 
-  const summary = useMemo(
-    () => calculateFinancialSummary(data, filteredLogs, effectiveFilters),
-    [filteredLogs, data, effectiveFilters]
-  );
-
   const handlePDF = () => {
     if (filteredLogs.length === 0) {
       alert("אין רשומות מתאימות להפקת PDF");
@@ -121,15 +97,10 @@ export default function Reports() {
   const handleEmployerExcel = () =>
     exportFinancialSummaryToExcel(data, filteredLogs, effectiveFilters);
 
-  const periodLabel =
-    dateRange.period === "custom"
-      ? dateRange.customFrom && dateRange.customTo
-        ? `${formatExcelDate(dateRange.customFrom)} - ${formatExcelDate(dateRange.customTo)}`
-        : "טווח מותאם"
-      : PERIOD_LABELS[dateRange.period] || dateRange.period;
-
+  // Chips reflect only the advanced filters — the period lives in the
+  // primary row above "סינון מתקדם" and is never shown as a removable chip.
   const chips = useMemo(() => {
-    const list = [{ key: "period", label: periodLabel, onRemove: resetPeriod }];
+    const list = [];
 
     if (filters.group) {
       list.push({
@@ -186,7 +157,7 @@ export default function Reports() {
       });
     }
     return list;
-  }, [periodLabel, filters, subcontractors, employees, sites, customers, showArchived]);
+  }, [filters, subcontractors, employees, sites, customers, showArchived]);
 
   return (
     <>
@@ -314,24 +285,26 @@ export default function Reports() {
           </div>
         )}
 
-        <div className="filter-chips">
-          {chips.map((chip) => (
-            <span className="filter-chip" key={chip.key}>
-              {chip.label}
-              <button
-                type="button"
-                className="filter-chip-remove"
-                onClick={chip.onRemove}
-                aria-label="הסר סינון"
-              >
-                ×
-              </button>
-            </span>
-          ))}
-          <button type="button" className="secondary-btn" onClick={clearAllFilters}>
-            נקה את כל הסינונים
-          </button>
-        </div>
+        {chips.length > 0 && (
+          <div className="filter-chips">
+            {chips.map((chip) => (
+              <span className="filter-chip" key={chip.key}>
+                {chip.label}
+                <button
+                  type="button"
+                  className="filter-chip-remove"
+                  onClick={chip.onRemove}
+                  aria-label="הסר סינון"
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+            <button type="button" className="secondary-btn" onClick={clearAllFilters}>
+              נקה את כל הסינונים
+            </button>
+          </div>
+        )}
 
         <div className="report-actions">
           <button
@@ -350,172 +323,6 @@ export default function Reports() {
           </button>
         </div>
       </div>
-
-      <div className="card" style={{ marginTop: 20 }}>
-        <FinancialSummary summary={summary} />
-      </div>
-    </>
-  );
-}
-
-function FinancialSummary({ summary }) {
-  if (
-    summary.workforce.length === 0 &&
-    summary.sites.length === 0 &&
-    summary.customers.length === 0
-  ) {
-    return (
-      <>
-        <h2>סיכום כספי</h2>
-        <p>אין רשומות מתאימות לסינון שנבחר.</p>
-      </>
-    );
-  }
-
-  const resultTitle = summary.totalProfit >= 0 ? "רווח" : "הפסד";
-
-  return (
-    <>
-      <h2>סיכום כספי</h2>
-
-      <div className="cards">
-        <div className="card">
-          <h3>הכנסות</h3>
-          <p>{formatCurrency(summary.totalRevenue)}</p>
-        </div>
-        <div className="card">
-          <h3>הוצאות</h3>
-          <p>{formatCurrency(summary.totalCost)}</p>
-        </div>
-        <div className="card">
-          <h3>{resultTitle}</h3>
-          <p>{formatCurrency(summary.totalProfit)}</p>
-        </div>
-      </div>
-
-      <div className="card" style={{ marginTop: 20 }}>
-        <h3>סיכום לפי כוח אדם</h3>
-        {summary.workforce.length === 0 ? (
-          <p>אין נתונים כספיים מתאימים.</p>
-        ) : (
-          <>
-            <table>
-              <thead>
-                <tr>
-                  <th>עובדים / קבלן</th>
-                  <th>הכנסות</th>
-                  <th>הוצאות</th>
-                  <th>רווח / הפסד</th>
-                </tr>
-              </thead>
-              <tbody>
-                {summary.workforce.map((group, index) => (
-                  <tr key={`${group.name}-${index}`}>
-                    <td>{group.name}</td>
-                    <td>{formatCurrency(group.revenue)}</td>
-                    <td>{formatCurrency(group.cost)}</td>
-                    <td>{formatCurrency(group.profit)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <RevenueCostBarChart groups={summary.workforce} />
-          </>
-        )}
-      </div>
-
-      <div className="card" style={{ marginTop: 20 }}>
-        <h3>סיכום לפי אתר עבודה</h3>
-        {summary.sites.length === 0 ? (
-          <p>אין נתונים לפי אתרים.</p>
-        ) : (
-          <>
-            <table>
-              <thead>
-                <tr>
-                  <th>אתר</th>
-                  <th>הכנסות</th>
-                  <th>הוצאות</th>
-                  <th>רווח / הפסד</th>
-                </tr>
-              </thead>
-              <tbody>
-                {summary.sites.map((site, index) => (
-                  <tr key={`${site.name}-${index}`}>
-                    <td>{site.name}</td>
-                    <td>{formatCurrency(site.revenue)}</td>
-                    <td>{formatCurrency(site.cost)}</td>
-                    <td>{formatCurrency(site.profit)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <ProfitBarChart groups={summary.sites} label="רווח / הפסד" />
-          </>
-        )}
-      </div>
-
-      <div className="card" style={{ marginTop: 20 }}>
-        <h3>סיכום לפי מזמין עבודה</h3>
-        {summary.customers.length === 0 ? (
-          <p>אין נתונים לפי מזמינים.</p>
-        ) : (
-          <>
-            <table>
-              <thead>
-                <tr>
-                  <th>מזמין</th>
-                  <th>הכנסות</th>
-                  <th>הוצאות</th>
-                  <th>רווח / הפסד</th>
-                </tr>
-              </thead>
-              <tbody>
-                {summary.customers.map((customer, index) => (
-                  <tr key={`${customer.name}-${index}`}>
-                    <td>{customer.name}</td>
-                    <td>{formatCurrency(customer.revenue)}</td>
-                    <td>{formatCurrency(customer.cost)}</td>
-                    <td>{formatCurrency(customer.profit)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <ProfitBarChart groups={summary.customers} label="רווח / הפסד" />
-          </>
-        )}
-      </div>
-
-      {summary.missingRates.length > 0 && (
-        <div className="card missing-rates-card" style={{ marginTop: 20 }}>
-          <h3>⚠️ חסרים תעריפים</h3>
-          <p>העובדים הבאים לא נכללו במלואם בסיכום:</p>
-          <table>
-            <thead>
-              <tr>
-                <th>עובד</th>
-                <th>שיוך / קבלן</th>
-                <th>אתר</th>
-                <th>מזמין</th>
-                <th>תאריכים חסרים</th>
-              </tr>
-            </thead>
-            <tbody>
-              {summary.missingRates.map((item, index) => (
-                <tr key={`${item.employeeName}-${item.siteName}-${item.customerName}-${index}`}>
-                  <td>{item.employeeName}</td>
-                  <td>{item.affiliationName}</td>
-                  <td>{item.siteName}</td>
-                  <td>{item.customerName}</td>
-                  <td dir="ltr">
-                    {item.dates.map(formatExcelDate).join(", ")} ({item.dates.length})
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
     </>
   );
 }

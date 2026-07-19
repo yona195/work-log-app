@@ -4,7 +4,6 @@ import {
   getEmployeeAffiliationName,
   isEmployeeArchived,
 } from "../lib/entities.js";
-import { formatExcelDate } from "../lib/format.js";
 import { filterReportLogs } from "../lib/reports.js";
 import { createEmployeeWorkPDF, createEmployeeSummaryPDF } from "../lib/pdf.js";
 import { exportEmployeeWorkExcel, exportEmployeeSummaryExcel } from "../lib/excel.js";
@@ -12,11 +11,6 @@ import PeriodFilter, { useDateRangeFilter } from "../components/PeriodFilter.jsx
 
 const toggle = (list, id) =>
   list.includes(id) ? list.filter((x) => x !== id) : [...list, id];
-
-const PERIOD_LABELS = {
-  "current-month": "החודש הנוכחי",
-  "last-three-months": "שלושה חודשים אחרונים",
-};
 
 export default function EmployeeReports() {
   const { data } = useData();
@@ -112,27 +106,15 @@ export default function EmployeeReports() {
   const handleSummaryPDF = requireLogs(createEmployeeSummaryPDF);
   const handleSummaryExcel = requireLogs(exportEmployeeSummaryExcel);
 
-  const resetPeriod = () => {
-    dateRange.setPeriod("current-month");
-    dateRange.setCustomFrom("");
-    dateRange.setCustomTo("");
-  };
-
   const clearAllFilters = () => {
-    resetPeriod();
     handleGroupChange("");
     setShowArchived(false);
   };
 
-  const periodLabel =
-    dateRange.period === "custom"
-      ? dateRange.customFrom && dateRange.customTo
-        ? `${formatExcelDate(dateRange.customFrom)} - ${formatExcelDate(dateRange.customTo)}`
-        : "טווח מותאם"
-      : PERIOD_LABELS[dateRange.period] || dateRange.period;
-
+  // Chips reflect only the advanced filters — the period lives in the
+  // primary row above "סינון מתקדם" and is never shown as a removable chip.
   const chips = useMemo(() => {
-    const list = [{ key: "period", label: periodLabel, onRemove: resetPeriod }];
+    const list = [];
 
     if (group) {
       list.push({
@@ -172,7 +154,6 @@ export default function EmployeeReports() {
 
     return list;
   }, [
-    periodLabel,
     group,
     selectedSubcontractorIds,
     selectedEmployeeIds,
@@ -337,24 +318,26 @@ export default function EmployeeReports() {
           </div>
         )}
 
-        <div className="filter-chips">
-          {chips.map((chip) => (
-            <span className="filter-chip" key={chip.key}>
-              {chip.label}
-              <button
-                type="button"
-                className="filter-chip-remove"
-                onClick={chip.onRemove}
-                aria-label="הסר סינון"
-              >
-                ×
-              </button>
-            </span>
-          ))}
-          <button type="button" className="secondary-btn" onClick={clearAllFilters}>
-            נקה את כל הסינונים
-          </button>
-        </div>
+        {chips.length > 0 && (
+          <div className="filter-chips">
+            {chips.map((chip) => (
+              <span className="filter-chip" key={chip.key}>
+                {chip.label}
+                <button
+                  type="button"
+                  className="filter-chip-remove"
+                  onClick={chip.onRemove}
+                  aria-label="הסר סינון"
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+            <button type="button" className="secondary-btn" onClick={clearAllFilters}>
+              נקה את כל הסינונים
+            </button>
+          </div>
+        )}
 
         <div className="report-actions">
           <button
@@ -376,12 +359,9 @@ export default function EmployeeReports() {
 
       <div className="card" style={{ marginTop: 20 }}>
         <p>
-          <strong>דוחות לעובדים</strong> - טבלה לכל עובד עם התאריכים, אתרי
-          העבודה, המבנים שבהם עבד, וסה״כ ימי עבודה.
-        </p>
-        <p style={{ marginTop: 10 }}>
-          <strong>דוחות עובדים סיכום</strong> - אותו דבר, בתוספת עלות, תשלום
-          ורווח/הפסד לכל יום ושורת סיכום לכל עובד.
+          {reportType === "work"
+            ? "דוחות לעובדים - טבלה לכל עובד עם התאריכים, אתרי העבודה, המבנים שבהם עבד, וסה״כ ימי עבודה."
+            : "דוחות עובדים סיכום - אותו דבר, בתוספת עלות, תשלום ורווח/הפסד לכל יום ושורת סיכום לכל עובד."}
         </p>
         <p style={{ marginTop: 10 }}>סה״כ רשומות בטווח שנבחר: {filteredLogs.length}</p>
       </div>

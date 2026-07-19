@@ -5,14 +5,8 @@ import DatePicker from "../components/DatePicker.jsx";
 import { useData } from "../state/DataProvider.jsx";
 import { formatCurrency, formatExcelDate } from "../lib/format.js";
 import { getCurrentMonthRange } from "../lib/entities.js";
-import {
-  calculateFinanceByWorkforce,
-  calculateFinanceForPeriod,
-  calculateProfitByCustomer,
-  calculateProfitBySite,
-  getLogsForPeriod,
-  getMissingRatesForLogs,
-} from "../lib/finance.js";
+import { getMissingRatesForLogs } from "../lib/finance.js";
+import { calculateFinancialSummary, filterReportLogs } from "../lib/reports.js";
 
 function formatLocalDate(date) {
   const year = date.getFullYear();
@@ -78,13 +72,22 @@ export default function Dashboard() {
     applyRange("custom", from, to);
   };
 
+  // Shares the exact calculation reports.js uses for the customer-report
+  // financial summary, so the numbers here always match — no second,
+  // independently-maintained totals calculation.
   const { totals, workforce, sites, customers } = useMemo(() => {
-    const logs = getLogsForPeriod(data, applied.from, applied.to);
+    const periodFilters = { from: applied.from, to: applied.to };
+    const logs = filterReportLogs(data, periodFilters);
+    const summary = calculateFinancialSummary(data, logs, periodFilters);
     return {
-      totals: calculateFinanceForPeriod(data, applied.from, applied.to),
-      workforce: calculateFinanceByWorkforce(data, logs),
-      sites: calculateProfitBySite(data, logs),
-      customers: calculateProfitByCustomer(data, logs),
+      totals: {
+        revenue: summary.totalRevenue,
+        cost: summary.totalCost,
+        profit: summary.totalProfit,
+      },
+      workforce: summary.workforce,
+      sites: summary.sites,
+      customers: summary.customers,
     };
   }, [data, applied]);
 
@@ -168,6 +171,88 @@ export default function Dashboard() {
             </p>
           ) : (
             <ProfitBarChart groups={customers} label="רווח" />
+          )}
+        </div>
+
+        <div className="card" style={{ marginTop: 20 }}>
+          <h2>פירוט כספי</h2>
+
+          <h4>סיכום לפי כוח אדם</h4>
+          {workforce.length === 0 ? (
+            <p>אין נתונים כספיים מתאימים.</p>
+          ) : (
+            <table>
+              <thead>
+                <tr>
+                  <th>עובדים / קבלן</th>
+                  <th>הכנסות</th>
+                  <th>הוצאות</th>
+                  <th>רווח / הפסד</th>
+                </tr>
+              </thead>
+              <tbody>
+                {workforce.map((group, index) => (
+                  <tr key={`${group.name}-${index}`}>
+                    <td>{group.name}</td>
+                    <td>{formatCurrency(group.revenue)}</td>
+                    <td>{formatCurrency(group.cost)}</td>
+                    <td>{formatCurrency(group.profit)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+
+          <h4 style={{ marginTop: 20 }}>סיכום לפי אתר עבודה</h4>
+          {sites.length === 0 ? (
+            <p>אין נתונים לפי אתרים.</p>
+          ) : (
+            <table>
+              <thead>
+                <tr>
+                  <th>אתר</th>
+                  <th>הכנסות</th>
+                  <th>הוצאות</th>
+                  <th>רווח / הפסד</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sites.map((site, index) => (
+                  <tr key={`${site.name}-${index}`}>
+                    <td>{site.name}</td>
+                    <td>{formatCurrency(site.revenue)}</td>
+                    <td>{formatCurrency(site.cost)}</td>
+                    <td>{formatCurrency(site.profit)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+
+          <h4 style={{ marginTop: 20 }}>סיכום לפי מזמין עבודה</h4>
+          {customers.length === 0 ? (
+            <p>אין נתונים לפי מזמינים.</p>
+          ) : (
+            <table>
+              <thead>
+                <tr>
+                  <th>מזמין</th>
+                  <th>הכנסות</th>
+                  <th>הוצאות</th>
+                  <th>רווח / הפסד</th>
+                </tr>
+              </thead>
+              <tbody>
+                {customers.map((customer, index) => (
+                  <tr key={`${customer.name}-${index}`}>
+                    <td>{customer.name}</td>
+                    <td>{formatCurrency(customer.revenue)}</td>
+                    <td>{formatCurrency(customer.cost)}</td>
+                    <td>{formatCurrency(customer.profit)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           )}
         </div>
 
