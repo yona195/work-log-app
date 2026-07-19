@@ -157,6 +157,7 @@ export default function WorkHistory() {
                   <tr>
                     <th>תאריך</th>
                     <th>עובדים</th>
+                    <th>קבלן</th>
                     <th>סה״כ עובדים</th>
                     <th>אתר</th>
                     <th>מבנה</th>
@@ -171,9 +172,10 @@ export default function WorkHistory() {
                     return (
                       <tr key={log.id}>
                         <td>{normalizeDate(log.date)}</td>
+                        <td>{reportEmployees.map((e) => e.name).join(", ")}</td>
                         <td>
                           {reportEmployees
-                            .map((e) => `${e.name} - ${getEmployeeAffiliationName(data, e)}`)
+                            .map((e) => getEmployeeAffiliationName(data, e))
                             .join(", ")}
                         </td>
                         <td>{reportEmployees.length}</td>
