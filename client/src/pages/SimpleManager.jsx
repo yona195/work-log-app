@@ -97,7 +97,7 @@ export default function SimpleManager({ collection, placeholder, editTitle }) {
                 <th>#</th>
                 <th>שם</th>
                 <th>סטטוס</th>
-                <th>פעולות</th>
+                <th className="actions-column">פעולות</th>
               </tr>
             </thead>
             <tbody>

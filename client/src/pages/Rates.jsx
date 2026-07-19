@@ -392,7 +392,7 @@ export default function Rates() {
                 <th>רווח</th>
                 <th>בתוקף מתאריך</th>
                 <th>סטטוס</th>
-                <th>פעולות</th>
+                <th className="actions-column">פעולות</th>
               </tr>
             </thead>
             <tbody>

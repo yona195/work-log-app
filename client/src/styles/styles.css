@@ -1525,10 +1525,19 @@ body.loading .menu-overlay {
     margin-top: 20px;
 }
 
+/* Shrinks the actions column to fit its buttons instead of stretching to
+   fill the table's leftover width, which otherwise strands the buttons
+   against one edge with a large empty gap next to them. */
+.actions-column {
+    width: 1%;
+    white-space: nowrap;
+}
+
 .report-row-actions {
     display: flex;
     gap: 8px;
     flex-wrap: wrap;
+    justify-content: center;
 }
 
 .report-row-actions button {

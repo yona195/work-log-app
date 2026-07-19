@@ -118,7 +118,7 @@ export default function Buildings() {
                 <th>שם מבנה</th>
                 <th>אתר</th>
                 <th>סטטוס</th>
-                <th>פעולות</th>
+                <th className="actions-column">פעולות</th>
               </tr>
             </thead>
             <tbody>

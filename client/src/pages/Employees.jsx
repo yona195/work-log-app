@@ -13,7 +13,7 @@ function EmployeeTable({ employees, onEdit, onDelete, onToggleArchive }) {
           <th>#</th>
           <th>שם עובד</th>
           <th>סטטוס</th>
-          <th>פעולות</th>
+          <th className="actions-column">פעולות</th>
         </tr>
       </thead>
       <tbody>

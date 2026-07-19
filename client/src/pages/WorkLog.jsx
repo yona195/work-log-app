@@ -354,7 +354,7 @@ export default function WorkLog() {
                 <th>מבנה</th>
                 <th>מזמין</th>
                 <th>הערות</th>
-                <th>פעולות</th>
+                <th className="actions-column">פעולות</th>
               </tr>
             </thead>
             <tbody>
