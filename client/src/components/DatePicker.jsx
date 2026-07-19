@@ -64,27 +64,32 @@ function MonthPanel({
       </div>
 
       <div className="date-picker-days">
-        {weeks.map((week, weekIndex) =>
+        {weeks.map((week) =>
           week.map((cell, dayIndex) => {
             const disabled = (min && cell.iso < min) || (max && cell.iso > max);
             const selected = isSelected(cell.iso);
+
+            // A selected day with a selected same-row neighbour on *both*
+            // sides is the interior of a run — render it like the light
+            // connecting band already used for range mode (solid dot only
+            // at the start/end of the run), instead of solid all the way
+            // through. This makes a dragged Sun-Thu block look exactly like
+            // picking a "from" and "to" the normal way, and it's harmless
+            // for single/range modes since they never mark interior days
+            // selected in the first place.
+            const prevCell = dayIndex > 0 ? week[dayIndex - 1] : null;
+            const nextCell = dayIndex < week.length - 1 ? week[dayIndex + 1] : null;
+            const isRunInterior =
+              selected &&
+              Boolean(prevCell && isSelected(prevCell.iso)) &&
+              Boolean(nextCell && isSelected(nextCell.iso));
+
             const classes = ["date-picker-day"];
             if (!cell.inMonth) classes.push("is-outside");
             if (cell.iso === today) classes.push("is-today");
-            if (selected) classes.push("is-selected");
-            else if (isInRange(cell.iso)) classes.push("is-in-range");
+            if (selected && !isRunInterior) classes.push("is-selected");
+            else if (isRunInterior || isInRange(cell.iso)) classes.push("is-in-range");
             if (disabled) classes.push("is-disabled");
-
-            // Merges consecutive selected days in the same week row into one
-            // connected block instead of separate dots — a right-hand
-            // neighbour (index - 1) is the chronologically previous day, a
-            // left-hand one (index + 1) is the next day (RTL grid order).
-            if (selected) {
-              const prevCell = dayIndex > 0 ? week[dayIndex - 1] : null;
-              const nextCell = dayIndex < week.length - 1 ? week[dayIndex + 1] : null;
-              if (prevCell && isSelected(prevCell.iso)) classes.push("connects-prev");
-              if (nextCell && isSelected(nextCell.iso)) classes.push("connects-next");
-            }
 
             return (
               <button

@@ -1831,18 +1831,6 @@ body.loading .menu-overlay {
     font-weight: 700;
 }
 
-/* Flattens the touching side(s) of consecutive selected days so a
-   multi-day run reads as one connected block instead of separate dots. */
-.date-picker-day.is-selected.connects-prev {
-    border-top-right-radius: 0;
-    border-bottom-right-radius: 0;
-}
-
-.date-picker-day.is-selected.connects-next {
-    border-top-left-radius: 0;
-    border-bottom-left-radius: 0;
-}
-
 .date-picker-day.is-disabled {
     color: #e5e7eb;
     cursor: not-allowed;
