@@ -1602,3 +1602,61 @@ body.loading .menu-overlay {
     background: var(--color-primary-soft);
     border-color: #93c5fd;
 }
+
+/* =========================================
+   התראות פעולה (Toast)
+========================================= */
+
+.toast-container {
+    position: fixed;
+    bottom: 24px;
+    left: 24px;
+    z-index: 3000;
+
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 10px;
+
+    max-width: min(360px, calc(100vw - 32px));
+}
+
+.toast {
+    padding: 14px 18px;
+
+    color: white;
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.4;
+
+    border-radius: var(--radius-small);
+    box-shadow: var(--shadow-medium);
+
+    cursor: pointer;
+    animation: toast-in 0.25s ease;
+}
+
+.toast-success {
+    background: var(--color-success);
+}
+
+.toast-error {
+    background: var(--color-danger);
+}
+
+@keyframes toast-in {
+    from {
+        opacity: 0;
+        transform: translateY(12px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@media (max-width: 480px) {
+    .toast-container {
+        left: 16px;
+        bottom: 16px;
+    }
+}
