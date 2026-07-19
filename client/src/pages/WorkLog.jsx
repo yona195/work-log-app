@@ -66,21 +66,20 @@ export default function WorkLog() {
   const toggle = (list, setList, id) =>
     setList(list.includes(id) ? list.filter((x) => x !== id) : [...list, id]);
 
-  // Catches the same employee accidentally being logged at the same site on
-  // the same date twice (e.g. from selecting overlapping date ranges) —
-  // matches on site + date only (not building/customer), since an employee
-  // can't really be in two places on the same day.
-  const findDuplicateConflicts = (targetSiteId, employeeIds, targetDates) => {
+  // Catches the same employee accidentally being logged twice on the same
+  // date — matches on date only, regardless of site: an employee can't
+  // really work two different sites on the same day either, so a match at
+  // *any* site on that date is still a real conflict.
+  const findDuplicateConflicts = (employeeIds, targetDates) => {
     const dateSet = new Set(targetDates);
     const conflicts = [];
     workLogs.forEach((log) => {
-      if (String(log.siteId) !== String(targetSiteId)) return;
       const logDate = normalizeDate(log.date);
       if (!dateSet.has(logDate)) return;
       const existingEmployeeIds = getEmployeeIds(log).map(String);
       employeeIds.forEach((employeeId) => {
         if (existingEmployeeIds.includes(String(employeeId))) {
-          conflicts.push({ employeeId, date: logDate });
+          conflicts.push({ employeeId, date: logDate, siteId: log.siteId });
         }
       });
     });
@@ -130,25 +129,22 @@ export default function WorkLog() {
     });
     const dates = Array.from(dateSet).sort();
 
-    const conflicts = findDuplicateConflicts(siteId, selectedEmployees, dates);
+    const conflicts = findDuplicateConflicts(selectedEmployees, dates);
     if (conflicts.length > 0) {
-      const groupsByEmployee = new Map();
+      const seen = new Set();
+      const rows = [];
       conflicts.forEach((c) => {
-        if (!groupsByEmployee.has(c.employeeId)) {
-          groupsByEmployee.set(c.employeeId, {
-            employeeName: getName(data.employees, c.employeeId) || "עובד",
-            dates: [],
-          });
-        }
-        groupsByEmployee.get(c.employeeId).dates.push(c.date);
+        const key = `${c.employeeId}-${c.date}-${c.siteId}`;
+        if (seen.has(key)) return;
+        seen.add(key);
+        rows.push({
+          employeeName: getName(data.employees, c.employeeId) || "עובד",
+          date: c.date,
+          siteName: getName(sites, c.siteId) || "אתר לא ידוע",
+        });
       });
-      setDuplicateConflict({
-        siteName: getName(sites, siteId),
-        groups: Array.from(groupsByEmployee.values()).map((g) => ({
-          ...g,
-          dates: g.dates.sort(),
-        })),
-      });
+      rows.sort((a, b) => a.date.localeCompare(b.date) || a.employeeName.localeCompare(b.employeeName));
+      setDuplicateConflict(rows);
       return;
     }
 
@@ -419,8 +415,7 @@ export default function WorkLog() {
 
       {duplicateConflict && (
         <DuplicateConflictModal
-          siteName={duplicateConflict.siteName}
-          groups={duplicateConflict.groups}
+          conflicts={duplicateConflict}
           onClose={() => setDuplicateConflict(null)}
         />
       )}

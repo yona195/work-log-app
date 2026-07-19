@@ -1,25 +1,28 @@
-export default function DuplicateConflictModal({ siteName, groups, onClose }) {
+export default function DuplicateConflictModal({ conflicts, onClose }) {
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
         <h3>⚠️ לא ניתן להוסיף</h3>
         <p>
-          העובדים הבאים כבר רשומים באתר <strong>{siteName}</strong> בתאריכים
-          המצוינים - הוספה בוטלה כדי למנוע כפילות:
+          העובדים הבאים כבר רשומים לעבודה באותם תאריכים - הוספה בוטלה כדי
+          למנוע כפילות (עובד לא יכול להיות רשום פעמיים באותו יום, גם אם
+          באתר אחר):
         </p>
 
         <table>
           <thead>
             <tr>
               <th>עובד</th>
-              <th>תאריכים</th>
+              <th>תאריך</th>
+              <th>רשום כבר באתר</th>
             </tr>
           </thead>
           <tbody>
-            {groups.map((group) => (
-              <tr key={group.employeeName}>
-                <td>{group.employeeName}</td>
-                <td dir="ltr">{group.dates.join(", ")}</td>
+            {conflicts.map((row, index) => (
+              <tr key={`${row.employeeName}-${row.date}-${index}`}>
+                <td>{row.employeeName}</td>
+                <td dir="ltr">{row.date}</td>
+                <td>{row.siteName}</td>
               </tr>
             ))}
           </tbody>
