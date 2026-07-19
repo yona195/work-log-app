@@ -1520,6 +1520,65 @@ body.loading .menu-overlay {
     background: var(--color-border);
 }
 
+.advanced-filters-toggle {
+    margin-top: 12px;
+}
+
+.advanced-filters {
+    margin-top: 14px;
+    padding-top: 14px;
+
+    border-top: 1px dashed var(--color-border);
+}
+
+.filter-chips {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+
+    margin-top: 18px;
+}
+
+.filter-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+
+    padding: 6px 10px;
+
+    background: var(--color-primary-soft);
+    border: 1px solid rgba(37, 99, 235, 0.16);
+    border-radius: 999px;
+
+    color: var(--color-text);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.filter-chip-remove {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 18px;
+    height: 18px;
+    padding: 0;
+
+    background: none;
+    border: none;
+
+    color: var(--color-primary);
+    font-size: 16px;
+    line-height: 1;
+
+    cursor: pointer;
+}
+
+.filter-chip-remove:hover {
+    color: #b91c1c;
+}
+
 @media (max-width: 640px) {
     .report-actions {
         flex-direction: column;
