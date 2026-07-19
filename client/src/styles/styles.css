@@ -612,10 +612,6 @@ tbody tr:hover {
    11. אזור המבנים
 ========================================= */
 
-.buildings-section {
-    margin-top: 10px;
-}
-
 .buildings-section.is-disabled {
     opacity: 0.6;
 }
@@ -1557,6 +1553,16 @@ body.loading .menu-overlay {
     .filter-grid-3 {
         grid-template-columns: 1fr 1fr 1fr;
     }
+}
+
+/* Scoped to Work Registration's מיקום העבודה row only — without this, the
+   default grid align-items:stretch still leaves each item free to sit
+   wherever its own content dictates, so a taller building panel next to a
+   short site field can end up not lining up at the very top pixel. Setting
+   align-items:start makes that explicit instead of relying on incidental
+   block-layout behavior. */
+.worklog-location-grid {
+    align-items: start;
 }
 
 .form-section {

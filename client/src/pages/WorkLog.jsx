@@ -390,7 +390,7 @@ export default function WorkLog() {
 
         <div className="form-section">
           <h4 className="form-section-title">מיקום העבודה</h4>
-          <div className="filter-grid filter-grid-2">
+          <div className="filter-grid filter-grid-2 worklog-location-grid">
             <div className="filter-grid-item">
               <label>תאריכי העבודה</label>
               <DatePicker mode="multi-range" value={selectedRanges} onChange={setSelectedRanges} />
