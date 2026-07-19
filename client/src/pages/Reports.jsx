@@ -2,15 +2,13 @@ import { useMemo, useState } from "react";
 import ProfitBarChart from "../components/ProfitBarChart.jsx";
 import RevenueCostBarChart from "../components/RevenueCostBarChart.jsx";
 import PeriodFilter, { useDateRangeFilter } from "../components/PeriodFilter.jsx";
-import EditWorkLogModal from "../components/EditWorkLogModal.jsx";
 import { useData } from "../state/DataProvider.jsx";
-import { formatCurrency, normalizeDate } from "../lib/format.js";
-import { getName, getBuildingNames, getEmployeeAffiliationName } from "../lib/entities.js";
+import { formatCurrency } from "../lib/format.js";
+import { getEmployeeAffiliationName } from "../lib/entities.js";
 import {
   calculateFinancialSummary,
   filterReportLogs,
   getReportEmployees,
-  groupLogsByMonth,
 } from "../lib/reports.js";
 import { createWorkLogPDF, createFinancialSummaryPDF } from "../lib/pdf.js";
 import { exportToExcel, exportFinancialSummaryToExcel } from "../lib/excel.js";
@@ -24,13 +22,11 @@ const EMPTY_FILTERS = {
 };
 
 export default function Reports() {
-  const { data, deleteItem } = useData();
+  const { data } = useData();
   const { subcontractors, sites, customers, employees } = data;
 
   const dateRange = useDateRangeFilter();
   const [filters, setFilters] = useState(EMPTY_FILTERS);
-  const [view, setView] = useState("none"); // none | report | summary
-  const [editingLog, setEditingLog] = useState(null);
 
   const setFilter = (key, value) =>
     setFilters((prev) => {
@@ -66,15 +62,10 @@ export default function Reports() {
 
   const reportEmployeesFor = (log) => getReportEmployees(data, log, effectiveFilters);
 
-  const monthGroups = useMemo(
-    () => groupLogsByMonth(filteredLogs),
-    [filteredLogs]
+  const summary = useMemo(
+    () => calculateFinancialSummary(data, filteredLogs, effectiveFilters),
+    [filteredLogs, data, effectiveFilters]
   );
-
-  const summary = useMemo(() => {
-    if (view !== "summary") return null;
-    return calculateFinancialSummary(data, filteredLogs, effectiveFilters);
-  }, [view, filteredLogs, data, effectiveFilters]);
 
   const handlePDF = () => {
     if (filteredLogs.length === 0) {
@@ -182,9 +173,6 @@ export default function Reports() {
           <div className="report-action-group">
             <span className="report-action-group-title">אזור מזמין</span>
             <div className="report-action-group-buttons">
-              <button className="primary-btn" type="button" onClick={() => setView("report")}>
-                הצג דוח
-              </button>
               <button className="secondary-btn" type="button" onClick={handlePDF}>
                 דוח מזמין
               </button>
@@ -199,9 +187,6 @@ export default function Reports() {
           <div className="report-action-group">
             <span className="report-action-group-title">אזור מעסיק</span>
             <div className="report-action-group-buttons">
-              <button className="primary-btn" type="button" onClick={() => setView("summary")}>
-                סיכום כספי
-              </button>
               <button className="secondary-btn" type="button" onClick={handleEmployerPDF}>
                 דוח מעסיק
               </button>
@@ -214,82 +199,8 @@ export default function Reports() {
       </div>
 
       <div className="card" style={{ marginTop: 20 }}>
-        {view === "none" && <p>בחר סינון ולחץ הצג דוח.</p>}
-
-        {view === "report" && (
-          <>
-            <h2>דוח יומן עבודה</h2>
-            <p>סה״כ רשומות: {filteredLogs.length}</p>
-            {filteredLogs.length === 0 ? (
-              <p>אין רשומות מתאימות.</p>
-            ) : (
-              monthGroups.map((group) => (
-                <div key={group.key} style={{ marginTop: 20 }}>
-                  <h3>{group.label}</h3>
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>תאריך</th>
-                        <th>עובדים</th>
-                        <th>סה״כ עובדים</th>
-                        <th>אתר</th>
-                        <th>מבנה</th>
-                        <th>מזמין</th>
-                        <th>הערות</th>
-                        <th>פעולות</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {group.logs.map((log) => {
-                        const reportEmployees = reportEmployeesFor(log);
-                        return (
-                          <tr key={log.id}>
-                            <td>{normalizeDate(log.date)}</td>
-                            <td>{reportEmployees.map((e) => e.name).join(", ")}</td>
-                            <td>{reportEmployees.length}</td>
-                            <td>{getName(sites, log.siteId)}</td>
-                            <td>{getBuildingNames(data, log)}</td>
-                            <td>{getName(customers, log.customerId)}</td>
-                            <td>{log.notes || ""}</td>
-                            <td>
-                              <div className="report-row-actions">
-                                <button
-                                  type="button"
-                                  onClick={() => setEditingLog(log)}
-                                >
-                                  ערוך
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    if (confirm("למחוק את הרשומה?")) {
-                                      deleteItem("workLogs", log.id);
-                                    }
-                                  }}
-                                >
-                                  מחק
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              ))
-            )}
-          </>
-        )}
-
-        {view === "summary" && summary && (
-          <FinancialSummary summary={summary} />
-        )}
+        <FinancialSummary summary={summary} />
       </div>
-
-      {editingLog && (
-        <EditWorkLogModal log={editingLog} onClose={() => setEditingLog(null)} />
-      )}
     </>
   );
 }

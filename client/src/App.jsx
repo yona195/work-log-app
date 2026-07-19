@@ -6,6 +6,7 @@ import { useAuth } from "./state/AuthProvider.jsx";
 import { DataProvider, useData } from "./state/DataProvider.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 import WorkLog from "./pages/WorkLog.jsx";
+import WorkHistory from "./pages/WorkHistory.jsx";
 import Reports from "./pages/Reports.jsx";
 import EmployeeReports from "./pages/EmployeeReports.jsx";
 import Employees from "./pages/Employees.jsx";
@@ -32,6 +33,7 @@ function AuthenticatedApp() {
       <Routes>
         <Route path="/" element={<Dashboard />} />
         <Route path="/worklog" element={<WorkLog />} />
+        <Route path="/work-history" element={<WorkHistory />} />
         <Route path="/reports" element={<Reports />} />
         <Route path="/employee-reports" element={<EmployeeReports />} />
         <Route path="/employees" element={<Employees />} />
