@@ -4,45 +4,53 @@ import { activeOnly } from "../lib/entities.js";
 import EditEmployeeModal from "../components/EditEmployeeModal.jsx";
 import EditSimpleItemModal from "../components/EditSimpleItemModal.jsx";
 import ActionsLegend from "../components/ActionsLegend.jsx";
+import Pagination, { usePagedList } from "../components/Pagination.jsx";
 
+// Paginates itself — this renders once per list (internal employees, each
+// subcontractor's employees, unassigned), so each gets its own independent
+// page state for free with no extra wiring in the parent.
 function EmployeeTable({ employees, onEdit, onDelete, onToggleArchive }) {
+  const { pageItems, page, setPage, totalPages, startIndex } = usePagedList(employees);
   return (
-    <table>
-      <thead>
-        <tr>
-          <th>#</th>
-          <th>שם עובד</th>
-          <th>סטטוס</th>
-          <th className="actions-column">פעולות</th>
-        </tr>
-      </thead>
-      <tbody>
-        {employees.map((employee, index) => (
-          <tr key={employee.id}>
-            <td>{index + 1}</td>
-            <td>{employee.name}</td>
-            <td>{employee.archived ? "בארכיון" : "פעיל"}</td>
-            <td>
-              <div className="report-row-actions">
-                <button className="edit-btn" type="button" onClick={() => onEdit(employee)}>
-                  ערוך
-                </button>
-                <button className="delete-btn" type="button" onClick={() => onDelete(employee)}>
-                  מחק
-                </button>
-                <button
-                  className="archive-btn"
-                  type="button"
-                  onClick={() => onToggleArchive(employee)}
-                >
-                  {employee.archived ? "שחזר" : "ארכיון"}
-                </button>
-              </div>
-            </td>
+    <>
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>שם עובד</th>
+            <th>סטטוס</th>
+            <th className="actions-column">פעולות</th>
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {pageItems.map((employee, index) => (
+            <tr key={employee.id}>
+              <td>{startIndex + index + 1}</td>
+              <td>{employee.name}</td>
+              <td>{employee.archived ? "בארכיון" : "פעיל"}</td>
+              <td>
+                <div className="report-row-actions">
+                  <button className="edit-btn" type="button" onClick={() => onEdit(employee)}>
+                    ערוך
+                  </button>
+                  <button className="delete-btn" type="button" onClick={() => onDelete(employee)}>
+                    מחק
+                  </button>
+                  <button
+                    className="archive-btn"
+                    type="button"
+                    onClick={() => onToggleArchive(employee)}
+                  >
+                    {employee.archived ? "שחזר" : "ארכיון"}
+                  </button>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <Pagination page={page} totalPages={totalPages} onChange={setPage} />
+    </>
   );
 }
 

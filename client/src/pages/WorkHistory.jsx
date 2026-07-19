@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import PeriodFilter, { useDateRangeFilter } from "../components/PeriodFilter.jsx";
 import EditWorkLogModal from "../components/EditWorkLogModal.jsx";
+import Pagination from "../components/Pagination.jsx";
 import { useData } from "../state/DataProvider.jsx";
 import { formatExcelDate } from "../lib/format.js";
 import { getName, getBuildingNames, getEmployeeAffiliationName } from "../lib/entities.js";
@@ -283,23 +284,11 @@ export default function WorkHistory() {
                   </tbody>
                 </table>
 
-                {totalPages > 1 && (
-                  <div className="pagination">
-                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNumber) => (
-                      <button
-                        key={pageNumber}
-                        type="button"
-                        className={
-                          pageNumber === page ? "pagination-btn active" : "pagination-btn"
-                        }
-                        onClick={() => setPage(section.key, pageNumber)}
-                      >
-                        {(pageNumber - 1) * PAGE_SIZE + 1}-
-                        {Math.min(pageNumber * PAGE_SIZE, section.rows.length)}
-                      </button>
-                    ))}
-                  </div>
-                )}
+                <Pagination
+                  page={page}
+                  totalPages={totalPages}
+                  onChange={(nextPage) => setPage(section.key, nextPage)}
+                />
               </div>
             );
           })

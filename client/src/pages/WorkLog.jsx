@@ -11,6 +11,8 @@ import {
   activeEmployees,
 } from "../lib/entities.js";
 import DatePicker from "../components/DatePicker.jsx";
+import DuplicateConflictModal from "../components/DuplicateConflictModal.jsx";
+import Pagination, { usePagedList } from "../components/Pagination.jsx";
 
 export default function WorkLog() {
   const { data, addItem, deleteItem } = useData();
@@ -37,6 +39,7 @@ export default function WorkLog() {
   const [customerId, setCustomerId] = useState("");
   const [notes, setNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [duplicateConflict, setDuplicateConflict] = useState(null);
 
   const visibleEmployees = useMemo(() => {
     const text = search.trim().toLowerCase();
@@ -98,6 +101,13 @@ export default function WorkLog() {
     [workLogs]
   );
 
+  const {
+    pageItems: pagedWorkLogs,
+    page: workLogsPage,
+    setPage: setWorkLogsPage,
+    totalPages: workLogsTotalPages,
+  } = usePagedList(sortedWorkLogs);
+
   const add = async () => {
     // Guards against a double-click (or a slow request plus a second
     // click before it lands) submitting the same entry/range twice.
@@ -122,17 +132,23 @@ export default function WorkLog() {
 
     const conflicts = findDuplicateConflicts(siteId, selectedEmployees, dates);
     if (conflicts.length > 0) {
-      const siteName = getName(sites, siteId);
-      const lines = Array.from(
-        new Set(
-          conflicts.map(
-            (c) => `${getName(data.employees, c.employeeId) || "עובד"} - ${c.date}`
-          )
-        )
-      );
-      alert(
-        `לא ניתן להוסיף: העובדים הבאים כבר רשומים באתר "${siteName}" בתאריך המצוין:\n${lines.join("\n")}`
-      );
+      const groupsByEmployee = new Map();
+      conflicts.forEach((c) => {
+        if (!groupsByEmployee.has(c.employeeId)) {
+          groupsByEmployee.set(c.employeeId, {
+            employeeName: getName(data.employees, c.employeeId) || "עובד",
+            dates: [],
+          });
+        }
+        groupsByEmployee.get(c.employeeId).dates.push(c.date);
+      });
+      setDuplicateConflict({
+        siteName: getName(sites, siteId),
+        groups: Array.from(groupsByEmployee.values()).map((g) => ({
+          ...g,
+          dates: g.dates.sort(),
+        })),
+      });
       return;
     }
 
@@ -365,7 +381,7 @@ export default function WorkLog() {
               </tr>
             </thead>
             <tbody>
-              {sortedWorkLogs.map((log) => (
+              {pagedWorkLogs.map((log) => (
                 <tr key={log.id}>
                   <td>{normalizeDate(log.date)}</td>
                   <td>{getEmployeeNames(data, log)}</td>
@@ -394,7 +410,20 @@ export default function WorkLog() {
             </tbody>
           </table>
         )}
+        <Pagination
+          page={workLogsPage}
+          totalPages={workLogsTotalPages}
+          onChange={setWorkLogsPage}
+        />
       </div>
+
+      {duplicateConflict && (
+        <DuplicateConflictModal
+          siteName={duplicateConflict.siteName}
+          groups={duplicateConflict.groups}
+          onClose={() => setDuplicateConflict(null)}
+        />
+      )}
     </>
   );
 }

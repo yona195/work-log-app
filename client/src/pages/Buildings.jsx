@@ -3,6 +3,7 @@ import { useData } from "../state/DataProvider.jsx";
 import { getName, activeOnly } from "../lib/entities.js";
 import EditBuildingModal from "../components/EditBuildingModal.jsx";
 import ActionsLegend from "../components/ActionsLegend.jsx";
+import Pagination, { usePagedList } from "../components/Pagination.jsx";
 
 export default function Buildings() {
   const { data, addItem, updateItem, deleteItem } = useData();
@@ -15,6 +16,13 @@ export default function Buildings() {
   const [editingBuilding, setEditingBuilding] = useState(null);
 
   const visibleBuildings = showArchived ? buildings : activeOnly(buildings);
+  const {
+    pageItems: pagedBuildings,
+    page,
+    setPage,
+    totalPages,
+    startIndex,
+  } = usePagedList(visibleBuildings);
 
   const add = async () => {
     if (isSubmitting) return;
@@ -122,9 +130,9 @@ export default function Buildings() {
               </tr>
             </thead>
             <tbody>
-              {visibleBuildings.map((building, index) => (
+              {pagedBuildings.map((building, index) => (
                 <tr key={building.id}>
-                  <td>{index + 1}</td>
+                  <td>{startIndex + index + 1}</td>
                   <td>{building.name}</td>
                   <td>{getName(sites, building.siteId)}</td>
                   <td>{building.archived ? "בארכיון" : "פעיל"}</td>
@@ -158,6 +166,7 @@ export default function Buildings() {
             </tbody>
           </table>
         )}
+        <Pagination page={page} totalPages={totalPages} onChange={setPage} />
       </div>
 
       <ActionsLegend />

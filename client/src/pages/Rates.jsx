@@ -11,6 +11,7 @@ import {
 import EditRateModal from "../components/EditRateModal.jsx";
 import ActionsLegend from "../components/ActionsLegend.jsx";
 import DatePicker from "../components/DatePicker.jsx";
+import Pagination, { usePagedList } from "../components/Pagination.jsx";
 
 export default function Rates() {
   const { data, addItem, updateItem, deleteItem } = useData();
@@ -61,6 +62,14 @@ export default function Rates() {
       );
     });
   }, [rates, sites, showArchived]);
+
+  const {
+    pageItems: pagedRates,
+    page: ratesPage,
+    setPage: setRatesPage,
+    totalPages: ratesTotalPages,
+    startIndex: ratesStartIndex,
+  } = usePagedList(sortedRates);
 
   const toggleRateArchive = async (rate) => {
     if (rate.archived) {
@@ -394,7 +403,7 @@ export default function Rates() {
               </tr>
             </thead>
             <tbody>
-              {sortedRates.map((rate, index) => {
+              {pagedRates.map((rate, index) => {
                 const revenueValue = Number(rate.revenuePerWorker) || 0;
                 const costValue = Number(rate.costPerWorker) || 0;
                 const isEmployeeRate = rate.rateType === "employee";
@@ -413,7 +422,7 @@ export default function Rates() {
 
                 return (
                   <tr key={rate.id}>
-                    <td>{index + 1}</td>
+                    <td>{ratesStartIndex + index + 1}</td>
                     <td>{getName(customers, rate.customerId) || "מזמין לא נמצא"}</td>
                     <td>{getName(sites, rate.siteId) || "אתר לא נמצא"}</td>
                     <td>{isEmployeeRate ? "תעריף אישי" : "תעריף כללי"}</td>
@@ -455,6 +464,7 @@ export default function Rates() {
             </tbody>
           </table>
         )}
+        <Pagination page={ratesPage} totalPages={ratesTotalPages} onChange={setRatesPage} />
       </div>
 
       <ActionsLegend />

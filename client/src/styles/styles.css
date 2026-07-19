@@ -483,38 +483,53 @@ tbody tr.history-split-row-3:hover {
     background: #ede9fe;
 }
 
-.pagination {
+/* Compact prev/label/next control, anchored to the visual left (flex-end
+   in this RTL layout) under a list — doesn't grow with the list length,
+   unlike one button per page. */
+.pagination-compact {
     display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
     margin-top: 14px;
 }
 
-.pagination-btn {
-    min-height: 34px;
-    padding: 6px 14px;
+.pagination-nav {
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
 
     background: var(--color-surface);
     color: var(--color-text);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-small);
 
-    font-size: 13px;
-    font-weight: 600;
+    font-size: 16px;
+    line-height: 1;
     cursor: pointer;
 
-    transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 
-.pagination-btn:hover {
+.pagination-nav:hover:not(:disabled) {
     background: var(--color-primary-soft);
     border-color: #93c5fd;
 }
 
-.pagination-btn.active {
-    background: var(--color-primary);
-    color: white;
-    border-color: var(--color-primary);
+.pagination-nav:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.pagination-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--color-muted);
+    white-space: nowrap;
 }
 
 

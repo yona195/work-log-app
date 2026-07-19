@@ -3,6 +3,7 @@ import { useData } from "../state/DataProvider.jsx";
 import { activeOnly } from "../lib/entities.js";
 import EditSimpleItemModal from "../components/EditSimpleItemModal.jsx";
 import ActionsLegend from "../components/ActionsLegend.jsx";
+import Pagination, { usePagedList } from "../components/Pagination.jsx";
 
 export default function SimpleManager({ collection, placeholder, editTitle }) {
   const { data, addItem, updateItem, deleteItem } = useData();
@@ -12,6 +13,13 @@ export default function SimpleManager({ collection, placeholder, editTitle }) {
   const [editingItem, setEditingItem] = useState(null);
   const items = data[collection] || [];
   const visibleItems = showArchived ? items : activeOnly(items);
+  const {
+    pageItems: pagedItems,
+    page,
+    setPage,
+    totalPages,
+    startIndex,
+  } = usePagedList(visibleItems);
 
   const add = async () => {
     if (isSubmitting) return;
@@ -101,9 +109,9 @@ export default function SimpleManager({ collection, placeholder, editTitle }) {
               </tr>
             </thead>
             <tbody>
-              {visibleItems.map((item, index) => (
+              {pagedItems.map((item, index) => (
                 <tr key={item.id}>
-                  <td>{index + 1}</td>
+                  <td>{startIndex + index + 1}</td>
                   <td>{item.name}</td>
                   <td>{item.archived ? "בארכיון" : "פעיל"}</td>
                   <td>
@@ -136,6 +144,7 @@ export default function SimpleManager({ collection, placeholder, editTitle }) {
             </tbody>
           </table>
         )}
+        <Pagination page={page} totalPages={totalPages} onChange={setPage} />
       </div>
 
       <ActionsLegend />
