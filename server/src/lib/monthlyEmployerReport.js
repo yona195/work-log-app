@@ -1,5 +1,4 @@
 import ExcelJS from "exceljs";
-import puppeteer from "puppeteer";
 import { Resend } from "resend";
 
 import { getData } from "../db.js";
@@ -10,6 +9,7 @@ import {
 } from "../../../client/src/lib/reports.js";
 import { buildEmployerReportHtml } from "../../../client/src/lib/pdf.js";
 import { addEmployerWorksheet } from "../../../client/src/lib/excel.js";
+import { buildPdfBuffer } from "./pdfRenderer.js";
 
 /** The calendar month immediately before `referenceDate`, as "YYYY-MM-DD" bounds. */
 export function getPreviousMonthRange(referenceDate = new Date()) {
@@ -27,24 +27,6 @@ export function getPreviousMonthRange(referenceDate = new Date()) {
     from: `${year}-${pad(month + 1)}-01`,
     to: `${year}-${pad(month + 1)}-${pad(lastDay)}`,
   };
-}
-
-async function buildPdfBuffer(html) {
-  const browser = await puppeteer.launch({
-    headless: true,
-    args: ["--no-sandbox", "--disable-setuid-sandbox"],
-  });
-  try {
-    const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: "networkidle0" });
-    return await page.pdf({
-      format: "A4",
-      landscape: true,
-      printBackground: true,
-    });
-  } finally {
-    await browser.close();
-  }
 }
 
 async function buildExcelBuffer(data, logs) {

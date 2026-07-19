@@ -5,9 +5,10 @@ import {
   isEmployeeArchived,
 } from "../lib/entities.js";
 import { filterReportLogs } from "../lib/reports.js";
-import { createEmployeeWorkPDF, createEmployeeSummaryPDF } from "../lib/pdf.js";
+import { buildEmployeeReportHtml } from "../lib/pdf.js";
 import { exportEmployeeWorkExcel, exportEmployeeSummaryExcel } from "../lib/excel.js";
 import PeriodFilter, { useDateRangeFilter } from "../components/PeriodFilter.jsx";
+import PdfPreviewDrawer from "../components/PdfPreviewDrawer.jsx";
 
 const toggle = (list, id) =>
   list.includes(id) ? list.filter((x) => x !== id) : [...list, id];
@@ -22,6 +23,8 @@ export default function EmployeeReports() {
   const [reportType, setReportType] = useState("work"); // "work" | "summary"
   const [group, setGroup] = useState("");
   const [showArchived, setShowArchived] = useState(false);
+  const [pdfPreview, setPdfPreview] = useState({ open: false, html: null, fileName: "" });
+  const closePdfPreview = () => setPdfPreview({ open: false, html: null, fileName: "" });
 
   // Starts empty on purpose — nothing is pre-checked; the user picks what
   // they want. An empty array means "match nothing" (no report yet) until
@@ -102,10 +105,23 @@ export default function EmployeeReports() {
     fn(data, filteredLogs, filters);
   };
 
-  const handleWorkPDF = requireLogs(createEmployeeWorkPDF);
   const handleWorkExcel = requireLogs(exportEmployeeWorkExcel);
-  const handleSummaryPDF = requireLogs(createEmployeeSummaryPDF);
   const handleSummaryExcel = requireLogs(exportEmployeeSummaryExcel);
+
+  const openEmployeePdfPreview = (includeFinance, title) => {
+    if (filteredLogs.length === 0) {
+      alert(NO_DATA_MESSAGE);
+      return;
+    }
+    const html = buildEmployeeReportHtml(data, filteredLogs, filters, {
+      includeFinance,
+      autoPrint: false,
+    });
+    setPdfPreview({ open: true, html, fileName: title });
+  };
+
+  const handleWorkPDF = () => openEmployeePdfPreview(false, "דוח עבודה לעובדים");
+  const handleSummaryPDF = () => openEmployeePdfPreview(true, "דוח עובדים מסכם");
 
   // Mandatory fields: a complete period, and at least one employee selected
   // (selection starts empty by design, so "nothing checked" must block
@@ -269,11 +285,14 @@ export default function EmployeeReports() {
 
         <div className="report-actions">
           <button
-            className="primary-btn"
+            className="pdf-btn"
             type="button"
             disabled={!canExport}
             onClick={reportType === "work" ? handleWorkPDF : handleSummaryPDF}
           >
+            <span className="material-symbols-rounded" aria-hidden="true">
+              picture_as_pdf
+            </span>
             ייצוא PDF
           </button>
           <button
@@ -282,10 +301,20 @@ export default function EmployeeReports() {
             disabled={!canExport}
             onClick={reportType === "work" ? handleWorkExcel : handleSummaryExcel}
           >
+            <span className="material-symbols-rounded" aria-hidden="true">
+              table_view
+            </span>
             ייצוא אקסל
           </button>
         </div>
       </div>
+
+      <PdfPreviewDrawer
+        open={pdfPreview.open}
+        html={pdfPreview.html}
+        fileName={pdfPreview.fileName}
+        onClose={closePdfPreview}
+      />
     </>
   );
 }

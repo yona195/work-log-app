@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import PeriodFilter, { useDateRangeFilter } from "../components/PeriodFilter.jsx";
+import PdfPreviewDrawer from "../components/PdfPreviewDrawer.jsx";
 import { useData } from "../state/DataProvider.jsx";
 import {
   getEmployeeAffiliationName,
@@ -7,7 +8,7 @@ import {
   activeOnly,
 } from "../lib/entities.js";
 import { filterReportLogs, getReportEmployees } from "../lib/reports.js";
-import { createWorkLogPDF, createFinancialSummaryPDF } from "../lib/pdf.js";
+import { buildWorkLogReportHtml, buildEmployerReportHtml } from "../lib/pdf.js";
 import { exportToExcel, exportFinancialSummaryToExcel } from "../lib/excel.js";
 
 const EMPTY_FILTERS = {
@@ -26,6 +27,8 @@ export default function Reports() {
   const [reportType, setReportType] = useState("customer"); // "customer" | "employer"
   const [filters, setFilters] = useState(EMPTY_FILTERS);
   const [showArchived, setShowArchived] = useState(false);
+  const [pdfPreview, setPdfPreview] = useState({ open: false, html: null, fileName: "" });
+  const closePdfPreview = () => setPdfPreview({ open: false, html: null, fileName: "" });
 
   const setFilter = (key, value) =>
     setFilters((prev) => {
@@ -75,7 +78,10 @@ export default function Reports() {
       alert("אין רשומות מתאימות להפקת PDF");
       return;
     }
-    createWorkLogPDF(data, filteredLogs, reportEmployeesFor);
+    const html = buildWorkLogReportHtml(data, filteredLogs, reportEmployeesFor, {
+      autoPrint: false,
+    });
+    setPdfPreview({ open: true, html, fileName: "דוח מזמין" });
   };
 
   const handleExcel = () => exportToExcel(data, filteredLogs, reportEmployeesFor);
@@ -85,7 +91,10 @@ export default function Reports() {
       alert("אין רשומות מתאימות להפקת PDF");
       return;
     }
-    createFinancialSummaryPDF(data, filteredLogs, effectiveFilters);
+    const html = buildEmployerReportHtml(data, filteredLogs, effectiveFilters, {
+      autoPrint: false,
+    });
+    setPdfPreview({ open: true, html, fileName: "דוח מעסיק" });
   };
 
   const handleEmployerExcel = () =>
@@ -226,11 +235,14 @@ export default function Reports() {
 
         <div className="report-actions">
           <button
-            className="primary-btn"
+            className="pdf-btn"
             type="button"
             disabled={!canExport}
             onClick={reportType === "customer" ? handlePDF : handleEmployerPDF}
           >
+            <span className="material-symbols-rounded" aria-hidden="true">
+              picture_as_pdf
+            </span>
             ייצוא PDF
           </button>
           <button
@@ -239,10 +251,20 @@ export default function Reports() {
             disabled={!canExport}
             onClick={reportType === "customer" ? handleExcel : handleEmployerExcel}
           >
+            <span className="material-symbols-rounded" aria-hidden="true">
+              table_view
+            </span>
             ייצוא אקסל
           </button>
         </div>
       </div>
+
+      <PdfPreviewDrawer
+        open={pdfPreview.open}
+        html={pdfPreview.html}
+        fileName={pdfPreview.fileName}
+        onClose={closePdfPreview}
+      />
     </>
   );
 }

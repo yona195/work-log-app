@@ -16,6 +16,7 @@ import { initDb } from "./db.js";
 import authRouter from "./routes/auth.js";
 import cronRouter from "./routes/cron.js";
 import dataRouter from "./routes/data.js";
+import pdfRouter from "./routes/pdf.js";
 
 const app = express();
 
@@ -34,6 +35,7 @@ app.use("/api", cronRouter);
 
 // Everything else under /api requires a valid token (when auth is enabled).
 app.use("/api", requireAuth, dataRouter);
+app.use("/api", requireAuth, pdfRouter);
 
 // Serve the built React app (single-service production deployment).
 const clientDist = resolve(__dirname, "..", "..", "client", "dist");

@@ -32,10 +32,35 @@ async function request(path, options = {}, { auth = true } = {}) {
   return response.json();
 }
 
+// Sends an already-built report HTML string to the server, which renders it
+// to a real PDF via headless Chrome (see server/src/routes/pdf.js) and
+// returns the binary — used by the PDF preview drawer instead of the JSON
+// `request()` helper above, since the response here isn't JSON.
+async function renderPdf(html) {
+  const response = await fetch(`${BASE}/pdf/render`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders() },
+    body: JSON.stringify({ html }),
+  });
+
+  if (response.status === 401) {
+    window.dispatchEvent(new Event("auth:unauthorized"));
+    throw new Error("Unauthorized");
+  }
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new Error(body.message || body.error || `Request failed: ${response.status}`);
+  }
+
+  return response.blob();
+}
+
 export const api = {
   getData() {
     return request("/data");
   },
+  renderPdf,
   create(collection, item) {
     return request(`/${collection}`, {
       method: "POST",

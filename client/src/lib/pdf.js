@@ -6,20 +6,16 @@ import {
 } from "./reports.js";
 import { formatCurrency, normalizeDate } from "./format.js";
 
-// Opens a print-ready window with the filtered work-log report (RTL, A4
-// landscape). Mirrors the original createWorkLogPDF behaviour.
-export function createWorkLogPDF(data, filteredLogs, reportEmployeesFor) {
-  if (!filteredLogs || filteredLogs.length === 0) {
-    alert("אין רשומות להפקת דוח");
-    return;
-  }
-
-  const printWindow = window.open("", "_blank");
-  if (!printWindow) {
-    alert("הדפדפן חסם את פתיחת ה-PDF. צריך לאשר חלונות קופצים לאתר הזה.");
-    return;
-  }
-
+// Builds the customer report's HTML document (RTL, A4 landscape): one table
+// per month of filtered work-log entries. Pure/no browser APIs — used by the
+// PDF preview drawer (rendered to a real PDF server-side) instead of opening
+// a print window directly.
+export function buildWorkLogReportHtml(
+  data,
+  filteredLogs,
+  reportEmployeesFor,
+  { autoPrint = true } = {}
+) {
   const formatDate = (dateValue) => {
     if (!dateValue) return "";
     const [year, month, day] = String(dateValue).split("T")[0].split("-");
@@ -90,7 +86,13 @@ export function createWorkLogPDF(data, filteredLogs, reportEmployeesFor) {
   const fromDate = formatDate(reportDates[0] || "");
   const toDate = formatDate(reportDates[reportDates.length - 1] || "");
 
-  printWindow.document.write(`
+  const printScript = autoPrint
+    ? `<script>
+        window.onload = function () { window.print(); };
+      <\/script>`
+    : "";
+
+  return `
     <!DOCTYPE html>
     <html lang="he" dir="rtl">
     <head>
@@ -125,14 +127,10 @@ export function createWorkLogPDF(data, filteredLogs, reportEmployeesFor) {
         <span dir="ltr">${toDate}</span>
       </div>
       ${monthSections}
-      <script>
-        window.onload = function () { window.print(); };
-      <\/script>
+      ${printScript}
     </body>
     </html>
-  `);
-
-  printWindow.document.close();
+  `;
 }
 
 // Builds the employer report's HTML document: one section per month, and
@@ -324,25 +322,6 @@ export function buildEmployerReportHtml(
   `;
 }
 
-// Opens a print-ready window with the employer's report. Thin browser
-// wrapper around buildEmployerReportHtml — see that function for the actual
-// layout (shared with the server-side monthly email).
-export function createFinancialSummaryPDF(data, filteredLogs, filters) {
-  if (!filteredLogs || filteredLogs.length === 0) {
-    alert("אין רשומות להפקת דוח");
-    return;
-  }
-
-  const printWindow = window.open("", "_blank");
-  if (!printWindow) {
-    alert("הדפדפן חסם את פתיחת ה-PDF. צריך לאשר חלונות קופצים לאתר הזה.");
-    return;
-  }
-
-  printWindow.document.write(buildEmployerReportHtml(data, filteredLogs, filters));
-  printWindow.document.close();
-}
-
 // Builds the employee report's HTML: one table per employee (not grouped by
 // affiliation), covering the whole selected range in a single continuous
 // table (no month split). `includeFinance` adds per-row cost/payment/profit
@@ -492,30 +471,4 @@ export function buildEmployeeReportHtml(
     </body>
     </html>
   `;
-}
-
-function openEmployeeReportPDF(data, filteredLogs, filters, includeFinance) {
-  if (!filteredLogs || filteredLogs.length === 0) {
-    alert("אין רשומות להפקת דוח");
-    return;
-  }
-
-  const printWindow = window.open("", "_blank");
-  if (!printWindow) {
-    alert("הדפדפן חסם את פתיחת ה-PDF. צריך לאשר חלונות קופצים לאתר הזה.");
-    return;
-  }
-
-  printWindow.document.write(
-    buildEmployeeReportHtml(data, filteredLogs, filters, { includeFinance })
-  );
-  printWindow.document.close();
-}
-
-export function createEmployeeWorkPDF(data, filteredLogs, filters) {
-  openEmployeeReportPDF(data, filteredLogs, filters, false);
-}
-
-export function createEmployeeSummaryPDF(data, filteredLogs, filters) {
-  openEmployeeReportPDF(data, filteredLogs, filters, true);
 }
