@@ -153,7 +153,10 @@ export default function EmployeeReports() {
                       checked={selectedSubcontractorIds.includes(subcontractor.id)}
                       onChange={() => toggleSubcontractor(subcontractor.id)}
                     />
-                    <span>{subcontractor.name}</span>
+                    <span>
+                      {subcontractor.name}
+                      {subcontractor.archived ? " (בארכיון)" : ""}
+                    </span>
                   </label>
                 ))
               )}
@@ -194,6 +197,7 @@ export default function EmployeeReports() {
                 />
                 <span>
                   {employee.name} - {getEmployeeAffiliationName(data, employee)}
+                  {employee.archived ? " (בארכיון)" : ""}
                 </span>
               </label>
             ))

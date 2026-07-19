@@ -5,6 +5,13 @@ export function getName(list, id) {
   return item ? item.name : "";
 }
 
+// Excludes archived records — used for "pick for a new record" pickers
+// (adding a work log, creating a new rate, etc). Report filters and
+// settings-page listings intentionally keep archived records visible.
+export function activeOnly(list) {
+  return (list || []).filter((item) => !item.archived);
+}
+
 // work logs from the API carry arrays; still tolerate legacy string forms.
 function toIdArray(value, fallbackSingle) {
   if (Array.isArray(value)) {

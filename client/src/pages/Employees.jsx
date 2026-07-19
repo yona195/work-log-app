@@ -1,13 +1,15 @@
 import { useState } from "react";
 import { useData } from "../state/DataProvider.jsx";
+import { activeOnly } from "../lib/entities.js";
 
-function EmployeeTable({ employees, onDelete }) {
+function EmployeeTable({ employees, onToggleArchive }) {
   return (
     <table>
       <thead>
         <tr>
           <th>#</th>
           <th>שם עובד</th>
+          <th>סטטוס</th>
           <th>פעולות</th>
         </tr>
       </thead>
@@ -16,9 +18,10 @@ function EmployeeTable({ employees, onDelete }) {
           <tr key={employee.id}>
             <td>{index + 1}</td>
             <td>{employee.name}</td>
+            <td>{employee.archived ? "בארכיון" : "פעיל"}</td>
             <td>
-              <button type="button" onClick={() => onDelete(employee.id)}>
-                מחק
+              <button type="button" onClick={() => onToggleArchive(employee)}>
+                {employee.archived ? "שחזר" : "העבר לארכיון"}
               </button>
             </td>
           </tr>
@@ -29,16 +32,22 @@ function EmployeeTable({ employees, onDelete }) {
 }
 
 export default function Employees() {
-  const { data, addItem, deleteItem } = useData();
+  const { data, addItem, updateItem } = useData();
   const { employees, subcontractors } = data;
 
   const [name, setName] = useState("");
   const [type, setType] = useState("internal");
   const [subcontractorId, setSubcontractorId] = useState("");
   const [subName, setSubName] = useState("");
+  const [showArchived, setShowArchived] = useState(false);
 
-  const internalEmployees = employees.filter((e) => e.type === "internal");
-  const subcontractorEmployees = employees.filter(
+  const visibleEmployees = showArchived ? employees : activeOnly(employees);
+  const visibleSubcontractors = showArchived
+    ? subcontractors
+    : activeOnly(subcontractors);
+
+  const internalEmployees = visibleEmployees.filter((e) => e.type === "internal");
+  const subcontractorEmployees = visibleEmployees.filter(
     (e) => e.type === "subcontractor" || e.type === "external"
   );
 
@@ -72,15 +81,34 @@ export default function Employees() {
     setSubName("");
   };
 
-  const deleteSubcontractor = async (id) => {
+  const toggleEmployeeArchive = async (employee) => {
+    if (employee.archived) {
+      await updateItem("employees", employee.id, { archived: false });
+      return;
+    }
     if (
       !confirm(
-        "מחיקת קבלן המשנה. העובדים המשויכים אליו יישארו במערכת ללא שיוך. להמשיך?"
+        `להעביר את ${employee.name} לארכיון? העובד לא יופיע יותר לבחירה ברשומות חדשות, אבל הדוחות הקיימים לא ישתנו.`
       )
     ) {
       return;
     }
-    await deleteItem("subcontractors", id);
+    await updateItem("employees", employee.id, { archived: true });
+  };
+
+  const toggleSubcontractorArchive = async (subcontractor) => {
+    if (subcontractor.archived) {
+      await updateItem("subcontractors", subcontractor.id, { archived: false });
+      return;
+    }
+    if (
+      !confirm(
+        `להעביר את ${subcontractor.name} לארכיון? הקבלן והעובדים המשויכים אליו לא יופיעו יותר לבחירה ברשומות חדשות, אבל הדוחות הקיימים לא ישתנו.`
+      )
+    ) {
+      return;
+    }
+    await updateItem("subcontractors", subcontractor.id, { archived: true });
   };
 
   const unassignedSubEmployees = subcontractorEmployees.filter(
@@ -113,13 +141,13 @@ export default function Employees() {
               onChange={(e) => setSubcontractorId(e.target.value)}
             >
               <option value="">בחר קבלן משנה</option>
-              {subcontractors.map((s) => (
+              {activeOnly(subcontractors).map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.name}
                 </option>
               ))}
             </select>
-            {subcontractors.length === 0 && (
+            {activeOnly(subcontractors).length === 0 && (
               <p>עדיין אין קבלני משנה. הוסף קודם קבלן משנה באזור הבא.</p>
             )}
           </div>
@@ -144,19 +172,30 @@ export default function Employees() {
       </div>
 
       <div className="card" style={{ marginTop: 20 }}>
+        <label className="checkbox-item" style={{ display: "inline-flex" }}>
+          <input
+            type="checkbox"
+            checked={showArchived}
+            onChange={(e) => setShowArchived(e.target.checked)}
+          />
+          <span>הצג פריטים בארכיון</span>
+        </label>
+      </div>
+
+      <div className="card" style={{ marginTop: 20 }}>
         <h3>העובדים שלי - סה״כ {internalEmployees.length}</h3>
         {internalEmployees.length === 0 ? (
           <p>אין עדיין עובדים שלי.</p>
         ) : (
           <EmployeeTable
             employees={internalEmployees}
-            onDelete={(id) => deleteItem("employees", id)}
+            onToggleArchive={toggleEmployeeArchive}
           />
         )}
       </div>
 
-      {subcontractors.map((subcontractor) => {
-        const list = employees.filter(
+      {visibleSubcontractors.map((subcontractor) => {
+        const list = subcontractorEmployees.filter(
           (e) => String(e.subcontractorId || "") === String(subcontractor.id)
         );
         return (
@@ -171,13 +210,14 @@ export default function Employees() {
               }}
             >
               <h3>
-                {subcontractor.name} - סה״כ {list.length}
+                {subcontractor.name}
+                {subcontractor.archived ? " (בארכיון)" : ""} - סה״כ {list.length}
               </h3>
               <button
                 type="button"
-                onClick={() => deleteSubcontractor(subcontractor.id)}
+                onClick={() => toggleSubcontractorArchive(subcontractor)}
               >
-                מחק קבלן
+                {subcontractor.archived ? "שחזר קבלן" : "העבר קבלן לארכיון"}
               </button>
             </div>
             {list.length === 0 ? (
@@ -185,7 +225,7 @@ export default function Employees() {
             ) : (
               <EmployeeTable
                 employees={list}
-                onDelete={(id) => deleteItem("employees", id)}
+                onToggleArchive={toggleEmployeeArchive}
               />
             )}
           </div>
@@ -197,7 +237,7 @@ export default function Employees() {
           <h3>עובדי קבלן שלא שויכו לקבלן</h3>
           <EmployeeTable
             employees={unassignedSubEmployees}
-            onDelete={(id) => deleteItem("employees", id)}
+            onToggleArchive={toggleEmployeeArchive}
           />
         </div>
       )}
@@ -211,7 +251,7 @@ export default function Employees() {
           עובדי קבלני משנה: <strong>{subcontractorEmployees.length}</strong>
         </p>
         <p>
-          סה״כ עובדים כללי: <strong>{employees.length}</strong>
+          סה״כ עובדים כללי: <strong>{internalEmployees.length + subcontractorEmployees.length}</strong>
         </p>
       </div>
     </>

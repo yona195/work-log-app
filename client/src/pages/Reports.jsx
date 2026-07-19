@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import ProfitBarChart from "../components/ProfitBarChart.jsx";
 import RevenueCostBarChart from "../components/RevenueCostBarChart.jsx";
 import PeriodFilter, { useDateRangeFilter } from "../components/PeriodFilter.jsx";
+import EditWorkLogModal from "../components/EditWorkLogModal.jsx";
 import { useData } from "../state/DataProvider.jsx";
 import { formatCurrency, normalizeDate } from "../lib/format.js";
 import { getName, getBuildingNames, getEmployeeAffiliationName } from "../lib/entities.js";
@@ -23,12 +24,13 @@ const EMPTY_FILTERS = {
 };
 
 export default function Reports() {
-  const { data } = useData();
+  const { data, deleteItem } = useData();
   const { subcontractors, sites, customers, employees } = data;
 
   const dateRange = useDateRangeFilter();
   const [filters, setFilters] = useState(EMPTY_FILTERS);
   const [view, setView] = useState("none"); // none | report | summary
+  const [editingLog, setEditingLog] = useState(null);
 
   const setFilter = (key, value) =>
     setFilters((prev) => {
@@ -129,6 +131,7 @@ export default function Reports() {
           {subcontractors.map((s) => (
             <option key={s.id} value={s.id}>
               {s.name}
+              {s.archived ? " (בארכיון)" : ""}
             </option>
           ))}
         </select>
@@ -142,6 +145,7 @@ export default function Reports() {
           {employeeOptions.map((employee) => (
             <option key={employee.id} value={employee.id}>
               {employee.name} - {getEmployeeAffiliationName(data, employee)}
+              {employee.archived ? " (בארכיון)" : ""}
             </option>
           ))}
         </select>
@@ -155,6 +159,7 @@ export default function Reports() {
           {sites.map((site) => (
             <option key={site.id} value={site.id}>
               {site.name}
+              {site.archived ? " (בארכיון)" : ""}
             </option>
           ))}
         </select>
@@ -168,6 +173,7 @@ export default function Reports() {
           {customers.map((customer) => (
             <option key={customer.id} value={customer.id}>
               {customer.name}
+              {customer.archived ? " (בארכיון)" : ""}
             </option>
           ))}
         </select>
@@ -230,6 +236,7 @@ export default function Reports() {
                         <th>מבנה</th>
                         <th>מזמין</th>
                         <th>הערות</th>
+                        <th>פעולות</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -244,6 +251,26 @@ export default function Reports() {
                             <td>{getBuildingNames(data, log)}</td>
                             <td>{getName(customers, log.customerId)}</td>
                             <td>{log.notes || ""}</td>
+                            <td>
+                              <div className="report-row-actions">
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingLog(log)}
+                                >
+                                  ערוך
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (confirm("למחוק את הרשומה?")) {
+                                      deleteItem("workLogs", log.id);
+                                    }
+                                  }}
+                                >
+                                  מחק
+                                </button>
+                              </div>
+                            </td>
                           </tr>
                         );
                       })}
@@ -259,6 +286,10 @@ export default function Reports() {
           <FinancialSummary summary={summary} />
         )}
       </div>
+
+      {editingLog && (
+        <EditWorkLogModal log={editingLog} onClose={() => setEditingLog(null)} />
+      )}
     </>
   );
 }

@@ -1,12 +1,22 @@
 import { useMemo, useState } from "react";
 import { useData } from "../state/DataProvider.jsx";
 import { normalizeDate, todayISO } from "../lib/format.js";
-import { getName, getEmployeeNames, getBuildingNames } from "../lib/entities.js";
+import {
+  getName,
+  getEmployeeNames,
+  getBuildingNames,
+  activeOnly,
+} from "../lib/entities.js";
 
 export default function WorkLog() {
   const { data, addItem, deleteItem } = useData();
-  const { employees, subcontractors, sites, buildings, customers, workLogs } =
-    data;
+  const { subcontractors, sites, buildings, customers, workLogs } = data;
+  // Pickers for a NEW entry must exclude archived records; the existing-logs
+  // table below still needs the full (unfiltered) lists so it can keep
+  // resolving names for entries that reference an already-archived record.
+  const employees = activeOnly(data.employees);
+  const pickableSites = activeOnly(sites);
+  const pickableCustomers = activeOnly(customers);
 
   const [date, setDate] = useState(todayISO());
   const [group, setGroup] = useState("");
@@ -35,7 +45,7 @@ export default function WorkLog() {
   const siteBuildings = useMemo(() => {
     if (!siteId) return [];
     const text = buildingSearch.trim().toLowerCase();
-    return buildings
+    return activeOnly(buildings)
       .filter((b) => String(b.siteId) === String(siteId))
       .filter((b) => !text || b.name.toLowerCase().includes(text));
   }, [buildings, siteId, buildingSearch]);
@@ -102,7 +112,7 @@ export default function WorkLog() {
           <option value="">כל העובדים</option>
           <option value="internal">העובדים שלי</option>
           <option value="all-subcontractors">כל עובדי קבלני המשנה</option>
-          {subcontractors.map((s) => (
+          {activeOnly(subcontractors).map((s) => (
             <option key={s.id} value={s.id}>
               {s.name}
             </option>
@@ -170,7 +180,7 @@ export default function WorkLog() {
         <label>אתר עבודה</label>
         <select value={siteId} onChange={(e) => changeSite(e.target.value)}>
           <option value="">בחר אתר</option>
-          {sites.map((site) => (
+          {pickableSites.map((site) => (
             <option key={site.id} value={site.id}>
               {site.name}
             </option>
@@ -234,7 +244,7 @@ export default function WorkLog() {
         <label>מזמין עבודה</label>
         <select value={customerId} onChange={(e) => setCustomerId(e.target.value)}>
           <option value="">בחר מזמין</option>
-          {customers.map((customer) => (
+          {pickableCustomers.map((customer) => (
             <option key={customer.id} value={customer.id}>
               {customer.name}
             </option>
@@ -284,7 +294,11 @@ export default function WorkLog() {
                   <td>
                     <button
                       type="button"
-                      onClick={() => deleteItem("workLogs", log.id)}
+                      onClick={() => {
+                        if (confirm("למחוק את הרשומה?")) {
+                          deleteItem("workLogs", log.id);
+                        }
+                      }}
                     >
                       מחק
                     </button>

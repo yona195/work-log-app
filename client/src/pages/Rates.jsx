@@ -1,10 +1,10 @@
 import { useMemo, useState } from "react";
 import { useData } from "../state/DataProvider.jsx";
 import { formatCurrency, normalizeDate, todayISO } from "../lib/format.js";
-import { getName, getEmployeeAffiliationName } from "../lib/entities.js";
+import { getName, getEmployeeAffiliationName, activeOnly } from "../lib/entities.js";
 
 export default function Rates() {
-  const { data, addItem, deleteItem } = useData();
+  const { data, addItem, updateItem } = useData();
   const { sites, employees, subcontractors, customers, rates } = data;
 
   const [selectedCustomerIds, setSelectedCustomerIds] = useState([]);
@@ -14,14 +14,18 @@ export default function Rates() {
   const [revenue, setRevenue] = useState("");
   const [cost, setCost] = useState("");
   const [effectiveFrom, setEffectiveFrom] = useState(todayISO());
+  const [showArchived, setShowArchived] = useState(false);
+
+  const activeCustomers = activeOnly(customers);
+  const activeSites = activeOnly(sites);
 
   const targets =
     rateType === "employee"
-      ? employees.map((e) => ({
+      ? activeOnly(employees).map((e) => ({
           id: e.id,
           label: `${e.name} — ${getEmployeeAffiliationName(data, e)}`,
         }))
-      : subcontractors.map((s) => ({ id: s.id, label: s.name }));
+      : activeOnly(subcontractors).map((s) => ({ id: s.id, label: s.name }));
 
   const toggle = (list, setList, id) =>
     setList(
@@ -34,7 +38,8 @@ export default function Rates() {
   };
 
   const sortedRates = useMemo(() => {
-    return [...rates].sort((a, b) => {
+    const visible = showArchived ? rates : activeOnly(rates);
+    return [...visible].sort((a, b) => {
       const siteCompare = getName(sites, a.siteId).localeCompare(
         getName(sites, b.siteId),
         "he"
@@ -44,7 +49,22 @@ export default function Rates() {
         String(b.effectiveFrom || "")
       );
     });
-  }, [rates, sites]);
+  }, [rates, sites, showArchived]);
+
+  const toggleRateArchive = async (rate) => {
+    if (rate.archived) {
+      await updateItem("rates", rate.id, { archived: false });
+      return;
+    }
+    if (
+      !confirm(
+        "להעביר את התעריף לארכיון? התעריף לא יופיע יותר לבחירה, אבל הדוחות הקיימים לא ישתנו."
+      )
+    ) {
+      return;
+    }
+    await updateItem("rates", rate.id, { archived: true });
+  };
 
   const addRates = async () => {
     const revenuePerWorker = Number(revenue);
@@ -149,10 +169,10 @@ export default function Rates() {
 
         <label>בחר מזמיני עבודה</label>
         <div className="checkbox-list">
-          {customers.length === 0 ? (
+          {activeCustomers.length === 0 ? (
             <p className="empty-message">אין מזמיני עבודה</p>
           ) : (
-            customers.map((customer) => (
+            activeCustomers.map((customer) => (
               <label className="checkbox-item" key={customer.id}>
                 <input
                   type="checkbox"
@@ -170,7 +190,7 @@ export default function Rates() {
           <button
             type="button"
             className="secondary-btn"
-            onClick={() => setSelectedCustomerIds(customers.map((c) => c.id))}
+            onClick={() => setSelectedCustomerIds(activeCustomers.map((c) => c.id))}
           >
             בחר את כל המזמינים
           </button>
@@ -185,10 +205,10 @@ export default function Rates() {
 
         <label>בחר אתרי עבודה</label>
         <div className="checkbox-list">
-          {sites.length === 0 ? (
+          {activeSites.length === 0 ? (
             <p className="empty-message">אין אתרי עבודה</p>
           ) : (
-            sites.map((site) => (
+            activeSites.map((site) => (
               <label className="checkbox-item" key={site.id}>
                 <input
                   type="checkbox"
@@ -206,7 +226,7 @@ export default function Rates() {
           <button
             type="button"
             className="secondary-btn"
-            onClick={() => setSelectedSiteIds(sites.map((s) => s.id))}
+            onClick={() => setSelectedSiteIds(activeSites.map((s) => s.id))}
           >
             בחר את כל האתרים
           </button>
@@ -300,7 +320,18 @@ export default function Rates() {
       </div>
 
       <div className="card" style={{ marginTop: 20 }}>
-        <h3>תעריפים קיימים - סה״כ {rates.length}</h3>
+        <label className="checkbox-item" style={{ display: "inline-flex" }}>
+          <input
+            type="checkbox"
+            checked={showArchived}
+            onChange={(e) => setShowArchived(e.target.checked)}
+          />
+          <span>הצג פריטים בארכיון</span>
+        </label>
+      </div>
+
+      <div className="card" style={{ marginTop: 20 }}>
+        <h3>תעריפים קיימים - סה״כ {activeOnly(rates).length}</h3>
         {sortedRates.length === 0 ? (
           <p>עדיין לא הוגדרו תעריפים.</p>
         ) : (
@@ -317,6 +348,7 @@ export default function Rates() {
                 <th>עלות</th>
                 <th>רווח</th>
                 <th>בתוקף מתאריך</th>
+                <th>סטטוס</th>
                 <th>פעולות</th>
               </tr>
             </thead>
@@ -350,12 +382,10 @@ export default function Rates() {
                     <td>{formatCurrency(costValue)}</td>
                     <td>{formatCurrency(revenueValue - costValue)}</td>
                     <td dir="ltr">{normalizeDate(rate.effectiveFrom)}</td>
+                    <td>{rate.archived ? "בארכיון" : "פעיל"}</td>
                     <td>
-                      <button
-                        type="button"
-                        onClick={() => deleteItem("rates", rate.id)}
-                      >
-                        מחק
+                      <button type="button" onClick={() => toggleRateArchive(rate)}>
+                        {rate.archived ? "שחזר" : "העבר לארכיון"}
                       </button>
                     </td>
                   </tr>

@@ -28,15 +28,36 @@ const client = createClient(resolveConfig());
 ========================================= */
 
 export const COLLECTIONS = {
-  subcontractors: { table: "subcontractors", columns: ["name"], json: [] },
-  sites: { table: "sites", columns: ["name"], json: [] },
-  customers: { table: "customers", columns: ["name"], json: [] },
+  subcontractors: {
+    table: "subcontractors",
+    columns: ["name", "archived"],
+    json: [],
+    boolean: ["archived"],
+  },
+  sites: {
+    table: "sites",
+    columns: ["name", "archived"],
+    json: [],
+    boolean: ["archived"],
+  },
+  customers: {
+    table: "customers",
+    columns: ["name", "archived"],
+    json: [],
+    boolean: ["archived"],
+  },
   employees: {
     table: "employees",
-    columns: ["name", "type", "subcontractorId"],
+    columns: ["name", "type", "subcontractorId", "archived"],
     json: [],
+    boolean: ["archived"],
   },
-  buildings: { table: "buildings", columns: ["siteId", "name"], json: [] },
+  buildings: {
+    table: "buildings",
+    columns: ["siteId", "name", "archived"],
+    json: [],
+    boolean: ["archived"],
+  },
   rates: {
     table: "rates",
     columns: [
@@ -48,8 +69,10 @@ export const COLLECTIONS = {
       "revenuePerWorker",
       "costPerWorker",
       "effectiveFrom",
+      "archived",
     ],
     json: [],
+    boolean: ["archived"],
   },
   workLogs: {
     table: "work_logs",
@@ -62,6 +85,7 @@ export const COLLECTIONS = {
       "notes",
     ],
     json: ["employeeIds", "buildingIds"],
+    boolean: [],
   },
 };
 
@@ -130,6 +154,27 @@ export async function initDb() {
   } catch (err) {
     if (!/duplicate column/i.test(err.message)) throw err;
   }
+
+  // archived was added after the initial release; back-fill it on databases
+  // created before this column existed. work_logs is deliberately excluded —
+  // individual log entries are hard-deleted, not archived.
+  for (const table of [
+    "subcontractors",
+    "sites",
+    "customers",
+    "employees",
+    "buildings",
+    "rates",
+  ]) {
+    try {
+      // eslint-disable-next-line no-await-in-loop
+      await client.execute(
+        `ALTER TABLE ${table} ADD COLUMN archived INTEGER NOT NULL DEFAULT 0`
+      );
+    } catch (err) {
+      if (!/duplicate column/i.test(err.message)) throw err;
+    }
+  }
 }
 
 /* =========================================
@@ -143,6 +188,9 @@ function generateId() {
 function serializeValue(def, column, value) {
   if (def.json.includes(column)) {
     return JSON.stringify(Array.isArray(value) ? value : []);
+  }
+  if (def.boolean.includes(column)) {
+    return value ? 1 : 0;
   }
   if (value === undefined || value === null) return "";
   return value;
@@ -175,6 +223,9 @@ function deserializeRow(def, row) {
     } catch {
       result[column] = [];
     }
+  }
+  for (const column of def.boolean) {
+    result[column] = Boolean(result[column]);
   }
   return result;
 }
