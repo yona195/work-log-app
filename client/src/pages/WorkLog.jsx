@@ -19,6 +19,8 @@ export default function WorkLog() {
   const pickableCustomers = activeOnly(customers);
 
   const [date, setDate] = useState(todayISO());
+  const [isRange, setIsRange] = useState(false);
+  const [endDate, setEndDate] = useState(todayISO());
   const [group, setGroup] = useState("");
   const [search, setSearch] = useState("");
   const [selectedEmployees, setSelectedEmployees] = useState([]);
@@ -53,6 +55,25 @@ export default function WorkLog() {
   const toggle = (list, setList, id) =>
     setList(list.includes(id) ? list.filter((x) => x !== id) : [...list, id]);
 
+  // Builds the inclusive list of "YYYY-MM-DD" strings between two ISO dates
+  // using local date components (not UTC parsing) so day-boundary rollover
+  // in non-UTC timezones can't skip/duplicate a day.
+  const datesInRange = (fromISO, toISO) => {
+    const [fy, fm, fd] = fromISO.split("-").map(Number);
+    const [ty, tm, td] = toISO.split("-").map(Number);
+    const cursor = new Date(fy, fm - 1, fd);
+    const end = new Date(ty, tm - 1, td);
+    const dates = [];
+    while (cursor <= end) {
+      const y = cursor.getFullYear();
+      const m = String(cursor.getMonth() + 1).padStart(2, "0");
+      const d = String(cursor.getDate()).padStart(2, "0");
+      dates.push(`${y}-${m}-${d}`);
+      cursor.setDate(cursor.getDate() + 1);
+    }
+    return dates;
+  };
+
   const changeSite = (value) => {
     setSiteId(value);
     setSelectedBuildings([]);
@@ -79,18 +100,38 @@ export default function WorkLog() {
       return;
     }
 
-    await addItem("workLogs", {
-      date,
-      employeeIds: selectedEmployees,
-      buildingIds: selectedBuildings,
-      siteId,
-      customerId,
-      notes: notes.trim(),
-    });
+    let dates = [date];
+    if (isRange) {
+      if (!endDate) {
+        alert("נא לבחור תאריך סיום לטווח");
+        return;
+      }
+      if (endDate < date) {
+        alert("תאריך הסיום חייב להיות זהה או אחרי תאריך ההתחלה");
+        return;
+      }
+      dates = datesInRange(date, endDate);
+    }
+
+    for (const logDate of dates) {
+      // eslint-disable-next-line no-await-in-loop
+      await addItem("workLogs", {
+        date: logDate,
+        employeeIds: selectedEmployees,
+        buildingIds: selectedBuildings,
+        siteId,
+        customerId,
+        notes: notes.trim(),
+      });
+    }
 
     setSelectedEmployees([]);
     setSelectedBuildings([]);
     setNotes("");
+
+    if (dates.length > 1) {
+      alert(`נוספו ${dates.length} רשומות עבודה, אחת לכל יום בטווח.`);
+    }
   };
 
   const selectAllVisibleEmployees = () =>
@@ -110,8 +151,32 @@ export default function WorkLog() {
       <div className="card">
         <h3>הוספת רשומת עבודה</h3>
 
-        <label>תאריך</label>
+        <label>{isRange ? "מתאריך" : "תאריך"}</label>
         <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+
+        <label className="checkbox-item" style={{ display: "inline-flex", marginTop: 8 }}>
+          <input
+            type="checkbox"
+            checked={isRange}
+            onChange={(e) => {
+              setIsRange(e.target.checked);
+              if (e.target.checked) setEndDate(date);
+            }}
+          />
+          <span>טווח תאריכים (מספר ימים ברצף)</span>
+        </label>
+
+        {isRange && (
+          <>
+            <label>עד תאריך</label>
+            <input
+              type="date"
+              value={endDate}
+              min={date}
+              onChange={(e) => setEndDate(e.target.value)}
+            />
+          </>
+        )}
 
         <h4>בחירת עובדים</h4>
 
