@@ -2109,20 +2109,6 @@ body.loading .menu-overlay {
     color: #b91c1c;
 }
 
-.readonly-value {
-    padding: 11px 12px;
-    margin-bottom: 16px;
-
-    background: #f9fafb;
-    color: var(--color-text);
-
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-small);
-
-    font-size: 14px;
-    font-weight: 500;
-}
-
 .worklog-summary-row {
     display: flex;
     align-items: baseline;
@@ -2141,6 +2127,7 @@ body.loading .menu-overlay {
 
 .worklog-summary-highlight {
     margin-top: 10px;
+    margin-bottom: 16px;
     padding-top: 10px;
 
     border-top: 1px dashed rgba(37, 99, 235, 0.25);
@@ -2151,43 +2138,18 @@ body.loading .menu-overlay {
     text-align: center;
 }
 
-/* סיכום והוספה - שני פאנלים (סיכום רחב מימין, הערות צר משמאל) */
+/* סיכום והוספה - כרטיס מאוחד אחד (סטטיסטיקות + פרטים + הערות + כפתור) */
 
-.worklog-final-grid {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 16px;
-
-    margin-bottom: 16px;
-}
-
-@media (min-width: 641px) {
-    .worklog-final-grid {
-        grid-template-columns: 2fr 1fr;
-        align-items: stretch;
-    }
-}
-
-.worklog-summary-panel,
-.worklog-notes-panel {
-    display: flex;
-    flex-direction: column;
-
+.worklog-summary-panel {
     padding: 16px;
+
+    background: var(--color-primary-soft);
+    border: 1px solid rgba(37, 99, 235, 0.16);
     border-radius: var(--radius-medium);
 }
 
-.worklog-summary-panel {
-    background: var(--color-primary-soft);
-    border: 1px solid rgba(37, 99, 235, 0.16);
-}
-
-.worklog-summary-panel h5 {
-    margin-bottom: 12px;
-
+.worklog-summary-panel label {
     color: var(--color-text);
-    font-size: 14px;
-    font-weight: 700;
 }
 
 .worklog-stat-cards {
@@ -2225,28 +2187,21 @@ body.loading .menu-overlay {
     font-weight: 600;
 }
 
-.worklog-notes-panel {
-    background: #f9fafb;
-    border: 1px solid var(--color-border);
-}
-
-.worklog-notes-panel label {
-    margin-top: 0;
-}
-
-.worklog-notes-panel textarea {
-    flex: 1;
-    margin-bottom: 0;
-}
-
 .worklog-compact-textarea {
     min-height: 90px;
 }
 
-/* בחירת כוח אדם - פאנלים בגובה שווה, ושורת "עובד נבחר" בפאנל הבחירה */
+/* בחירת כוח אדם - מעטפת אחידה לכל הפאנלים (בחירה / נבחרו / מצב ריק),
+   כך שכולם מיושרים באותו גובה, ריפוד וכותרת בלי קשר לתוכן שבפנים. */
 
 .worklog-workforce-grid .filter-grid-item {
     display: flex;
+
+    padding: 14px;
+
+    background: #f9fafb;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-medium);
 }
 
 .worklog-workforce-grid .filter-grid-item > div {
@@ -2255,8 +2210,19 @@ body.loading .menu-overlay {
     width: 100%;
 }
 
-.worklog-workforce-grid .checkbox-list {
+.worklog-workforce-grid .checkbox-list,
+.worklog-workforce-grid .worklog-panel-empty {
     flex: 1;
+}
+
+.worklog-workforce-grid .worklog-panel-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.worklog-workforce-grid label:first-child {
+    margin-top: 0;
 }
 
 .selected-item-row {

@@ -130,8 +130,6 @@ export default function WorkLog() {
     return activeOnly(buildings).filter((b) => String(b.siteId) === String(siteId));
   }, [buildings, siteId]);
 
-  const hasSingleBuilding = allSiteBuildings.length === 1;
-
   const siteBuildings = useMemo(() => {
     const text = buildingSearch.trim().toLowerCase();
     return allSiteBuildings.filter((b) => !text || b.name.toLowerCase().includes(text));
@@ -149,11 +147,12 @@ export default function WorkLog() {
 
   // Changing the site clears whatever building selection belonged to the
   // previous site — except when the new site has exactly one building,
-  // which is auto-selected and shown read-only instead of as a picker. If
-  // the site has ever been used with exactly one customer (via existing
-  // rates) and no customer has been picked yet, that customer is
-  // auto-selected too — a convenience default that never overrides a
-  // customer the user already chose, and not a new data relationship.
+  // which is pre-checked as a convenience (the picker stays fully active
+  // and editable either way). If the site has ever been used with exactly
+  // one customer (via existing rates) and no customer has been picked yet,
+  // that customer is auto-selected too — a convenience default that never
+  // overrides a customer the user already chose, and not a new data
+  // relationship.
   const changeSite = (value) => {
     setSiteId(value);
     setBuildingSearch("");
@@ -265,9 +264,18 @@ export default function WorkLog() {
       return;
     }
 
-    if (editingLogId && uniqueDates.length > 1) {
-      alert("בעריכת רשומה ניתן לבחור תאריך אחד בלבד.");
-      return;
+    // Editing represents exactly one existing daily/single-building record —
+    // restricting both to exactly one keeps "שמור שינויים" from silently
+    // turning into a multi-record creation.
+    if (editingLogId) {
+      if (uniqueDates.length > 1) {
+        alert("בעריכת רשומה ניתן לבחור תאריך אחד בלבד.");
+        return;
+      }
+      if (selectedBuildings.length > 1) {
+        alert("בעריכת רשומה ניתן לבחור מבנה אחד בלבד.");
+        return;
+      }
     }
 
     const datesToUse = editingLogId ? uniqueDates.slice(0, 1) : uniqueDates;
@@ -297,7 +305,7 @@ export default function WorkLog() {
         await updateItem("workLogs", editingLogId, {
           date: datesToUse[0],
           employeeIds: selectedEmployees,
-          buildingIds: selectedBuildings,
+          buildingIds: [selectedBuildings[0]],
           siteId,
           customerId,
           notes: notes.trim(),
@@ -306,24 +314,47 @@ export default function WorkLog() {
         return;
       }
 
-      for (const logDate of datesToUse) {
-        // eslint-disable-next-line no-await-in-loop
-        await addItem("workLogs", {
-          date: logDate,
-          employeeIds: selectedEmployees,
-          buildingIds: selectedBuildings,
-          siteId,
-          customerId,
-          notes: notes.trim(),
-        });
+      // One record per unique day × selected building — each work record is
+      // expected (by the data model and every report) to carry exactly one
+      // building, so multiple buildings for the same days become separate
+      // records instead of one record with several buildings.
+      const createdIds = [];
+      try {
+        for (const logDate of datesToUse) {
+          for (const buildingId of selectedBuildings) {
+            // eslint-disable-next-line no-await-in-loop
+            const created = await addItem("workLogs", {
+              date: logDate,
+              employeeIds: selectedEmployees,
+              buildingIds: [buildingId],
+              siteId,
+              customerId,
+              notes: notes.trim(),
+            });
+            createdIds.push(created.id);
+          }
+        }
+      } catch (err) {
+        // A failure partway through must not leave a partial batch behind —
+        // there's no server-side transaction spanning these calls, so roll
+        // back everything this batch already created.
+        for (const id of createdIds) {
+          // eslint-disable-next-line no-await-in-loop
+          await deleteItem("workLogs", id).catch(() => {});
+        }
+        console.error("Batch work-log creation failed, rolled back:", err);
+        alert("אירעה שגיאה בהוספת הרשומות. הפעולה בוטלה ולא נוצרו רשומות חלקיות.");
+        return;
       }
 
       setSelectedEmployees([]);
       setSelectedBuildings([]);
       setNotes("");
 
-      if (datesToUse.length > 1) {
-        alert(`נוספו ${datesToUse.length} רשומות עבודה, אחת לכל יום בטווח.`);
+      if (createdIds.length > 1) {
+        alert(
+          `נוצרו ${createdIds.length} רשומות עבודה (${datesToUse.length} ימים × ${selectedBuildings.length} מבנים).`
+        );
       }
     } finally {
       setIsSubmitting(false);
@@ -348,7 +379,9 @@ export default function WorkLog() {
     .filter((e) => selectedEmployees.includes(e.id))
     .map((e) => ({ id: e.id, label: `${e.name} - ${getEmployeeAffiliationName(data, e)}` }));
 
-  const recordsCount = editingLogId ? Math.min(uniqueDates.length, 1) : uniqueDates.length;
+  const recordsCount = editingLogId
+    ? Math.min(uniqueDates.length, 1) * Math.min(selectedBuildings.length, 1)
+    : uniqueDates.length * selectedBuildings.length;
 
   return (
     <>
@@ -412,59 +445,70 @@ export default function WorkLog() {
             </div>
 
             <div className="filter-grid-item">
-              {siteId &&
-                (hasSingleBuilding ? (
-                  <>
-                    <label>מבנה</label>
-                    <p className="readonly-value">{allSiteBuildings[0].name}</p>
-                  </>
-                ) : (
-                  <div className="buildings-section">
-                    <div className="section-title-row">
-                      <label>מבנים</label>
-                      <div className="building-actions">
-                        <button
-                          type="button"
-                          className="secondary-btn"
-                          onClick={selectAllBuildings}
-                        >
-                          בחר הכל
-                        </button>
-                        <button
-                          type="button"
-                          className="secondary-btn"
-                          onClick={() => setSelectedBuildings([])}
-                        >
-                          נקה הכל
-                        </button>
-                      </div>
-                    </div>
-
-                    <input
-                      type="text"
-                      placeholder="🔍 חפש מבנה..."
-                      value={buildingSearch}
-                      onChange={(e) => setBuildingSearch(e.target.value)}
-                    />
-
-                    <div className="checkbox-list">
-                      {siteBuildings.length === 0 ? (
-                        <div className="empty-message">אין מבנים באתר הזה</div>
-                      ) : (
-                        siteBuildings.map((building) => (
-                          <label className="checkbox-item" key={building.id}>
-                            <input
-                              type="checkbox"
-                              checked={selectedBuildings.includes(building.id)}
-                              onChange={() => toggleBuilding(building.id)}
-                            />
-                            <span>{building.name}</span>
-                          </label>
-                        ))
-                      )}
+              {siteId && (
+                <div className="buildings-section">
+                  <div className="section-title-row">
+                    <label>
+                      מבנה
+                      <span className="required-mark"> *</span>
+                    </label>
+                    <div className="building-actions">
+                      <button type="button" className="secondary-btn" onClick={selectAllBuildings}>
+                        בחר הכל
+                      </button>
+                      <button
+                        type="button"
+                        className="secondary-btn"
+                        onClick={() => setSelectedBuildings([])}
+                      >
+                        נקה הכל
+                      </button>
                     </div>
                   </div>
-                ))}
+
+                  <input
+                    type="text"
+                    placeholder="🔍 חפש מבנה..."
+                    value={buildingSearch}
+                    onChange={(e) => setBuildingSearch(e.target.value)}
+                  />
+
+                  <div className="checkbox-list">
+                    {siteBuildings.length === 0 ? (
+                      <div className="empty-message">אין מבנים באתר הזה</div>
+                    ) : (
+                      siteBuildings.map((building) => (
+                        <label className="checkbox-item" key={building.id}>
+                          <input
+                            type="checkbox"
+                            checked={selectedBuildings.includes(building.id)}
+                            onChange={() => toggleBuilding(building.id)}
+                          />
+                          <span>{building.name}</span>
+                        </label>
+                      ))
+                    )}
+                  </div>
+
+                  {selectedBuildings.length > 0 && (
+                    <div className="filter-chips">
+                      {selectedBuildings.map((id) => (
+                        <span className="filter-chip" key={id}>
+                          {getName(buildings, id) || "מבנה"}
+                          <button
+                            type="button"
+                            className="filter-chip-remove"
+                            onClick={() => toggleBuilding(id)}
+                            aria-label="הסר מבנה"
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -519,13 +563,13 @@ export default function WorkLog() {
 
               <div className="filter-grid-item">
                 {selectedContractorIds.length === 0 ? (
-                  <>
+                  <div>
                     <label>
                       בחירת עובדי הקבלן
                       <span className="required-mark"> *</span>
                     </label>
-                    <div className="empty-message">יש לבחור קבלן תחילה</div>
-                  </>
+                    <div className="empty-message worklog-panel-empty">יש לבחור קבלן תחילה</div>
+                  </div>
                 ) : (
                   <SelectionPanel
                     title="בחירת עובדי הקבלן"
@@ -598,68 +642,67 @@ export default function WorkLog() {
         <div className="form-section">
           <h4 className="form-section-title">סיכום והוספה</h4>
 
-          <div className="worklog-final-grid">
-            <div className="worklog-summary-panel">
-              <h5>סיכום הרשומה</h5>
-              <div className="worklog-stat-cards">
-                <div className="worklog-stat-card">
-                  <span className="worklog-stat-value">{uniqueDates.length}</span>
-                  <span className="worklog-stat-label">ימי עבודה</span>
-                </div>
-                <div className="worklog-stat-card">
-                  <span className="worklog-stat-value">{selectedEmployees.length}</span>
-                  <span className="worklog-stat-label">עובדים</span>
-                </div>
+          <div className="worklog-summary-panel">
+            <div className="worklog-stat-cards">
+              <div className="worklog-stat-card">
+                <span className="worklog-stat-value">{uniqueDates.length}</span>
+                <span className="worklog-stat-label">ימי עבודה</span>
               </div>
-              <div className="worklog-summary-row">
-                <span className="worklog-summary-label">תאריכים</span>
-                <span>{dateSummaryText}</span>
+              <div className="worklog-stat-card">
+                <span className="worklog-stat-value">{selectedBuildings.length}</span>
+                <span className="worklog-stat-label">מבנים</span>
               </div>
-              <div className="worklog-summary-row">
-                <span className="worklog-summary-label">מזמין עבודה</span>
-                <span>{customerName || "לא נבחר"}</span>
+              <div className="worklog-stat-card">
+                <span className="worklog-stat-value">{selectedEmployees.length}</span>
+                <span className="worklog-stat-label">עובדים</span>
               </div>
-              <div className="worklog-summary-row">
-                <span className="worklog-summary-label">אתר עבודה</span>
-                <span>{siteName || "לא נבחר"}</span>
-              </div>
-              <div className="worklog-summary-row">
-                <span className="worklog-summary-label">מבנה</span>
-                <span>{buildingNamesText || "לא נבחר"}</span>
-              </div>
-              <p className="worklog-summary-highlight">ייווצרו {recordsCount} רשומות</p>
             </div>
-
-            <div className="worklog-notes-panel">
-              <label>הערות</label>
-              <textarea
-                className="worklog-compact-textarea"
-                placeholder="אופציונלי"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-              ></textarea>
+            <div className="worklog-summary-row">
+              <span className="worklog-summary-label">תאריכים</span>
+              <span>{dateSummaryText}</span>
             </div>
-          </div>
+            <div className="worklog-summary-row">
+              <span className="worklog-summary-label">מזמין עבודה</span>
+              <span>{customerName || "לא נבחר"}</span>
+            </div>
+            <div className="worklog-summary-row">
+              <span className="worklog-summary-label">אתר עבודה</span>
+              <span>{siteName || "לא נבחר"}</span>
+            </div>
+            <div className="worklog-summary-row">
+              <span className="worklog-summary-label">מבנים נבחרים</span>
+              <span>{buildingNamesText || "לא נבחר"}</span>
+            </div>
+            <p className="worklog-summary-highlight">ייווצרו {recordsCount} רשומות</p>
 
-          <div className="employee-actions">
-            <button
-              className="primary-btn"
-              type="button"
-              onClick={add}
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? "שומר..." : editingLogId ? "שמור שינויים" : "הוסף ליומן"}
-            </button>
-            {editingLogId && (
+            <label>הערות</label>
+            <textarea
+              className="worklog-compact-textarea"
+              placeholder="אופציונלי"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+            ></textarea>
+
+            <div className="employee-actions" style={{ marginBottom: 0 }}>
               <button
-                className="secondary-btn"
+                className="primary-btn"
                 type="button"
-                onClick={cancelEdit}
+                onClick={add}
                 disabled={isSubmitting}
               >
-                ביטול עריכה
+                {isSubmitting ? "שומר..." : editingLogId ? "שמור שינויים" : "הוסף ליומן"}
               </button>
-            )}
+              {editingLogId && (
+                <button
+                  className="secondary-btn"
+                  type="button"
+                  onClick={cancelEdit}
+                  disabled={isSubmitting}
+                >
+                  ביטול עריכה
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>
