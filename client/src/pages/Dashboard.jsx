@@ -3,7 +3,7 @@ import ProfitBarChart from "../components/ProfitBarChart.jsx";
 import RevenueCostBarChart from "../components/RevenueCostBarChart.jsx";
 import DatePicker from "../components/DatePicker.jsx";
 import { useData } from "../state/DataProvider.jsx";
-import { formatCurrency } from "../lib/format.js";
+import { formatCurrency, formatExcelDate } from "../lib/format.js";
 import { getCurrentMonthRange } from "../lib/entities.js";
 import {
   calculateFinanceByWorkforce,
@@ -195,7 +195,7 @@ export default function Dashboard() {
                     <td>{item.siteName}</td>
                     <td>{item.customerName}</td>
                     <td dir="ltr">
-                      {item.dates.join(", ")} ({item.dates.length})
+                      {item.dates.map(formatExcelDate).join(", ")} ({item.dates.length})
                     </td>
                   </tr>
                 ))}

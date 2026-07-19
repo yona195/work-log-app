@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useData } from "../state/DataProvider.jsx";
-import { normalizeDate } from "../lib/format.js";
+import { normalizeDate, formatExcelDate } from "../lib/format.js";
 import { isoRangeInclusive } from "../lib/calendar.js";
 import {
   getName,
@@ -379,7 +379,7 @@ export default function WorkLog() {
             <tbody>
               {pagedWorkLogs.map((log) => (
                 <tr key={log.id}>
-                  <td>{normalizeDate(log.date)}</td>
+                  <td dir="ltr">{formatExcelDate(log.date)}</td>
                   <td>{getEmployeeNames(data, log)}</td>
                   <td>{(log.employeeIds || []).length || log.employeeCount || 1}</td>
                   <td>{getName(sites, log.siteId)}</td>
