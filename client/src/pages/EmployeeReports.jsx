@@ -8,6 +8,7 @@ import { filterReportLogs } from "../lib/reports.js";
 import { buildEmployeeReportHtml } from "../lib/pdf.js";
 import { exportEmployeeWorkExcel, exportEmployeeSummaryExcel } from "../lib/excel.js";
 import PeriodFilter, { useDateRangeFilter } from "../components/PeriodFilter.jsx";
+import Dropdown from "../components/Dropdown.jsx";
 import { exportPdfInNewTab, NO_DATA_MESSAGE } from "../lib/pdfExport.js";
 
 const toggle = (list, id) =>
@@ -130,6 +131,20 @@ export default function EmployeeReports() {
   const canExport = periodValid && employeesValid;
   const showContractorField = group === "all-subcontractors";
 
+  // Resolved against the full employee list (not employeeOptions, which is
+  // narrowed by the current search text) so the closed-dropdown summary
+  // still shows correct names for selections a search happens to be hiding.
+  const employeeSummary = useMemo(() => {
+    if (selectedEmployeeIds.length === 0) return "בחר עובדים";
+    if (selectedEmployeeIds.length <= 2) {
+      return selectedEmployeeIds
+        .map((id) => employees.find((e) => String(e.id) === String(id))?.name)
+        .filter(Boolean)
+        .join(", ");
+    }
+    return `נבחרו ${selectedEmployeeIds.length} עובדים`;
+  }, [selectedEmployeeIds, employees]);
+
   return (
     <div className="card">
       <h3>הגדרת הדוח</h3>
@@ -228,18 +243,17 @@ export default function EmployeeReports() {
       <div className="form-section">
         <h4 className="form-section-title">בחירת עובדים</h4>
 
-        <input
-          type="text"
-          placeholder="🔍 חפש עובד..."
-          value={employeeSearch}
-          onChange={(e) => setEmployeeSearch(e.target.value)}
-        />
-
-        <div className="section-title-row">
-          <label>
-            עובדים
-            <span className="required-mark"> *</span>
-          </label>
+        <label>
+          עובדים
+          <span className="required-mark"> *</span>
+        </label>
+        <Dropdown label={employeeSummary}>
+          <input
+            type="text"
+            placeholder="🔍 חפש עובד..."
+            value={employeeSearch}
+            onChange={(e) => setEmployeeSearch(e.target.value)}
+          />
           <div className="employee-actions">
             <button
               type="button"
@@ -260,27 +274,26 @@ export default function EmployeeReports() {
               נקה הכל
             </button>
           </div>
-        </div>
-
-        <div className="checkbox-list">
-          {employeeOptions.length === 0 ? (
-            <div className="empty-message">אין עובדים תואמים</div>
-          ) : (
-            employeeOptions.map((employee) => (
-              <label className="checkbox-item" key={employee.id}>
-                <input
-                  type="checkbox"
-                  checked={selectedEmployeeIds.includes(employee.id)}
-                  onChange={() => toggleEmployee(employee.id)}
-                />
-                <span>
-                  {employee.name} - {getEmployeeAffiliationName(data, employee)}
-                  {isEmployeeArchived(employee, subcontractors) ? " (בארכיון)" : ""}
-                </span>
-              </label>
-            ))
-          )}
-        </div>
+          <div className="checkbox-list">
+            {employeeOptions.length === 0 ? (
+              <div className="empty-message">אין עובדים תואמים</div>
+            ) : (
+              employeeOptions.map((employee) => (
+                <label className="checkbox-item" key={employee.id}>
+                  <input
+                    type="checkbox"
+                    checked={selectedEmployeeIds.includes(employee.id)}
+                    onChange={() => toggleEmployee(employee.id)}
+                  />
+                  <span>
+                    {employee.name} - {getEmployeeAffiliationName(data, employee)}
+                    {isEmployeeArchived(employee, subcontractors) ? " (בארכיון)" : ""}
+                  </span>
+                </label>
+              ))
+            )}
+          </div>
+        </Dropdown>
         {!employeesValid && <p className="field-error">יש לבחור לפחות עובד אחד</p>}
 
         <p id="employeeCountText">סה״כ עובדים שנבחרו: {selectedEmployeeIds.length}</p>

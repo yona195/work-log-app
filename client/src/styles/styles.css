@@ -635,6 +635,76 @@ tbody tr.history-split-row-3:hover {
     color: var(--color-primary);
 }
 
+.dropdown-select {
+    position: relative;
+    width: 100%;
+}
+
+.dropdown-select-trigger {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+
+    width: 100%;
+    padding: 11px 12px;
+    margin-bottom: 16px;
+
+    background: var(--color-surface);
+    color: var(--color-text);
+
+    border: 1px solid #d1d5db;
+    border-radius: var(--radius-small);
+
+    font-size: 14px;
+    font-weight: 500;
+    text-align: right;
+
+    cursor: pointer;
+
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.dropdown-select-trigger:hover {
+    border-color: #93c5fd;
+}
+
+.dropdown-select-trigger[aria-expanded="true"] {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.dropdown-select-trigger-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.dropdown-select-caret {
+    flex-shrink: 0;
+    font-size: 20px;
+    color: var(--color-muted);
+}
+
+.dropdown-select-panel {
+    position: absolute;
+    top: calc(100% - 12px);
+    right: 0;
+    left: 0;
+    z-index: 60;
+
+    padding: 14px;
+
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-medium);
+    box-shadow: var(--shadow-medium);
+}
+
+.dropdown-select-panel .checkbox-list {
+    margin-bottom: 0;
+}
+
 
 /* =========================================
    11. אזור המבנים
