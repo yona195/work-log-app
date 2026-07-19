@@ -4,7 +4,6 @@ import {
   HEBREW_WEEKDAYS_SHORT,
   addMonths,
   buildMonthWeeks,
-  isoRangeInclusive,
   parseISO,
   todayISO,
 } from "../lib/calendar.js";
@@ -17,19 +16,7 @@ function formatDisplay(iso) {
   return `${day}/${month}/${parsed.year}`;
 }
 
-function MonthPanel({
-  year,
-  month,
-  onPrev,
-  onNext,
-  isSelected,
-  isInRange,
-  onDayClick,
-  onDayMouseDown,
-  onDayMouseEnter,
-  min,
-  max,
-}) {
+function MonthPanel({ year, month, onPrev, onNext, isSelected, isInRange, onDayClick, min, max }) {
   const weeks = useMemo(() => buildMonthWeeks(year, month), [year, month]);
   const today = todayISO();
 
@@ -64,48 +51,26 @@ function MonthPanel({
       </div>
 
       <div className="date-picker-days">
-        {weeks.map((week) =>
-          week.map((cell, dayIndex) => {
-            const disabled = (min && cell.iso < min) || (max && cell.iso > max);
-            const selected = isSelected(cell.iso);
-
-            // A selected day with a selected same-row neighbour on *both*
-            // sides is the interior of a run — render it like the light
-            // connecting band already used for range mode (solid dot only
-            // at the start/end of the run), instead of solid all the way
-            // through. This makes a dragged Sun-Thu block look exactly like
-            // picking a "from" and "to" the normal way, and it's harmless
-            // for single/range modes since they never mark interior days
-            // selected in the first place.
-            const prevCell = dayIndex > 0 ? week[dayIndex - 1] : null;
-            const nextCell = dayIndex < week.length - 1 ? week[dayIndex + 1] : null;
-            const isRunInterior =
-              selected &&
-              Boolean(prevCell && isSelected(prevCell.iso)) &&
-              Boolean(nextCell && isSelected(nextCell.iso));
-
-            const classes = ["date-picker-day"];
-            if (!cell.inMonth) classes.push("is-outside");
-            if (cell.iso === today) classes.push("is-today");
-            if (selected && !isRunInterior) classes.push("is-selected");
-            else if (isRunInterior || isInRange(cell.iso)) classes.push("is-in-range");
-            if (disabled) classes.push("is-disabled");
-
-            return (
-              <button
-                key={cell.iso}
-                type="button"
-                className={classes.join(" ")}
-                disabled={disabled}
-                onClick={() => onDayClick(cell.iso)}
-                onMouseDown={() => onDayMouseDown(cell.iso)}
-                onMouseEnter={() => onDayMouseEnter(cell.iso)}
-              >
-                {cell.day}
-              </button>
-            );
-          })
-        )}
+        {weeks.flat().map((cell) => {
+          const disabled = (min && cell.iso < min) || (max && cell.iso > max);
+          const classes = ["date-picker-day"];
+          if (!cell.inMonth) classes.push("is-outside");
+          if (cell.iso === today) classes.push("is-today");
+          if (isSelected(cell.iso)) classes.push("is-selected");
+          else if (isInRange(cell.iso)) classes.push("is-in-range");
+          if (disabled) classes.push("is-disabled");
+          return (
+            <button
+              key={cell.iso}
+              type="button"
+              className={classes.join(" ")}
+              disabled={disabled}
+              onClick={() => onDayClick(cell.iso)}
+            >
+              {cell.day}
+            </button>
+          );
+        })}
       </div>
     </div>
   );
@@ -118,11 +83,12 @@ function MonthPanel({
  *  - "range": value is { from, to } (either can be ""). Two months shown;
  *    first click sets "from", the next sets "to" (or restarts "from" if the
  *    click lands before the current "from").
- *  - "multi": value is an array of ISO strings. Two months shown. A plain
- *    click toggles that single date in/out. Dragging across days (mouse
- *    down on one day, up on another) adds the whole dragged span to the
- *    selection in one gesture — and can be repeated to add another,
- *    separate span without losing the first (e.g. two work weeks).
+ *  - "multi-range": value is an array of { start, end } ranges. Two months
+ *    shown. First click starts a range, second click completes it (blue
+ *    dots on start/end, light band between — same visual language as
+ *    "range"); the next click after that starts a brand new range without
+ *    touching the ones already completed. Clicking any day that's already
+ *    part of a completed range removes that whole range.
  */
 export default function DatePicker({
   mode = "single",
@@ -135,17 +101,18 @@ export default function DatePicker({
   const [open, setOpen] = useState(false);
   const containerRef = useRef(null);
 
+  // multi-range only: the start of a range that's been clicked but not yet
+  // completed with a second click.
+  const [pendingStart, setPendingStart] = useState(null);
+
   const seedISO =
-    (mode === "single" ? value : mode === "range" ? value?.from : value?.[0]) ||
-    todayISO();
+    (mode === "single"
+      ? value
+      : mode === "range"
+        ? value?.from
+        : value?.[0]?.start) || todayISO();
   const seed = parseISO(seedISO) || parseISO(todayISO());
   const [anchor, setAnchor] = useState({ year: seed.year, month: seed.month });
-
-  // Multi-mode drag state. dragAnchorRef avoids stale closures in the
-  // document-level mouseup listener; dragPreview is real state so the
-  // in-progress span re-renders as the pointer moves.
-  const dragAnchorRef = useRef(null);
-  const [dragPreview, setDragPreview] = useState(null);
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -157,32 +124,12 @@ export default function DatePicker({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [open]);
 
+  // Reopening always starts from a clean slate — no half-picked range left
+  // over from last time — without touching the already-completed ranges,
+  // which live in the caller's state (value) and persist across opens.
   useEffect(() => {
-    if (mode !== "multi") return undefined;
-
-    function commitDrag() {
-      if (!dragAnchorRef.current) return;
-      dragAnchorRef.current = null;
-      setDragPreview((preview) => {
-        if (!preview) return null;
-        const current = new Set(Array.isArray(value) ? value : []);
-        if (preview.start === preview.end) {
-          // No real movement — a plain click just toggles that one day.
-          if (current.has(preview.start)) current.delete(preview.start);
-          else current.add(preview.start);
-        } else {
-          isoRangeInclusive(preview.start, preview.end).forEach((iso) =>
-            current.add(iso)
-          );
-        }
-        onChange(Array.from(current).sort());
-        return null;
-      });
-    }
-
-    document.addEventListener("mouseup", commitDrag);
-    return () => document.removeEventListener("mouseup", commitDrag);
-  }, [mode, value, onChange]);
+    if (open) setPendingStart(null);
+  }, [open]);
 
   const monthCount = mode === "single" ? 1 : 2;
   const monthsToShow = useMemo(() => {
@@ -193,49 +140,59 @@ export default function DatePicker({
   const goPrev = () => setAnchor((a) => addMonths(a.year, a.month, -1));
   const goNext = () => setAnchor((a) => addMonths(a.year, a.month, 1));
 
+  const ranges = mode === "multi-range" && Array.isArray(value) ? value : [];
+
   const isSelected = (iso) => {
     if (mode === "single") return iso === value;
     if (mode === "range") return iso === value?.from || iso === value?.to;
-    return Array.isArray(value) && value.includes(iso);
+    if (iso === pendingStart) return true;
+    return ranges.some((r) => iso === r.start || iso === r.end);
   };
 
   const isInRange = (iso) => {
     if (mode === "range" && value?.from && value?.to) {
       return iso > value.from && iso < value.to;
     }
-    if (mode === "multi" && dragPreview) {
-      return isoRangeInclusive(dragPreview.start, dragPreview.end).includes(iso);
+    if (mode === "multi-range") {
+      return ranges.some((r) => iso > r.start && iso < r.end);
     }
     return false;
   };
 
   const handleDayClick = (iso) => {
-    // Multi mode is driven entirely by mousedown/mouseup (see below) so a
-    // single click can be told apart from a drag; this handler no-ops there.
-    if (mode === "multi") return;
     if (mode === "single") {
       onChange(iso);
       setOpen(false);
       return;
     }
-    if (!value?.from || (value.from && value.to)) {
-      onChange({ from: iso, to: "" });
-    } else if (iso < value.from) {
-      onChange({ from: iso, to: "" });
-    } else {
-      onChange({ from: value.from, to: iso });
+    if (mode === "range") {
+      if (!value?.from || (value.from && value.to)) {
+        onChange({ from: iso, to: "" });
+      } else if (iso < value.from) {
+        onChange({ from: iso, to: "" });
+      } else {
+        onChange({ from: value.from, to: iso });
+      }
+      return;
     }
-  };
 
-  const handleDayMouseDown = (iso) => {
-    if (mode !== "multi") return;
-    dragAnchorRef.current = iso;
-    setDragPreview({ start: iso, end: iso });
-  };
+    // multi-range
+    if (pendingStart === null) {
+      const existingIndex = ranges.findIndex((r) => iso >= r.start && iso <= r.end);
+      if (existingIndex !== -1) {
+        const next = ranges.slice();
+        next.splice(existingIndex, 1);
+        onChange(next);
+        return;
+      }
+      setPendingStart(iso);
+      return;
+    }
 
-  const handleDayMouseEnter = (iso) => {
-    if (mode !== "multi" || !dragAnchorRef.current) return;
-    setDragPreview({ start: dragAnchorRef.current, end: iso });
+    const start = pendingStart <= iso ? pendingStart : iso;
+    const end = pendingStart <= iso ? iso : pendingStart;
+    onChange([...ranges, { start, end }]);
+    setPendingStart(null);
   };
 
   const displayText = useMemo(() => {
@@ -246,11 +203,15 @@ export default function DatePicker({
       }
       return value?.from ? formatDisplay(value.from) : "";
     }
-    const count = Array.isArray(value) ? value.length : 0;
-    if (count === 0) return "";
-    if (count === 1) return formatDisplay(value[0]);
-    return `${count} תאריכים נבחרו`;
-  }, [mode, value]);
+    if (ranges.length === 0) return "";
+    if (ranges.length === 1) {
+      const r = ranges[0];
+      return r.start === r.end
+        ? formatDisplay(r.start)
+        : `${formatDisplay(r.start)} - ${formatDisplay(r.end)}`;
+    }
+    return `${ranges.length} טווחי תאריכים נבחרו`;
+  }, [mode, value, ranges]);
 
   return (
     <div className="date-picker" ref={containerRef}>
@@ -269,9 +230,11 @@ export default function DatePicker({
 
       {open && (
         <div className="date-picker-popover">
-          {mode === "multi" && (
+          {mode === "multi-range" && (
             <p className="date-picker-hint">
-              גררו על פני כמה ימים כדי לבחור טווח שלם - אפשר לחזור על זה כמה פעמים.
+              {pendingStart
+                ? "עכשיו בחרו את תאריך הסיום של הטווח."
+                : "בחרו תאריך התחלה ותאריך סיום לטווח - אפשר לחזור על זה כמה פעמים לטווחים נוספים. לחיצה על טווח קיים תמחק אותו."}
             </p>
           )}
           <div className="date-picker-months">
@@ -285,8 +248,6 @@ export default function DatePicker({
                 isSelected={isSelected}
                 isInRange={isInRange}
                 onDayClick={handleDayClick}
-                onDayMouseDown={handleDayMouseDown}
-                onDayMouseEnter={handleDayMouseEnter}
                 min={min}
                 max={max}
               />
@@ -295,11 +256,14 @@ export default function DatePicker({
 
           {mode !== "single" && (
             <div className="date-picker-footer">
-              {mode === "multi" && (
+              {mode === "multi-range" && (
                 <button
                   type="button"
                   className="secondary-btn"
-                  onClick={() => onChange([])}
+                  onClick={() => {
+                    onChange([]);
+                    setPendingStart(null);
+                  }}
                 >
                   נקה הכל
                 </button>

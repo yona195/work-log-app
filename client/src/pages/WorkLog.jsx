@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useData } from "../state/DataProvider.jsx";
 import { normalizeDate } from "../lib/format.js";
-import { todayISO } from "../lib/calendar.js";
+import { todayISO, isoRangeInclusive } from "../lib/calendar.js";
 import {
   getName,
   getEmployeeNames,
@@ -21,10 +21,12 @@ export default function WorkLog() {
   const pickableSites = activeOnly(sites);
   const pickableCustomers = activeOnly(customers);
 
-  // Multi-select rather than a single from/to range, so the same
-  // employees/site/building/customer can be logged on several
-  // non-consecutive days (e.g. Sun+Wed+Thu) in one submit.
-  const [selectedDates, setSelectedDates] = useState([todayISO()]);
+  // Multiple independent date ranges (not just one from/to), so the same
+  // employees/site/building/customer can be logged for several separate
+  // spans (e.g. two different work weeks) in one submit.
+  const [selectedRanges, setSelectedRanges] = useState([
+    { start: todayISO(), end: todayISO() },
+  ]);
   const [group, setGroup] = useState("");
   const [search, setSearch] = useState("");
   const [selectedEmployees, setSelectedEmployees] = useState([]);
@@ -80,7 +82,7 @@ export default function WorkLog() {
     if (isSubmitting) return;
 
     if (
-      selectedDates.length === 0 ||
+      selectedRanges.length === 0 ||
       selectedEmployees.length === 0 ||
       !siteId ||
       selectedBuildings.length === 0 ||
@@ -90,7 +92,11 @@ export default function WorkLog() {
       return;
     }
 
-    const dates = selectedDates;
+    const dateSet = new Set();
+    selectedRanges.forEach((range) => {
+      isoRangeInclusive(range.start, range.end).forEach((iso) => dateSet.add(iso));
+    });
+    const dates = Array.from(dateSet).sort();
 
     setIsSubmitting(true);
     try {
@@ -136,8 +142,8 @@ export default function WorkLog() {
         <h3>הוספת רשומת עבודה</h3>
 
         <label>תאריכים</label>
-        <DatePicker mode="multi" value={selectedDates} onChange={setSelectedDates} />
-        <p>אפשר לבחור כמה תאריכים נפרדים (לא בהכרח ברצף) - תיפתח רשומה לכל תאריך שנבחר.</p>
+        <DatePicker mode="multi-range" value={selectedRanges} onChange={setSelectedRanges} />
+        <p>אפשר לבחור כמה טווחי תאריכים נפרדים - תיפתח רשומה לכל יום בכל טווח שנבחר.</p>
 
         <h4>בחירת עובדים</h4>
 
