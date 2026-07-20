@@ -11,6 +11,7 @@ import {
 import EditRateModal from "../components/EditRateModal.jsx";
 import ActionsLegend from "../components/ActionsLegend.jsx";
 import DatePicker from "../components/DatePicker.jsx";
+import StatusBadge from "../components/StatusBadge.jsx";
 import Pagination, { usePagedList } from "../components/Pagination.jsx";
 
 export default function Rates() {
@@ -482,7 +483,7 @@ export default function Rates() {
                     <td>{formatCurrency(costValue)}</td>
                     <td>{formatCurrency(revenueValue - costValue)}</td>
                     <td dir="ltr">{formatExcelDate(rate.effectiveFrom)}</td>
-                    <td>{rate.archived ? "בארכיון" : "פעיל"}</td>
+                    <td><StatusBadge archived={rate.archived} /></td>
                     <td>
                       <div className="report-row-actions">
                         <button

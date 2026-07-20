@@ -45,6 +45,9 @@ function AuthenticatedApp() {
               collection="sites"
               placeholder="שם אתר"
               editTitle="עריכת אתר עבודה"
+              title="הוספת אתר עבודה"
+              nameLabel="שם אתר"
+              rowIcon="location_on"
               key="sites"
             />
           }
@@ -57,6 +60,9 @@ function AuthenticatedApp() {
               collection="customers"
               placeholder="שם מזמין"
               editTitle="עריכת מזמין עבודה"
+              title="הוספת מזמין עבודה"
+              nameLabel="שם מזמין"
+              rowIcon="storefront"
               key="customers"
             />
           }

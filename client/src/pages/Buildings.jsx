@@ -3,6 +3,7 @@ import { useData } from "../state/DataProvider.jsx";
 import { getName, activeOnly } from "../lib/entities.js";
 import EditBuildingModal from "../components/EditBuildingModal.jsx";
 import ActionsLegend from "../components/ActionsLegend.jsx";
+import StatusBadge from "../components/StatusBadge.jsx";
 import Pagination, { usePagedList } from "../components/Pagination.jsx";
 
 export default function Buildings() {
@@ -135,7 +136,7 @@ export default function Buildings() {
                   <td>{startIndex + index + 1}</td>
                   <td>{building.name}</td>
                   <td>{getName(sites, building.siteId)}</td>
-                  <td>{building.archived ? "בארכיון" : "פעיל"}</td>
+                  <td><StatusBadge archived={building.archived} /></td>
                   <td>
                     <div className="report-row-actions">
                       <button

@@ -3,6 +3,7 @@ import { useData } from "../state/DataProvider.jsx";
 import { activeOnly } from "../lib/entities.js";
 import EditEmployeeModal from "../components/EditEmployeeModal.jsx";
 import EditSimpleItemModal from "../components/EditSimpleItemModal.jsx";
+import StatusBadge from "../components/StatusBadge.jsx";
 import Pagination, { usePagedList } from "../components/Pagination.jsx";
 
 const matchesSearch = (text, value) => {
@@ -31,9 +32,7 @@ function EmployeeTable({ employees, onEdit, onDelete, onToggleArchive }) {
             <tr key={employee.id}>
               <td>{startIndex + index + 1}</td>
               <td>{employee.name}</td>
-              <td className={employee.archived ? "employees-row-status is-archived" : "employees-row-status"}>
-                {employee.archived ? "בארכיון" : "פעיל"}
-              </td>
+              <td><StatusBadge archived={employee.archived} /></td>
               <td>
                 <div className="report-row-actions">
                   <button className="edit-btn" type="button" onClick={() => onEdit(employee)}>
@@ -91,9 +90,7 @@ function EmployeeRow({ employee, onEdit, onDelete, onToggleArchive }) {
   return (
     <div className="employees-row">
       <span className="employees-row-name">{employee.name}</span>
-      <span className={employee.archived ? "employees-row-status is-archived" : "employees-row-status"}>
-        {employee.archived ? "בארכיון" : "פעיל"}
-      </span>
+      <StatusBadge archived={employee.archived} />
       <div className="report-row-actions">
         <button className="edit-btn" type="button" onClick={() => onEdit(employee)}>
           ערוך

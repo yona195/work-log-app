@@ -634,6 +634,51 @@ tbody tr:hover {
     margin: 0;
 }
 
+.section-title-row h3 {
+    margin-bottom: 0;
+}
+
+/* Shared active/archived indicator (StatusBadge component), reused across
+   every management page's status column/field — same soft-pill technique
+   already used by .filter-chip, applied to the existing --color-success
+   for active and neutral gray tones for archived (no new colors). */
+.status-badge {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+
+    padding: 3px 10px;
+
+    border-radius: 999px;
+
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.status-badge-active {
+    background: rgba(22, 163, 74, 0.12);
+    border: 1px solid rgba(22, 163, 74, 0.25);
+    color: var(--color-success);
+}
+
+.status-badge-archived {
+    background: var(--color-background);
+    border: 1px solid var(--color-border);
+    color: var(--color-muted);
+}
+
+/* Small identity icon before a record's name in a management-page table
+   (Material Symbols Rounded — already loaded globally and used by the
+   PDF/Excel buttons and Employees' group-card icons). */
+.row-icon {
+    margin-inline-end: 6px;
+
+    font-size: 16px;
+    color: var(--color-muted);
+    vertical-align: middle;
+}
+
 .empty-message {
     padding: 22px;
 
@@ -2719,18 +2764,6 @@ body.loading .menu-overlay {
     color: var(--color-text);
     font-weight: 600;
     overflow-wrap: break-word;
-}
-
-.employees-row-status {
-    flex-shrink: 0;
-
-    color: var(--color-muted);
-    font-size: 13px;
-    font-weight: 600;
-}
-
-.employees-row-status.is-archived {
-    color: var(--color-warning);
 }
 
 @media (max-width: 640px) {

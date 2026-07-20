@@ -3,9 +3,17 @@ import { useData } from "../state/DataProvider.jsx";
 import { activeOnly } from "../lib/entities.js";
 import EditSimpleItemModal from "../components/EditSimpleItemModal.jsx";
 import ActionsLegend from "../components/ActionsLegend.jsx";
+import StatusBadge from "../components/StatusBadge.jsx";
 import Pagination, { usePagedList } from "../components/Pagination.jsx";
 
-export default function SimpleManager({ collection, placeholder, editTitle }) {
+export default function SimpleManager({
+  collection,
+  placeholder,
+  editTitle,
+  title,
+  nameLabel,
+  rowIcon,
+}) {
   const { data, addItem, updateItem, deleteItem } = useData();
   const [name, setName] = useState("");
   const [showArchived, setShowArchived] = useState(false);
@@ -66,7 +74,8 @@ export default function SimpleManager({ collection, placeholder, editTitle }) {
   return (
     <>
       <div className="card">
-        <h3>הוספה</h3>
+        <h3>{title}</h3>
+        <label>{nameLabel}</label>
         <input
           placeholder={placeholder}
           value={name}
@@ -84,18 +93,17 @@ export default function SimpleManager({ collection, placeholder, editTitle }) {
       </div>
 
       <div className="card" style={{ marginTop: 20 }}>
-        <label className="checkbox-item" style={{ display: "inline-flex" }}>
-          <input
-            type="checkbox"
-            checked={showArchived}
-            onChange={(e) => setShowArchived(e.target.checked)}
-          />
-          <span>הצג פריטים בארכיון</span>
-        </label>
-      </div>
-
-      <div className="card" style={{ marginTop: 20 }}>
-        <h3>רשימה קיימת</h3>
+        <div className="section-title-row">
+          <h3>רשימה קיימת</h3>
+          <label className="checkbox-item" style={{ display: "inline-flex" }}>
+            <input
+              type="checkbox"
+              checked={showArchived}
+              onChange={(e) => setShowArchived(e.target.checked)}
+            />
+            <span>הצג פריטים בארכיון</span>
+          </label>
+        </div>
         {visibleItems.length === 0 ? (
           <p>אין עדיין נתונים</p>
         ) : (
@@ -112,8 +120,13 @@ export default function SimpleManager({ collection, placeholder, editTitle }) {
               {pagedItems.map((item, index) => (
                 <tr key={item.id}>
                   <td>{startIndex + index + 1}</td>
-                  <td>{item.name}</td>
-                  <td>{item.archived ? "בארכיון" : "פעיל"}</td>
+                  <td>
+                    <span className="material-symbols-rounded row-icon" aria-hidden="true">
+                      {rowIcon}
+                    </span>
+                    {item.name}
+                  </td>
+                  <td><StatusBadge archived={item.archived} /></td>
                   <td>
                     <div className="report-row-actions">
                       <button
