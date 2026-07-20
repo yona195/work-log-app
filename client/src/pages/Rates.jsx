@@ -12,7 +12,7 @@ import EditRateModal from "../components/EditRateModal.jsx";
 import DatePicker from "../components/DatePicker.jsx";
 import StatusBadge from "../components/StatusBadge.jsx";
 import SelectionPanel from "../components/SelectionPanel.jsx";
-import Pagination, { usePagedList } from "../components/Pagination.jsx";
+import { usePagedList, ListPagination } from "../components/Pagination.jsx";
 
 export default function Rates() {
   const { data, addItem, updateItem, deleteItem } = useData();
@@ -109,13 +109,20 @@ export default function Rates() {
     });
   }, [rates, sites, showArchived]);
 
+  const [ratesPageSize, setRatesPageSize] = useState(5);
+
   const {
     pageItems: pagedRates,
     page: ratesPage,
     setPage: setRatesPage,
     totalPages: ratesTotalPages,
     startIndex: ratesStartIndex,
-  } = usePagedList(sortedRates);
+  } = usePagedList(sortedRates, ratesPageSize);
+
+  useEffect(() => {
+    setRatesPage(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ratesPageSize]);
 
   const toggleRateArchive = async (rate) => {
     if (rate.archived) {
@@ -483,6 +490,7 @@ export default function Rates() {
         {sortedRates.length === 0 ? (
           <p>עדיין לא הוגדרו תעריפים.</p>
         ) : (
+          <>
           <div className="rates-table-scroll">
           <table>
             <thead>
@@ -564,8 +572,17 @@ export default function Rates() {
             </tbody>
           </table>
           </div>
+          <ListPagination
+            page={ratesPage}
+            totalPages={ratesTotalPages}
+            onPageChange={setRatesPage}
+            pageSize={ratesPageSize}
+            onPageSizeChange={setRatesPageSize}
+            startIndex={ratesStartIndex}
+            totalItems={sortedRates.length}
+          />
+          </>
         )}
-        <Pagination page={ratesPage} totalPages={ratesTotalPages} onChange={setRatesPage} />
       </div>
 
       {editingRate && (

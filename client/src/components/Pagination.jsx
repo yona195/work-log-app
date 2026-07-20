@@ -48,3 +48,66 @@ export default function Pagination({ page, totalPages, onChange }) {
     </div>
   );
 }
+
+// Richer footer (page-size selector + "מציג X–Y מתוך Z רשומות" + prev/
+// next) — originally built inline for Work History, extracted here for
+// reuse. Unlike the compact Pagination above, this never hides itself at a
+// single page (the page-size selector stays useful even with few items),
+// so the caller is responsible for only rendering it when the underlying
+// list is non-empty (mirroring whatever empty-state branch it already has).
+export function ListPagination({
+  page,
+  totalPages,
+  onPageChange,
+  pageSize,
+  onPageSizeChange,
+  pageSizeOptions = [5, 10, 20, 50],
+  startIndex,
+  totalItems,
+}) {
+  const rangeStart = totalItems === 0 ? 0 : startIndex + 1;
+  const rangeEnd = Math.min(startIndex + pageSize, totalItems);
+  return (
+    <div className="workhistory-pagination">
+      <div className="workhistory-page-size">
+        <span>רשומות בעמוד:</span>
+        {pageSizeOptions.map((size) => (
+          <button
+            key={size}
+            type="button"
+            className={pageSize === size ? "primary-btn" : "secondary-btn"}
+            onClick={() => onPageSizeChange(size)}
+          >
+            {size}
+          </button>
+        ))}
+      </div>
+
+      <div className="workhistory-page-nav">
+        <span className="workhistory-page-info">
+          מציג {rangeStart}–{rangeEnd} מתוך {totalItems} רשומות
+        </span>
+        <div className="pagination-nav-group">
+          <button
+            type="button"
+            className="pagination-nav"
+            onClick={() => onPageChange(page - 1)}
+            disabled={page <= 1}
+            aria-label="עמוד קודם"
+          >
+            ‹
+          </button>
+          <button
+            type="button"
+            className="pagination-nav"
+            onClick={() => onPageChange(page + 1)}
+            disabled={page >= totalPages}
+            aria-label="עמוד הבא"
+          >
+            ›
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

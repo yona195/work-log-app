@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import PeriodFilter from "../components/PeriodFilter.jsx";
 import EditWorkLogModal from "../components/EditWorkLogModal.jsx";
-import { usePagedList } from "../components/Pagination.jsx";
+import { usePagedList, ListPagination } from "../components/Pagination.jsx";
 import { useData } from "../state/DataProvider.jsx";
 import {
   getName,
@@ -278,8 +278,6 @@ export default function WorkHistory() {
   }, [filters, subcontractors, employees, customers, sites, buildings]);
 
   const totalRegistrations = allRegistrations.length;
-  const rangeStart = totalRegistrations === 0 ? 0 : startIndex + 1;
-  const rangeEnd = Math.min(startIndex + pageSize, totalRegistrations);
 
   const deleteRegistration = (registration) => {
     if (
@@ -511,47 +509,15 @@ export default function WorkHistory() {
               })}
             </div>
 
-            <div className="workhistory-pagination">
-              <div className="workhistory-page-size">
-                <span>רשומות בעמוד:</span>
-                {[5, 10, 20, 50].map((size) => (
-                  <button
-                    key={size}
-                    type="button"
-                    className={pageSize === size ? "primary-btn" : "secondary-btn"}
-                    onClick={() => setPageSize(size)}
-                  >
-                    {size}
-                  </button>
-                ))}
-              </div>
-
-              <div className="workhistory-page-nav">
-                <span className="workhistory-page-info">
-                  מציג {rangeStart}–{rangeEnd} מתוך {totalRegistrations} רשומות
-                </span>
-                <div className="pagination-nav-group">
-                  <button
-                    type="button"
-                    className="pagination-nav"
-                    onClick={() => setPage(page - 1)}
-                    disabled={page <= 1}
-                    aria-label="עמוד קודם"
-                  >
-                    ‹
-                  </button>
-                  <button
-                    type="button"
-                    className="pagination-nav"
-                    onClick={() => setPage(page + 1)}
-                    disabled={page >= totalPages}
-                    aria-label="עמוד הבא"
-                  >
-                    ›
-                  </button>
-                </div>
-              </div>
-            </div>
+            <ListPagination
+              page={page}
+              totalPages={totalPages}
+              onPageChange={setPage}
+              pageSize={pageSize}
+              onPageSizeChange={setPageSize}
+              startIndex={startIndex}
+              totalItems={totalRegistrations}
+            />
           </>
         )}
       </div>
