@@ -99,33 +99,34 @@ export default function Dashboard() {
 
   return (
     <>
-      <div className="card dashboard-filter">
-        <h3>תקופת הסקירה</h3>
-
-        <label>בחר תקופה</label>
-        <select value={period} onChange={(e) => handlePeriodChange(e.target.value)}>
-          <option value="current-month">החודש הנוכחי</option>
-          <option value="previous-month">החודש הקודם</option>
-          <option value="current-year">השנה הנוכחית</option>
-          <option value="custom">טווח תאריכים</option>
-        </select>
-
-        {period === "custom" && (
-          <div>
-            <label>טווח תאריכים</label>
-            <DatePicker
-              mode="range"
-              value={{ from: customFrom, to: customTo }}
-              onChange={handleCustomRangeChange}
-            />
-          </div>
-        )}
-      </div>
-
-      <div style={{ marginTop: 20 }}>
+      <div>
         <div className="card">
-          <h3>סיכום כספי - {applied.label}</h3>
-          <div className="cards">
+          <div className="dashboard-summary-header">
+            <h3>סיכום כספי</h3>
+            <select
+              className="dashboard-period-select"
+              value={period}
+              onChange={(e) => handlePeriodChange(e.target.value)}
+            >
+              <option value="current-month">החודש הנוכחי</option>
+              <option value="previous-month">החודש הקודם</option>
+              <option value="current-year">השנה הנוכחית</option>
+              <option value="custom">טווח תאריכים</option>
+            </select>
+          </div>
+
+          {period === "custom" && (
+            <div style={{ marginTop: 12 }}>
+              <label>טווח תאריכים</label>
+              <DatePicker
+                mode="range"
+                value={{ from: customFrom, to: customTo }}
+                onChange={handleCustomRangeChange}
+              />
+            </div>
+          )}
+
+          <div className="cards" style={{ marginTop: 18 }}>
             <div className="card">
               <h3>הכנסות</h3>
               <p>{formatCurrency(totals.revenue)}</p>
