@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useData } from "../state/DataProvider.jsx";
 import { activeOnly } from "../lib/entities.js";
 import EditSimpleItemModal from "../components/EditSimpleItemModal.jsx";
-import ActionsLegend from "../components/ActionsLegend.jsx";
 import StatusBadge from "../components/StatusBadge.jsx";
 import Pagination, { usePagedList } from "../components/Pagination.jsx";
 
@@ -159,8 +158,6 @@ export default function SimpleManager({
         )}
         <Pagination page={page} totalPages={totalPages} onChange={setPage} />
       </div>
-
-      <ActionsLegend />
 
       {editingItem && (
         <EditSimpleItemModal
