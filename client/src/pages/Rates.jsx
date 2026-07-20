@@ -27,6 +27,7 @@ export default function Rates() {
   const [effectiveFrom, setEffectiveFrom] = useState(todayISO());
   const [showArchived, setShowArchived] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedRateIds, setSelectedRateIds] = useState([]);
 
   // "Employee source": every rate created here is a personal (per-employee)
   // rate — pick "העובדים שלי" or one or more contractors, then only that
@@ -123,6 +124,48 @@ export default function Rates() {
     setRatesPage(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ratesPageSize]);
+
+  // Drops any selected id that's no longer in the visible (filtered) list —
+  // covers both a single-row delete/archive-toggle on a selected row and
+  // the showArchived filter hiding a previously-selected row — so "X
+  // selected" never counts a row that's no longer on screen.
+  useEffect(() => {
+    const validIds = new Set(sortedRates.map((r) => r.id));
+    setSelectedRateIds((prev) => prev.filter((id) => validIds.has(id)));
+  }, [sortedRates]);
+
+  const toggleRateSelection = (id) =>
+    setSelectedRateIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+
+  // "Select all" is scoped to the current page only — simplest behavior
+  // for a paginated table, and selection isn't cleared on page change, so
+  // rows picked on other pages stay picked.
+  const isAllCurrentPageSelected =
+    pagedRates.length > 0 && pagedRates.every((r) => selectedRateIds.includes(r.id));
+
+  const toggleSelectAllCurrentPage = () =>
+    setSelectedRateIds((prev) =>
+      isAllCurrentPageSelected
+        ? prev.filter((id) => !pagedRates.some((r) => r.id === id))
+        : [...new Set([...prev, ...pagedRates.map((r) => r.id)])]
+    );
+
+  const bulkDeleteSelectedRates = async () => {
+    if (
+      !confirm(
+        `למחוק ${selectedRateIds.length} תעריפים שנבחרו לצמיתות? בשונה מהעברה לארכיון, מחיקה תשפיע גם על חישובים כספיים היסטוריים שכבר השתמשו בתעריפים האלה.`
+      )
+    ) {
+      return;
+    }
+    for (const id of selectedRateIds) {
+      // eslint-disable-next-line no-await-in-loop
+      await deleteItem("rates", id).catch(() => {});
+    }
+    setSelectedRateIds([]);
+  };
 
   const toggleRateArchive = async (rate) => {
     if (rate.archived) {
@@ -491,10 +534,26 @@ export default function Rates() {
           <p>עדיין לא הוגדרו תעריפים.</p>
         ) : (
           <>
+          {selectedRateIds.length > 0 && (
+            <div className="worklog-bulk-actions">
+              <span>{selectedRateIds.length} תעריפים נבחרו</span>
+              <button className="delete-btn" type="button" onClick={bulkDeleteSelectedRates}>
+                מחק את הנבחרים ({selectedRateIds.length})
+              </button>
+            </div>
+          )}
           <div className="rates-table-scroll">
           <table>
             <thead>
               <tr>
+                <th>
+                  <input
+                    type="checkbox"
+                    checked={isAllCurrentPageSelected}
+                    onChange={toggleSelectAllCurrentPage}
+                    aria-label="בחר הכל / נקה הכל"
+                  />
+                </th>
                 <th>#</th>
                 <th>מזמין עבודה</th>
                 <th>אתר</th>
@@ -529,6 +588,13 @@ export default function Rates() {
 
                 return (
                   <tr key={rate.id}>
+                    <td>
+                      <input
+                        type="checkbox"
+                        checked={selectedRateIds.includes(rate.id)}
+                        onChange={() => toggleRateSelection(rate.id)}
+                      />
+                    </td>
                     <td>{ratesStartIndex + index + 1}</td>
                     <td>{getName(customers, rate.customerId) || "מזמין לא נמצא"}</td>
                     <td>{getName(sites, rate.siteId) || "אתר לא נמצא"}</td>
