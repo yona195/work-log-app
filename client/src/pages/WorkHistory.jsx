@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import PeriodFilter, { useDateRangeFilter } from "../components/PeriodFilter.jsx";
+import PeriodFilter from "../components/PeriodFilter.jsx";
 import EditWorkLogModal from "../components/EditWorkLogModal.jsx";
 import { usePagedList } from "../components/Pagination.jsx";
 import { useData } from "../state/DataProvider.jsx";
-import { formatExcelDate } from "../lib/format.js";
 import {
   getName,
   getBuildingIds,
@@ -21,6 +20,59 @@ const EMPTY_FILTERS = {
   customerId: "",
   buildingId: "",
 };
+
+// DD.MM.YYYY, built from a plain string split (no Date object involved),
+// so there is never a UTC/timezone day-shift. Kept local to this page
+// since only the Work History card header uses this separator.
+function formatCardDate(dateValue) {
+  if (!dateValue) return "";
+  const [year, month, day] = String(dateValue).split("T")[0].split("-");
+  return `${day}.${month}.${year}`;
+}
+
+function toLocalIsoDate(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function getCurrentCalendarMonthRange() {
+  const now = new Date();
+  const from = new Date(now.getFullYear(), now.getMonth(), 1);
+  const to = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  return { from: toLocalIsoDate(from), to: toLocalIsoDate(to) };
+}
+
+// Calendar-month based (1st of the month two months back through the last
+// day of the current month) rather than a rolling "today minus 3 months"
+// window — the shared PeriodFilter hook's rolling window can end up
+// excluding current-month records that fall later in the month than
+// today's day-of-month, which made "three months" show fewer records than
+// "current month" alone. This keeps "three months" a strict superset of
+// "current month" whenever no other filters are active. Kept local to
+// this page (see the shared getLastThreeMonthsRange in lib/entities.js,
+// used by the report pages, which is intentionally left as-is).
+function getLastThreeCalendarMonthsRange() {
+  const now = new Date();
+  const from = new Date(now.getFullYear(), now.getMonth() - 2, 1);
+  const to = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  return { from: toLocalIsoDate(from), to: toLocalIsoDate(to) };
+}
+
+function useWorkHistoryDateRangeFilter() {
+  const [period, setPeriod] = useState("current-month");
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
+
+  const { from, to } = useMemo(() => {
+    if (period === "current-month") return getCurrentCalendarMonthRange();
+    if (period === "last-three-months") return getLastThreeCalendarMonthsRange();
+    return { from: customFrom, to: customTo };
+  }, [period, customFrom, customTo]);
+
+  return { period, setPeriod, customFrom, setCustomFrom, customTo, setCustomTo, from, to };
+}
 
 // Splits a log's employees into one group per affiliation (internal /
 // each subcontractor) so the card shows "who worked for whom" instead of
@@ -46,7 +98,7 @@ export default function WorkHistory() {
   const { data, deleteItem } = useData();
   const { subcontractors, sites, customers, buildings, employees } = data;
 
-  const dateRange = useDateRangeFilter();
+  const dateRange = useWorkHistoryDateRangeFilter();
   const [filters, setFilters] = useState(EMPTY_FILTERS);
   const [searchText, setSearchText] = useState("");
   const [advancedOpen, setAdvancedOpen] = useState(false);
@@ -395,21 +447,26 @@ export default function WorkHistory() {
                 return (
                   <div key={registration.log.id} className="workhistory-card">
                     <div className="workhistory-card-header">
-                      <span className="workhistory-card-date" dir="ltr">
-                        {formatExcelDate(registration.log.date)}
-                      </span>
-                      <span className="workhistory-card-site">
-                        {getName(sites, registration.log.siteId) || "אתר לא ידוע"}
-                      </span>
-                      {buildingNamesText && (
-                        <span className="workhistory-card-building">מבנה: {buildingNamesText}</span>
-                      )}
-                      <span className="workhistory-card-customer">
-                        מזמין: {getName(customers, registration.log.customerId) || "לא ידוע"}
-                      </span>
-                      <span className="workhistory-card-count">
-                        {registration.totalEmployeeCount} עובדים
-                      </span>
+                      <div className="workhistory-card-header-location">
+                        <span className="workhistory-card-date" dir="ltr">
+                          {formatCardDate(registration.log.date)}
+                        </span>
+                        <span className="workhistory-card-site">
+                          {getName(sites, registration.log.siteId) || "אתר לא ידוע"}
+                        </span>
+                        {buildingNamesText && (
+                          <span className="workhistory-card-building">מבנה: {buildingNamesText}</span>
+                        )}
+                      </div>
+
+                      <div className="workhistory-card-header-summary">
+                        <span className="workhistory-card-customer">
+                          מזמין: {getName(customers, registration.log.customerId) || "לא ידוע"}
+                        </span>
+                        <span className="workhistory-card-count">
+                          {registration.totalEmployeeCount} עובדים
+                        </span>
+                      </div>
 
                       <div className="report-row-actions workhistory-card-actions">
                         <button
