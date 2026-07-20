@@ -231,78 +231,88 @@ export default function Rates() {
       <div className="card">
         <h3>הוספת תעריף</h3>
 
-        <label>בחר מזמיני עבודה</label>
-        <div className="checkbox-list">
-          {activeCustomers.length === 0 ? (
-            <p className="empty-message">אין מזמיני עבודה</p>
-          ) : (
-            activeCustomers.map((customer) => (
-              <label className="checkbox-item" key={customer.id}>
-                <input
-                  type="checkbox"
-                  checked={selectedCustomerIds.includes(customer.id)}
-                  onChange={() =>
-                    toggle(selectedCustomerIds, setSelectedCustomerIds, customer.id)
-                  }
-                />
-                <span>{customer.name}</span>
-              </label>
-            ))
-          )}
-        </div>
-        <div className="employee-actions">
-          <button
-            type="button"
-            className="secondary-btn"
-            onClick={() => setSelectedCustomerIds(activeCustomers.map((c) => c.id))}
-          >
-            בחר את כל המזמינים
-          </button>
-          <button
-            type="button"
-            className="secondary-btn"
-            onClick={() => setSelectedCustomerIds([])}
-          >
-            נקה את כל המזמינים
-          </button>
+        <div className="rates-group-title">היקף התעריף</div>
+        <div className="filter-grid filter-grid-2">
+          <div className="filter-grid-item">
+            <label>בחר מזמיני עבודה</label>
+            <div className="checkbox-list">
+              {activeCustomers.length === 0 ? (
+                <p className="empty-message">אין מזמיני עבודה</p>
+              ) : (
+                activeCustomers.map((customer) => (
+                  <label className="checkbox-item" key={customer.id}>
+                    <input
+                      type="checkbox"
+                      checked={selectedCustomerIds.includes(customer.id)}
+                      onChange={() =>
+                        toggle(selectedCustomerIds, setSelectedCustomerIds, customer.id)
+                      }
+                    />
+                    <span>{customer.name}</span>
+                  </label>
+                ))
+              )}
+            </div>
+            <div className="employee-actions">
+              <button
+                type="button"
+                className="secondary-btn"
+                onClick={() => setSelectedCustomerIds(activeCustomers.map((c) => c.id))}
+              >
+                בחר את כל המזמינים
+              </button>
+              <button
+                type="button"
+                className="secondary-btn"
+                onClick={() => setSelectedCustomerIds([])}
+              >
+                נקה את כל המזמינים
+              </button>
+            </div>
+          </div>
+
+          <div className="filter-grid-item">
+            <label>בחר אתרי עבודה</label>
+            <div className="checkbox-list">
+              {activeSites.length === 0 ? (
+                <p className="empty-message">אין אתרי עבודה</p>
+              ) : (
+                activeSites.map((site) => (
+                  <label className="checkbox-item" key={site.id}>
+                    <input
+                      type="checkbox"
+                      checked={selectedSiteIds.includes(site.id)}
+                      onChange={() =>
+                        toggle(selectedSiteIds, setSelectedSiteIds, site.id)
+                      }
+                    />
+                    <span>{site.name}</span>
+                  </label>
+                ))
+              )}
+            </div>
+            <div className="employee-actions">
+              <button
+                type="button"
+                className="secondary-btn"
+                onClick={() => setSelectedSiteIds(activeSites.map((s) => s.id))}
+              >
+                בחר את כל האתרים
+              </button>
+              <button
+                type="button"
+                className="secondary-btn"
+                onClick={() => setSelectedSiteIds([])}
+              >
+                נקה את כל האתרים
+              </button>
+            </div>
+          </div>
         </div>
 
-        <label>בחר אתרי עבודה</label>
-        <div className="checkbox-list">
-          {activeSites.length === 0 ? (
-            <p className="empty-message">אין אתרי עבודה</p>
-          ) : (
-            activeSites.map((site) => (
-              <label className="checkbox-item" key={site.id}>
-                <input
-                  type="checkbox"
-                  checked={selectedSiteIds.includes(site.id)}
-                  onChange={() =>
-                    toggle(selectedSiteIds, setSelectedSiteIds, site.id)
-                  }
-                />
-                <span>{site.name}</span>
-              </label>
-            ))
-          )}
-        </div>
-        <div className="employee-actions">
-          <button
-            type="button"
-            className="secondary-btn"
-            onClick={() => setSelectedSiteIds(activeSites.map((s) => s.id))}
-          >
-            בחר את כל האתרים
-          </button>
-          <button
-            type="button"
-            className="secondary-btn"
-            onClick={() => setSelectedSiteIds([])}
-          >
-            נקה את כל האתרים
-          </button>
-        </div>
+        <hr className="form-divider" />
 
+        <div className="rates-group-title">עבור אילו עובדים</div>
         <label>מקור עובדים</label>
         <div className="employee-actions">
           <button
@@ -387,30 +397,41 @@ export default function Rates() {
           </>
         )}
 
-        <label>הכנסה לעובד ליום</label>
-        <input
-          type="number"
-          min="0"
-          step="0.01"
-          inputMode="decimal"
-          placeholder="כמה אתה מקבל עבור העובד"
-          value={revenue}
-          onChange={(e) => setRevenue(e.target.value)}
-        />
+        <hr className="form-divider" />
 
-        <label>עלות לעובד ליום</label>
-        <input
-          type="number"
-          min="0"
-          step="0.01"
-          inputMode="decimal"
-          placeholder="כמה העובד או הקבלן עולה לך"
-          value={cost}
-          onChange={(e) => setCost(e.target.value)}
-        />
+        <div className="rates-group-title">פרטי התעריף</div>
+        <div className="filter-grid filter-grid-3">
+          <div className="filter-grid-item">
+            <label>הכנסה לעובד ליום</label>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              inputMode="decimal"
+              placeholder="כמה אתה מקבל עבור העובד"
+              value={revenue}
+              onChange={(e) => setRevenue(e.target.value)}
+            />
+          </div>
 
-        <label>תאריך תחילת התעריף</label>
-        <DatePicker mode="single" value={effectiveFrom} onChange={setEffectiveFrom} />
+          <div className="filter-grid-item">
+            <label>עלות לעובד ליום</label>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              inputMode="decimal"
+              placeholder="כמה העובד או הקבלן עולה לך"
+              value={cost}
+              onChange={(e) => setCost(e.target.value)}
+            />
+          </div>
+
+          <div className="filter-grid-item">
+            <label>תאריך תחילת התעריף</label>
+            <DatePicker mode="single" value={effectiveFrom} onChange={setEffectiveFrom} />
+          </div>
+        </div>
 
         <button
           className="primary-btn"
@@ -423,21 +444,21 @@ export default function Rates() {
       </div>
 
       <div className="card" style={{ marginTop: 20 }}>
-        <label className="checkbox-item" style={{ display: "inline-flex" }}>
-          <input
-            type="checkbox"
-            checked={showArchived}
-            onChange={(e) => setShowArchived(e.target.checked)}
-          />
-          <span>הצג פריטים בארכיון</span>
-        </label>
-      </div>
-
-      <div className="card" style={{ marginTop: 20 }}>
-        <h3>תעריפים קיימים - סה״כ {activeOnly(rates).length}</h3>
+        <div className="section-title-row">
+          <h3>תעריפים קיימים - סה״כ {activeOnly(rates).length}</h3>
+          <label className="checkbox-item" style={{ display: "inline-flex" }}>
+            <input
+              type="checkbox"
+              checked={showArchived}
+              onChange={(e) => setShowArchived(e.target.checked)}
+            />
+            <span>הצג פריטים בארכיון</span>
+          </label>
+        </div>
         {sortedRates.length === 0 ? (
           <p>עדיין לא הוגדרו תעריפים.</p>
         ) : (
+          <div className="rates-table-scroll">
           <table>
             <thead>
               <tr>
@@ -471,6 +492,7 @@ export default function Rates() {
                   isEmployeeRate && employee
                     ? getEmployeeAffiliationName(data, employee)
                     : "קבלן משנה";
+                const profitValue = revenueValue - costValue;
 
                 return (
                   <tr key={rate.id}>
@@ -481,7 +503,9 @@ export default function Rates() {
                     <td>{affiliationName}</td>
                     <td>{formatCurrency(revenueValue)}</td>
                     <td>{formatCurrency(costValue)}</td>
-                    <td>{formatCurrency(revenueValue - costValue)}</td>
+                    <td className={profitValue >= 0 ? "rates-profit-positive" : "rates-profit-negative"}>
+                      {formatCurrency(profitValue)}
+                    </td>
                     <td dir="ltr">{formatExcelDate(rate.effectiveFrom)}</td>
                     <td><StatusBadge archived={rate.archived} /></td>
                     <td>
@@ -514,6 +538,7 @@ export default function Rates() {
               })}
             </tbody>
           </table>
+          </div>
         )}
         <Pagination page={ratesPage} totalPages={ratesTotalPages} onChange={setRatesPage} />
       </div>
