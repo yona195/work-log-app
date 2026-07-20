@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useData } from "../state/DataProvider.jsx";
 import { formatCurrency, normalizeDate, formatExcelDate } from "../lib/format.js";
 import { todayISO } from "../lib/calendar.js";
@@ -11,6 +11,7 @@ import {
 import EditRateModal from "../components/EditRateModal.jsx";
 import DatePicker from "../components/DatePicker.jsx";
 import StatusBadge from "../components/StatusBadge.jsx";
+import SelectionPanel from "../components/SelectionPanel.jsx";
 import Pagination, { usePagedList } from "../components/Pagination.jsx";
 
 export default function Rates() {
@@ -28,32 +29,44 @@ export default function Rates() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // "Employee source": every rate created here is a personal (per-employee)
-  // rate — pick "העובדים שלי" or a specific contractor first, then only
-  // that group's employees show up to select from.
+  // rate — pick "העובדים שלי" or one or more contractors, then only that
+  // group's employees show up to select from. Choosing several contractors
+  // accumulates their employees into one combined pool rather than
+  // replacing it.
   const [employeeSource, setEmployeeSource] = useState("internal"); // "internal" | "subcontractor"
-  const [employeeSubcontractorId, setEmployeeSubcontractorId] = useState("");
+  const [selectedContractorIds, setSelectedContractorIds] = useState([]);
+  const [contractorSearch, setContractorSearch] = useState("");
   const [employeeSearch, setEmployeeSearch] = useState("");
 
   const activeCustomers = activeOnly(customers);
   const activeSites = activeOnly(sites);
   const activeSubcontractors = activeOnly(subcontractors);
 
+  // Everyone who belongs to any currently-checked contractor — independent
+  // of the free-text search, so typing in the search box never affects who
+  // "counts" as part of the accumulated selection (only what's shown).
+  const contractorEmployeeIds = useMemo(() => {
+    return new Set(
+      activeEmployees(data)
+        .filter(
+          (e) =>
+            (e.type === "subcontractor" || e.type === "external") &&
+            selectedContractorIds.map(String).includes(String(e.subcontractorId || ""))
+        )
+        .map((e) => e.id)
+    );
+  }, [data, selectedContractorIds]);
+
   const employeeTargets = useMemo(() => {
     let list = activeEmployees(data);
-    if (employeeSource === "internal") {
-      list = list.filter((e) => e.type === "internal");
-    } else {
-      if (!employeeSubcontractorId) return [];
-      list = list.filter(
-        (e) =>
-          (e.type === "subcontractor" || e.type === "external") &&
-          String(e.subcontractorId || "") === String(employeeSubcontractorId)
-      );
-    }
+    list =
+      employeeSource === "internal"
+        ? list.filter((e) => e.type === "internal")
+        : list.filter((e) => contractorEmployeeIds.has(e.id));
     const text = employeeSearch.trim().toLowerCase();
     if (text) list = list.filter((e) => e.name.toLowerCase().includes(text));
     return list.map((e) => ({ id: e.id, label: e.name }));
-  }, [employeeSource, employeeSubcontractorId, employeeSearch, data]);
+  }, [employeeSource, contractorEmployeeIds, employeeSearch, data]);
 
   const toggle = (list, setList, id) =>
     setList(
@@ -62,15 +75,24 @@ export default function Rates() {
 
   const changeEmployeeSource = (value) => {
     setEmployeeSource(value);
-    setEmployeeSubcontractorId("");
+    setSelectedContractorIds([]);
+    setContractorSearch("");
     setSelectedTargetIds([]);
     setEmployeeSearch("");
   };
 
-  const changeEmployeeSubcontractor = (value) => {
-    setEmployeeSubcontractorId(value);
-    setSelectedTargetIds([]);
-  };
+  const toggleContractor = (id) => toggle(selectedContractorIds, setSelectedContractorIds, id);
+
+  // Unchecking a contractor should drop only the employees that are no
+  // longer part of any checked contractor — not wipe the whole selection —
+  // so picking more contractors never loses what was already selected.
+  // Never runs off the search text alone, only when contractor membership
+  // itself changes.
+  useEffect(() => {
+    if (employeeSource !== "subcontractor") return;
+    setSelectedTargetIds((prev) => prev.filter((id) => contractorEmployeeIds.has(id)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contractorEmployeeIds, employeeSource]);
 
   const sortedRates = useMemo(() => {
     const visible = showArchived ? rates : activeOnly(rates);
@@ -337,66 +359,73 @@ export default function Rates() {
           </div>
         </div>
 
-        {employeeSource === "subcontractor" && (
-          <>
-            <label>קבלן משנה</label>
-            <select
-              value={employeeSubcontractorId}
-              onChange={(e) => changeEmployeeSubcontractor(e.target.value)}
-            >
-              <option value="">בחר קבלן משנה</option>
-              {activeSubcontractors.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
-          </>
-        )}
+        {employeeSource === "subcontractor" ? (
+          <div className="filter-grid filter-grid-2">
+            <div className="filter-grid-item">
+              <SelectionPanel
+                title="בחירת קבלנים"
+                search={contractorSearch}
+                onSearchChange={setContractorSearch}
+                searchPlaceholder="🔍 חפש קבלן..."
+                items={activeSubcontractors
+                  .filter(
+                    (s) =>
+                      !contractorSearch.trim() ||
+                      s.name.toLowerCase().includes(contractorSearch.trim().toLowerCase())
+                  )
+                  .map((s) => ({ id: s.id, label: s.name }))}
+                selectedIds={selectedContractorIds}
+                onToggle={toggleContractor}
+                onSelectAll={() =>
+                  setSelectedContractorIds((prev) => [
+                    ...new Set([...prev, ...activeSubcontractors.map((s) => s.id)]),
+                  ])
+                }
+                onClearAll={() => setSelectedContractorIds([])}
+                emptyMessage="אין קבלני משנה"
+              />
+            </div>
 
-        <label>בחר עובדים</label>
-        <input
-          type="text"
-          placeholder="🔍 חפש עובד..."
-          value={employeeSearch}
-          onChange={(e) => setEmployeeSearch(e.target.value)}
-        />
-        <div className="checkbox-list">
-          {employeeTargets.length === 0 ? (
-            <p className="empty-message">אין עובדים תואמים</p>
-          ) : (
-            employeeTargets.map((target) => (
-              <label className="checkbox-item" key={target.id}>
-                <input
-                  type="checkbox"
-                  checked={selectedTargetIds.includes(target.id)}
-                  onChange={() =>
-                    toggle(selectedTargetIds, setSelectedTargetIds, target.id)
+            <div className="filter-grid-item">
+              {selectedContractorIds.length === 0 ? (
+                <>
+                  <label>בחר עובדים</label>
+                  <div className="empty-message">יש לבחור קבלן תחילה</div>
+                </>
+              ) : (
+                <SelectionPanel
+                  title="בחר עובדים"
+                  search={employeeSearch}
+                  onSearchChange={setEmployeeSearch}
+                  searchPlaceholder="🔍 חפש עובד..."
+                  items={employeeTargets}
+                  selectedIds={selectedTargetIds}
+                  onToggle={(id) => toggle(selectedTargetIds, setSelectedTargetIds, id)}
+                  onSelectAll={() =>
+                    setSelectedTargetIds((prev) => [
+                      ...new Set([...prev, ...employeeTargets.map((t) => t.id)]),
+                    ])
                   }
+                  onClearAll={() => setSelectedTargetIds([])}
+                  emptyMessage="אין עובדים תואמים"
                 />
-                <span>{target.label}</span>
-              </label>
-            ))
-          )}
-        </div>
-        <div className="employee-actions">
-          <button
-            type="button"
-            className="secondary-btn"
-            onClick={() =>
-              setSelectedTargetIds(employeeTargets.map((t) => t.id))
-            }
-          >
-            {employeeSource === "subcontractor" ? "בחר את כל עובדי הקבלן" : "בחר הכל"}
-          </button>
-          <button
-            type="button"
-            className="secondary-btn"
-            onClick={() => setSelectedTargetIds([])}
-          >
-            נקה הכל
-          </button>
-        </div>
+              )}
+            </div>
+          </div>
+        ) : (
+          <SelectionPanel
+            title="בחר עובדים"
+            search={employeeSearch}
+            onSearchChange={setEmployeeSearch}
+            searchPlaceholder="🔍 חפש עובד..."
+            items={employeeTargets}
+            selectedIds={selectedTargetIds}
+            onToggle={(id) => toggle(selectedTargetIds, setSelectedTargetIds, id)}
+            onSelectAll={() => setSelectedTargetIds(employeeTargets.map((t) => t.id))}
+            onClearAll={() => setSelectedTargetIds([])}
+            emptyMessage="אין עובדים תואמים"
+          />
+        )}
         <p>סה״כ עובדים שנבחרו: {selectedTargetIds.length}</p>
 
         <hr className="form-divider" />
