@@ -1463,6 +1463,62 @@ body.loading .menu-overlay {
     margin-bottom: 0;
 }
 
+/* Only used on Dashboard's 3 fixed summary cards — kept off the shared
+   .cards rule (auto-fit, used generically) since a hardcoded 3-column
+   split only makes sense when there are always exactly 3 items. Scoped to
+   min-width so it never overrides .cards' own mobile single-column
+   override below 900px. */
+@media (min-width: 901px) {
+    .dashboard-summary-cards {
+        grid-template-columns: repeat(3, minmax(220px, 1fr));
+    }
+}
+
+.dashboard-metric-icon {
+    margin-inline-end: 6px;
+
+    font-size: 20px;
+    vertical-align: middle;
+}
+
+.dashboard-metric-revenue {
+    border-top: 4px solid var(--color-primary);
+}
+
+/* .cards > .card > p already sets color (specificity 0,2,1) — this needs
+   to be at least as specific to actually win instead of silently doing
+   nothing. */
+.dashboard-summary-cards .card.dashboard-metric-revenue p {
+    color: var(--color-primary-hover);
+}
+
+.dashboard-metric-cost {
+    border-top: 4px solid var(--color-warning);
+}
+
+.dashboard-summary-cards .card.dashboard-metric-cost p {
+    color: #b45309;
+}
+
+.dashboard-metric-profit-positive {
+    border-top: 4px solid var(--color-success);
+}
+
+.dashboard-metric-profit-negative {
+    border-top: 4px solid var(--color-danger);
+}
+
+/* Reinforces .rates-profit-positive/.rates-profit-negative (unmodified,
+   shared with Rates.jsx) with enough specificity to beat .cards > .card >
+   p here — same color values, not a new rule elsewhere. */
+.dashboard-summary-cards .card.dashboard-metric-profit-positive p {
+    color: var(--color-success);
+}
+
+.dashboard-summary-cards .card.dashboard-metric-profit-negative p {
+    color: var(--color-danger);
+}
+
 .chart-container {
     position: relative;
 

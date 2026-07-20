@@ -126,18 +126,41 @@ export default function Dashboard() {
             </div>
           )}
 
-          <div className="cards" style={{ marginTop: 18 }}>
-            <div className="card">
-              <h3>הכנסות</h3>
+          <div className="cards dashboard-summary-cards" style={{ marginTop: 18 }}>
+            <div className="card dashboard-metric-revenue">
+              <h3>
+                <span className="material-symbols-rounded dashboard-metric-icon" aria-hidden="true">
+                  payments
+                </span>
+                הכנסות
+              </h3>
               <p>{formatCurrency(totals.revenue)}</p>
             </div>
-            <div className="card">
-              <h3>הוצאות</h3>
+            <div className="card dashboard-metric-cost">
+              <h3>
+                <span className="material-symbols-rounded dashboard-metric-icon" aria-hidden="true">
+                  shopping_cart
+                </span>
+                הוצאות
+              </h3>
               <p>{formatCurrency(totals.cost)}</p>
             </div>
-            <div className="card">
-              <h3>רווח</h3>
-              <p>{formatCurrency(totals.profit)}</p>
+            <div
+              className={`card ${
+                totals.profit >= 0
+                  ? "dashboard-metric-profit-positive"
+                  : "dashboard-metric-profit-negative"
+              }`}
+            >
+              <h3>
+                <span className="material-symbols-rounded dashboard-metric-icon" aria-hidden="true">
+                  trending_up
+                </span>
+                רווח
+              </h3>
+              <p className={totals.profit >= 0 ? "rates-profit-positive" : "rates-profit-negative"}>
+                {formatCurrency(totals.profit)}
+              </p>
             </div>
           </div>
         </div>
@@ -145,7 +168,6 @@ export default function Dashboard() {
         <div className="card" style={{ marginTop: 20 }}>
           <h3>כוח אדם</h3>
 
-          <h4>סיכום לפי כוח אדם</h4>
           {workforce.length === 0 ? (
             <p className="dashboard-empty-text">אין נתונים כספיים מתאימים.</p>
           ) : (
@@ -164,7 +186,9 @@ export default function Dashboard() {
                     <td>{group.name}</td>
                     <td>{formatCurrency(group.revenue)}</td>
                     <td>{formatCurrency(group.cost)}</td>
-                    <td>{formatCurrency(group.profit)}</td>
+                    <td className={group.profit >= 0 ? "rates-profit-positive" : "rates-profit-negative"}>
+                      {formatCurrency(group.profit)}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -184,7 +208,6 @@ export default function Dashboard() {
         <div className="card" style={{ marginTop: 20 }}>
           <h3>אתרי עבודה</h3>
 
-          <h4>סיכום לפי אתר עבודה</h4>
           {sites.length === 0 ? (
             <p className="dashboard-empty-text">אין נתונים לפי אתרים.</p>
           ) : (
@@ -203,7 +226,9 @@ export default function Dashboard() {
                     <td>{site.name}</td>
                     <td>{formatCurrency(site.revenue)}</td>
                     <td>{formatCurrency(site.cost)}</td>
-                    <td>{formatCurrency(site.profit)}</td>
+                    <td className={site.profit >= 0 ? "rates-profit-positive" : "rates-profit-negative"}>
+                      {formatCurrency(site.profit)}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -223,7 +248,6 @@ export default function Dashboard() {
         <div className="card" style={{ marginTop: 20 }}>
           <h3>מזמיני עבודה</h3>
 
-          <h4>סיכום לפי מזמין עבודה</h4>
           {customers.length === 0 ? (
             <p className="dashboard-empty-text">אין נתונים לפי מזמינים.</p>
           ) : (
@@ -242,7 +266,9 @@ export default function Dashboard() {
                     <td>{customer.name}</td>
                     <td>{formatCurrency(customer.revenue)}</td>
                     <td>{formatCurrency(customer.cost)}</td>
-                    <td>{formatCurrency(customer.profit)}</td>
+                    <td className={customer.profit >= 0 ? "rates-profit-positive" : "rates-profit-negative"}>
+                      {formatCurrency(customer.profit)}
+                    </td>
                   </tr>
                 ))}
               </tbody>
