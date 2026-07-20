@@ -439,7 +439,7 @@ export default function Employees() {
         </div>
       </div>
 
-      <div style={{ marginTop: 20 }}>
+      <div className="card" style={{ marginTop: 20 }}>
         <EmployeeGroupCard icon="badge" title="העובדים שלי" count={internalEmployees.length}>
           {filteredInternalEmployees.length === 0 ? (
             <p className="empty-message">
@@ -472,7 +472,7 @@ export default function Employees() {
             {contractorCards.map(({ subcontractor, list, filteredList }) => (
               <EmployeeGroupCard
                 key={subcontractor.id}
-                icon="apartment"
+                icon="badge"
                 title={subcontractor.name}
                 count={list.length}
                 isArchived={subcontractor.archived}
