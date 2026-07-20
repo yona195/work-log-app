@@ -380,16 +380,16 @@ export default function Employees() {
               </div>
             )}
 
-            <hr className="form-divider" />
-
-            <button
-              className="primary-btn employees-submit-btn"
-              type="button"
-              onClick={addEmployee}
-              disabled={!canAddEmployee}
-            >
-              {isAddingEmployee ? "מוסיף..." : "הוסף עובד"}
-            </button>
+            <div className="employees-submit-row">
+              <button
+                className="primary-btn employees-submit-btn"
+                type="button"
+                onClick={addEmployee}
+                disabled={!canAddEmployee}
+              >
+                {isAddingEmployee ? "מוסיף..." : "הוסף עובד"}
+              </button>
+            </div>
           </div>
         </div>
 
@@ -442,12 +442,17 @@ export default function Employees() {
               {search ? "לא נמצאו עובדים שלי התואמים לחיפוש." : "אין עדיין עובדים שלי."}
             </p>
           ) : (
-            <EmployeeTable
-              employees={filteredInternalEmployees}
-              onEdit={setEditingEmployee}
-              onDelete={deleteEmployee}
-              onToggleArchive={toggleEmployeeArchive}
-            />
+            <div className="employees-compact-list">
+              {filteredInternalEmployees.map((employee) => (
+                <EmployeeRow
+                  key={employee.id}
+                  employee={employee}
+                  onEdit={setEditingEmployee}
+                  onDelete={deleteEmployee}
+                  onToggleArchive={toggleEmployeeArchive}
+                />
+              ))}
+            </div>
           )}
         </EmployeeGroupCard>
       </div>

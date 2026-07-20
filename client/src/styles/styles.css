@@ -2555,13 +2555,23 @@ body.loading .menu-overlay {
     font-weight: 600;
 }
 
-/* Sets "הוסף עובד" apart from the עובד שלי/עובד קבלן toggle buttons right
-   above it (both otherwise render as .primary-btn blue) — extra top space
-   plus the same success green already used for exports (.excel-btn), not
-   a new color. */
-.employees-submit-btn {
-    margin-top: 4px;
+/* Wraps the submit button instead of a plain <hr class="form-divider">:
+   padding (unlike margin) never collapses with whatever field precedes it
+   — either the toggle row (עובד שלי) or the contractor <select> (עובד
+   קבלן) — so the gap above "הוסף עובד" stays the same compact size in
+   both states instead of growing with the shared .form-divider's fixed
+   24px top margin. */
+.employees-submit-row {
+    margin-top: 8px;
+    padding-top: 14px;
 
+    border-top: 1px solid var(--color-border);
+}
+
+/* Sets "הוסף עובד" apart from the עובד שלי/עובד קבלן toggle buttons right
+   above it (both otherwise render as .primary-btn blue) — the same
+   success green already used for exports (.excel-btn), not a new color. */
+.employees-submit-btn {
     background: var(--color-success);
     border-color: var(--color-success);
 }
