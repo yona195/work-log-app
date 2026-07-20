@@ -2386,6 +2386,36 @@ body.loading .menu-overlay {
     }
 }
 
+.worklog-select-column {
+    width: 32px;
+}
+
+.worklog-bulk-actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 10px;
+
+    margin-bottom: 12px;
+    padding: 10px 14px;
+
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: var(--radius-medium);
+
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.worklog-row-incompatible {
+    opacity: 0.55;
+}
+
+.worklog-recent-card.worklog-row-incompatible {
+    opacity: 0.6;
+}
+
 
 /* =========================================
    היסטוריית עבודה - כרטיס אחד לכל רשומה מקורית

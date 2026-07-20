@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import PeriodFilter from "../components/PeriodFilter.jsx";
 import EditWorkLogModal from "../components/EditWorkLogModal.jsx";
+import PartialDeleteModal from "../components/PartialDeleteModal.jsx";
 import { usePagedList, ListPagination } from "../components/Pagination.jsx";
 import { useData } from "../state/DataProvider.jsx";
 import {
   getName,
+  getEmployeeIds,
   getBuildingIds,
   getBuildingNames,
   activeOnly,
@@ -101,7 +103,7 @@ function groupEmployeesByAffiliation(data, reportEmployees) {
 }
 
 export default function WorkHistory() {
-  const { data, deleteItem } = useData();
+  const { data, deleteItem, updateItem } = useData();
   const { subcontractors, sites, customers, buildings, employees } = data;
 
   const dateRange = useWorkHistoryDateRangeFilter();
@@ -110,6 +112,7 @@ export default function WorkHistory() {
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [pageSize, setPageSize] = useState(5);
   const [editingLog, setEditingLog] = useState(null);
+  const [partialDeleteTarget, setPartialDeleteTarget] = useState(null);
 
   const setFilter = (key, value) =>
     setFilters((prev) => {
@@ -279,14 +282,46 @@ export default function WorkHistory() {
 
   const totalRegistrations = allRegistrations.length;
 
+  // A record covers a full day of work at a site and can list several
+  // employees/subcontractors together. Filtering by site/customer alone
+  // never narrows that list (those are single-valued per record), so
+  // deletion stays a plain full delete. But filtering by employee/group/
+  // subcontractor can single out a subset of a record's employees —
+  // getReportEmployees (shared with the report pages) already resolves
+  // exactly which employees of this log match the active filters, so
+  // comparing that against the log's full employee list detects any
+  // filter-driven narrowing, regardless of which employee-related filter
+  // caused it.
   const deleteRegistration = (registration) => {
-    if (
-      confirm(
-        `למחוק את הרשומה כולה (${registration.totalEmployeeCount} עובדים מכל הקבלנים)?`
-      )
-    ) {
-      deleteItem("workLogs", registration.log.id);
+    const allEmployeeIds = getEmployeeIds(registration.log).map(String);
+    const filteredEmployees = getReportEmployees(data, registration.log, effectiveFilters);
+    const isPartial =
+      filteredEmployees.length > 0 && filteredEmployees.length < allEmployeeIds.length;
+
+    if (!isPartial) {
+      if (
+        confirm(
+          `למחוק את הרשומה כולה (${registration.totalEmployeeCount} עובדים מכל הקבלנים)?`
+        )
+      ) {
+        deleteItem("workLogs", registration.log.id);
+      }
+      return;
     }
+    setPartialDeleteTarget({ registration, filteredEmployees, allEmployeeIds });
+  };
+
+  const removeFilteredFromRegistration = async () => {
+    const { registration, filteredEmployees, allEmployeeIds } = partialDeleteTarget;
+    const filteredIds = new Set(filteredEmployees.map((e) => String(e.id)));
+    const remainingIds = allEmployeeIds.filter((id) => !filteredIds.has(id));
+    await updateItem("workLogs", registration.log.id, { employeeIds: remainingIds });
+    setPartialDeleteTarget(null);
+  };
+
+  const deleteEntireRegistration = async () => {
+    await deleteItem("workLogs", partialDeleteTarget.registration.log.id);
+    setPartialDeleteTarget(null);
   };
 
   return (
@@ -524,6 +559,15 @@ export default function WorkHistory() {
 
       {editingLog && (
         <EditWorkLogModal log={editingLog} onClose={() => setEditingLog(null)} />
+      )}
+
+      {partialDeleteTarget && (
+        <PartialDeleteModal
+          employeeNames={partialDeleteTarget.filteredEmployees.map((e) => e.name).join(", ")}
+          onRemoveFiltered={removeFilteredFromRegistration}
+          onDeleteAll={deleteEntireRegistration}
+          onClose={() => setPartialDeleteTarget(null)}
+        />
       )}
     </>
   );
