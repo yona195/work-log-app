@@ -2296,72 +2296,115 @@ body.loading .menu-overlay {
 
     background: var(--color-surface);
     border: 1px solid var(--color-border);
-    border-right-width: 4px;
     border-radius: var(--radius-medium);
+
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
-.workhistory-card-accent-0 { border-right-color: var(--color-primary); }
-.workhistory-card-accent-1 { border-right-color: var(--color-success); }
-.workhistory-card-accent-2 { border-right-color: var(--color-warning); }
-.workhistory-card-accent-3 { border-right-color: #7c3aed; }
+.workhistory-card:hover {
+    border-color: #d1d5db;
+    box-shadow: 0 1px 4px rgba(15, 23, 42, 0.06);
+}
 
+/* Full-width grid so every field (date, site, building, customer, count,
+   actions) gets its own track instead of being squeezed to one side with
+   empty space in between. Named areas keep each field pinned to its own
+   column even when an optional field (building) isn't rendered. */
 .workhistory-card-header {
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns:
+        minmax(88px, auto)
+        minmax(150px, 2.2fr)
+        minmax(70px, 1fr)
+        minmax(170px, 2fr)
+        minmax(70px, auto)
+        auto;
+    grid-template-areas: "date site building customer count actions";
     align-items: center;
-    justify-content: space-between;
-    gap: 6px 16px;
+    gap: 6px 14px;
 
-    padding-bottom: 8px;
-    margin-bottom: 8px;
+    padding-bottom: 10px;
+    margin-bottom: 10px;
 
     border-bottom: 1px solid var(--color-border);
 }
 
-.workhistory-card-header-info {
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
+.workhistory-card-date {
+    grid-area: date;
 
-    min-width: 0;
+    color: var(--color-primary-hover);
+    font-size: 16px;
+    font-weight: 800;
+    white-space: nowrap;
 }
 
-.workhistory-card-header-main {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: 4px 10px;
+.workhistory-card-site {
+    grid-area: site;
+    font-weight: 700;
+}
+
+.workhistory-card-building {
+    grid-area: building;
+}
+
+.workhistory-card-customer {
+    grid-area: customer;
+}
+
+.workhistory-card-site,
+.workhistory-card-building,
+.workhistory-card-customer {
+    min-width: 0;
+    padding-inline-start: 12px;
+
+    border-inline-start: 1px solid var(--color-border);
 
     color: var(--color-text);
     font-size: 14px;
     font-weight: 600;
+    overflow-wrap: break-word;
 }
 
-.workhistory-card-date {
-    color: var(--color-primary-hover);
-    font-size: 16px;
-    font-weight: 800;
-}
+.workhistory-card-count {
+    grid-area: count;
+    justify-self: start;
+    display: inline-flex;
+    align-items: center;
 
-.workhistory-card-header-main span:not(:last-child)::after {
-    content: "|";
-    margin-inline-start: 10px;
-    color: var(--color-border);
-    font-weight: 400;
-}
+    padding: 3px 10px;
 
-.workhistory-card-header-meta {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px 14px;
+    background: var(--color-background);
+    border-radius: 999px;
 
     color: var(--color-muted);
-    font-size: 13px;
-    font-weight: 600;
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
 }
 
 .workhistory-card-actions {
+    grid-area: actions;
     flex-shrink: 0;
+}
+
+@media (max-width: 900px) {
+    .workhistory-card-header {
+        grid-template-columns: 1fr auto;
+        grid-template-areas:
+            "date actions"
+            "site site"
+            "building building"
+            "customer customer"
+            "count count";
+        row-gap: 6px;
+    }
+
+    .workhistory-card-site,
+    .workhistory-card-building,
+    .workhistory-card-customer {
+        padding-inline-start: 0;
+        border-inline-start: none;
+    }
 }
 
 .workhistory-card-groups {
@@ -2422,6 +2465,7 @@ body.loading .menu-overlay {
 
 .workhistory-page-size {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: 8px;
 

@@ -22,10 +22,6 @@ const EMPTY_FILTERS = {
   buildingId: "",
 };
 
-// Cycled per registration (not per employee row) purely to help
-// consecutive cards read as visually separate — carries no other meaning.
-const ACCENT_COUNT = 4;
-
 // Splits a log's employees into one group per affiliation (internal /
 // each subcontractor) so the card shows "who worked for whom" instead of
 // one flat name list — this is display grouping only, the underlying
@@ -54,7 +50,7 @@ export default function WorkHistory() {
   const [filters, setFilters] = useState(EMPTY_FILTERS);
   const [searchText, setSearchText] = useState("");
   const [advancedOpen, setAdvancedOpen] = useState(false);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(5);
   const [editingLog, setEditingLog] = useState(null);
 
   const setFilter = (key, value) =>
@@ -145,13 +141,12 @@ export default function WorkHistory() {
   // share a date/site/customer. Newest first.
   const allRegistrations = useMemo(() => {
     const sorted = [...filteredLogs].sort((a, b) => String(b.date).localeCompare(String(a.date)));
-    return sorted.map((log, index) => {
+    return sorted.map((log) => {
       const reportEmployees = getReportEmployees(data, log, effectiveFilters);
       return {
         log,
         totalEmployeeCount: reportEmployees.length,
         affiliationGroups: groupEmployeesByAffiliation(data, reportEmployees),
-        accentIndex: index % ACCENT_COUNT,
       };
     });
   }, [filteredLogs, data, effectiveFilters]);
@@ -398,26 +393,23 @@ export default function WorkHistory() {
               {pageRegistrations.map((registration) => {
                 const buildingNamesText = getBuildingNames(data, registration.log);
                 return (
-                  <div
-                    key={registration.log.id}
-                    className={`workhistory-card workhistory-card-accent-${registration.accentIndex}`}
-                  >
+                  <div key={registration.log.id} className="workhistory-card">
                     <div className="workhistory-card-header">
-                      <div className="workhistory-card-header-info">
-                        <div className="workhistory-card-header-main">
-                          <span className="workhistory-card-date" dir="ltr">
-                            {formatExcelDate(registration.log.date)}
-                          </span>
-                          <span>{getName(sites, registration.log.siteId) || "אתר לא ידוע"}</span>
-                          {buildingNamesText && <span>מבנה: {buildingNamesText}</span>}
-                        </div>
-                        <div className="workhistory-card-header-meta">
-                          <span>
-                            מזמין: {getName(customers, registration.log.customerId) || "לא ידוע"}
-                          </span>
-                          <span>{registration.totalEmployeeCount} עובדים</span>
-                        </div>
-                      </div>
+                      <span className="workhistory-card-date" dir="ltr">
+                        {formatExcelDate(registration.log.date)}
+                      </span>
+                      <span className="workhistory-card-site">
+                        {getName(sites, registration.log.siteId) || "אתר לא ידוע"}
+                      </span>
+                      {buildingNamesText && (
+                        <span className="workhistory-card-building">מבנה: {buildingNamesText}</span>
+                      )}
+                      <span className="workhistory-card-customer">
+                        מזמין: {getName(customers, registration.log.customerId) || "לא ידוע"}
+                      </span>
+                      <span className="workhistory-card-count">
+                        {registration.totalEmployeeCount} עובדים
+                      </span>
 
                       <div className="report-row-actions workhistory-card-actions">
                         <button
@@ -459,7 +451,7 @@ export default function WorkHistory() {
             <div className="workhistory-pagination">
               <div className="workhistory-page-size">
                 <span>רשומות בעמוד:</span>
-                {[10, 25, 50].map((size) => (
+                {[5, 10, 20, 50].map((size) => (
                   <button
                     key={size}
                     type="button"
