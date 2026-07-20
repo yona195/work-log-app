@@ -62,12 +62,6 @@ export const NAV_SECTIONS = [
         title: "אתרי עבודה",
       },
       {
-        path: "/buildings",
-        icon: "apartment",
-        label: "מבנים",
-        title: "מבנים",
-      },
-      {
         path: "/rates",
         icon: "payments",
         label: "תעריפים",

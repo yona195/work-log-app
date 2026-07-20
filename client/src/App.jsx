@@ -11,7 +11,7 @@ import WorkHistory from "./pages/WorkHistory.jsx";
 import Reports from "./pages/Reports.jsx";
 import EmployeeReports from "./pages/EmployeeReports.jsx";
 import Employees from "./pages/Employees.jsx";
-import Buildings from "./pages/Buildings.jsx";
+import Sites from "./pages/Sites.jsx";
 import Rates from "./pages/Rates.jsx";
 import SimpleManager from "./pages/SimpleManager.jsx";
 
@@ -38,21 +38,8 @@ function AuthenticatedApp() {
         <Route path="/reports" element={<Reports />} />
         <Route path="/employee-reports" element={<EmployeeReports />} />
         <Route path="/employees" element={<Employees />} />
-        <Route
-          path="/sites"
-          element={
-            <SimpleManager
-              collection="sites"
-              placeholder="שם אתר"
-              editTitle="עריכת אתר עבודה"
-              title="הוספת אתר עבודה"
-              nameLabel="שם אתר"
-              rowIcon="location_on"
-              key="sites"
-            />
-          }
-        />
-        <Route path="/buildings" element={<Buildings />} />
+        <Route path="/sites" element={<Sites />} />
+        <Route path="/buildings" element={<Navigate to="/sites" replace />} />
         <Route
           path="/customers"
           element={

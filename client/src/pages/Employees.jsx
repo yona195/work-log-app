@@ -4,6 +4,8 @@ import { activeOnly } from "../lib/entities.js";
 import EditEmployeeModal from "../components/EditEmployeeModal.jsx";
 import EditSimpleItemModal from "../components/EditSimpleItemModal.jsx";
 import StatusBadge from "../components/StatusBadge.jsx";
+import GroupCard from "../components/GroupCard.jsx";
+import CompactRow from "../components/CompactRow.jsx";
 import Pagination, { usePagedList } from "../components/Pagination.jsx";
 
 const matchesSearch = (text, value) => {
@@ -56,53 +58,6 @@ function EmployeeTable({ employees, onEdit, onDelete, onToggleArchive }) {
       </table>
       <Pagination page={page} totalPages={totalPages} onChange={setPage} />
     </>
-  );
-}
-
-// Shared group-card shell for both "העובדים שלי" (fixed group, no
-// group-level actions) and each contractor (has group-level actions) — one
-// consistent bordered card + header (icon, name, employee-count pill,
-// archived status, optional actions) regardless of which group it is.
-function EmployeeGroupCard({ icon, title, count, isArchived, groupActions, children }) {
-  return (
-    <div className="employees-group-card">
-      <div className="section-title-row">
-        <div className="employees-group-title">
-          <span className="material-symbols-rounded employees-group-icon" aria-hidden="true">
-            {icon}
-          </span>
-          <strong>{title}</strong>
-          <span className="employees-group-count">{count} עובדים</span>
-          {isArchived && <span className="employees-status-archived">בארכיון</span>}
-        </div>
-        {groupActions}
-      </div>
-      {children}
-    </div>
-  );
-}
-
-// Compact row (name / status / actions) used for a contractor's own
-// employees — deliberately not a <table>, so a contractor card with a
-// handful of employees doesn't need a header row and column widths of its
-// own; it just reads as a short list inside the card.
-function EmployeeRow({ employee, onEdit, onDelete, onToggleArchive }) {
-  return (
-    <div className="employees-row">
-      <span className="employees-row-name">{employee.name}</span>
-      <StatusBadge archived={employee.archived} />
-      <div className="report-row-actions">
-        <button className="edit-btn" type="button" onClick={() => onEdit(employee)}>
-          ערוך
-        </button>
-        <button className="delete-btn" type="button" onClick={() => onDelete(employee)}>
-          מחק
-        </button>
-        <button className="archive-btn" type="button" onClick={() => onToggleArchive(employee)}>
-          {employee.archived ? "שחזר" : "ארכיון"}
-        </button>
-      </div>
-    </div>
   );
 }
 
@@ -437,7 +392,7 @@ export default function Employees() {
       </div>
 
       <div className="card" style={{ marginTop: 20 }}>
-        <EmployeeGroupCard icon="badge" title="העובדים שלי" count={internalEmployees.length}>
+        <GroupCard icon="badge" title="העובדים שלי" count={internalEmployees.length} countLabel="עובדים">
           {filteredInternalEmployees.length === 0 ? (
             <p className="empty-message">
               {search ? "לא נמצאו עובדים שלי התואמים לחיפוש." : "אין עדיין עובדים שלי."}
@@ -445,17 +400,18 @@ export default function Employees() {
           ) : (
             <div className="employees-compact-list">
               {filteredInternalEmployees.map((employee) => (
-                <EmployeeRow
+                <CompactRow
                   key={employee.id}
-                  employee={employee}
-                  onEdit={setEditingEmployee}
-                  onDelete={deleteEmployee}
-                  onToggleArchive={toggleEmployeeArchive}
+                  name={employee.name}
+                  archived={employee.archived}
+                  onEdit={() => setEditingEmployee(employee)}
+                  onDelete={() => deleteEmployee(employee)}
+                  onToggleArchive={() => toggleEmployeeArchive(employee)}
                 />
               ))}
             </div>
           )}
-        </EmployeeGroupCard>
+        </GroupCard>
       </div>
 
       <div className="card" style={{ marginTop: 20 }}>
@@ -467,11 +423,12 @@ export default function Employees() {
         ) : (
           <div className="employees-contractor-list">
             {contractorCards.map(({ subcontractor, list, filteredList }) => (
-              <EmployeeGroupCard
+              <GroupCard
                 key={subcontractor.id}
                 icon="badge"
                 title={subcontractor.name}
                 count={list.length}
+                countLabel="עובדים"
                 isArchived={subcontractor.archived}
                 groupActions={
                   <div className="report-row-actions">
@@ -508,17 +465,18 @@ export default function Employees() {
                 ) : (
                   <div className="employees-compact-list">
                     {filteredList.map((employee) => (
-                      <EmployeeRow
+                      <CompactRow
                         key={employee.id}
-                        employee={employee}
-                        onEdit={setEditingEmployee}
-                        onDelete={deleteEmployee}
-                        onToggleArchive={toggleEmployeeArchive}
+                        name={employee.name}
+                        archived={employee.archived}
+                        onEdit={() => setEditingEmployee(employee)}
+                        onDelete={() => deleteEmployee(employee)}
+                        onToggleArchive={() => toggleEmployeeArchive(employee)}
                       />
                     ))}
                   </div>
                 )}
-              </EmployeeGroupCard>
+              </GroupCard>
             ))}
           </div>
         )}
