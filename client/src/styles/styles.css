@@ -2563,7 +2563,7 @@ body.loading .menu-overlay {
 .employees-form-fields {
     display: flex;
     flex-direction: column;
-    gap: 39px;
+    gap: 20px;
 }
 
 /* A flex item's auto height still includes its own last child's trailing
