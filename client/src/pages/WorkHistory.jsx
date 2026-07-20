@@ -81,17 +81,23 @@ function useWorkHistoryDateRangeFilter() {
 function groupEmployeesByAffiliation(data, reportEmployees) {
   const groups = new Map();
   reportEmployees.forEach((employee) => {
-    const key =
-      employee.type === "internal" ? "internal" : String(employee.subcontractorId || "");
+    const isInternal = employee.type === "internal";
+    const key = isInternal ? "internal" : String(employee.subcontractorId || "");
     if (!groups.has(key)) {
       groups.set(key, {
         label: getEmployeeAffiliationName(data, employee),
         employees: [],
+        isInternal,
       });
     }
     groups.get(key).employees.push(employee);
   });
-  return Array.from(groups.values());
+  // "עובד שלי" always leads; contractor groups keep their original
+  // (stable) relative order after that.
+  return Array.from(groups.values()).sort((a, b) => {
+    if (a.isInternal === b.isInternal) return 0;
+    return a.isInternal ? -1 : 1;
+  });
 }
 
 export default function WorkHistory() {

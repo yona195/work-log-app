@@ -2367,13 +2367,19 @@ body.loading .menu-overlay {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
+    justify-content: flex-start;
     gap: 6px 10px;
 
     min-width: 0;
 }
 
+/* No flex-grow: without it, the customer text would stretch across the
+   whole (often much wider) summary track, shoving the count badge away
+   from it — visually landing right next to the actions column instead of
+   staying grouped with the customer name. */
 .workhistory-card-customer {
-    flex: 1 1 140px;
+    flex: 0 1 auto;
+    max-width: 100%;
     min-width: 0;
 
     color: var(--color-text);
