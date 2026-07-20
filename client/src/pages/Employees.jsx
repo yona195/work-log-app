@@ -60,6 +60,29 @@ function EmployeeTable({ employees, onEdit, onDelete, onToggleArchive }) {
   );
 }
 
+// Shared group-card shell for both "העובדים שלי" (fixed group, no
+// group-level actions) and each contractor (has group-level actions) — one
+// consistent bordered card + header (icon, name, employee-count pill,
+// archived status, optional actions) regardless of which group it is.
+function EmployeeGroupCard({ icon, title, count, isArchived, groupActions, children }) {
+  return (
+    <div className="employees-group-card">
+      <div className="section-title-row">
+        <div className="employees-group-title">
+          <span className="material-symbols-rounded employees-group-icon" aria-hidden="true">
+            {icon}
+          </span>
+          <strong>{title}</strong>
+          <span className="employees-group-count">{count} עובדים</span>
+          {isArchived && <span className="employees-status-archived">בארכיון</span>}
+        </div>
+        {groupActions}
+      </div>
+      {children}
+    </div>
+  );
+}
+
 // Compact row (name / status / actions) used for a contractor's own
 // employees — deliberately not a <table>, so a contractor card with a
 // handful of employees doesn't need a header row and column widths of its
@@ -357,8 +380,10 @@ export default function Employees() {
               </div>
             )}
 
+            <hr className="form-divider" />
+
             <button
-              className="primary-btn"
+              className="primary-btn employees-submit-btn"
               type="button"
               onClick={addEmployee}
               disabled={!canAddEmployee}
@@ -410,20 +435,21 @@ export default function Employees() {
         </div>
       </div>
 
-      <div className="card" style={{ marginTop: 20 }}>
-        <h3>העובדים שלי</h3>
-        {filteredInternalEmployees.length === 0 ? (
-          <p className="empty-message">
-            {search ? "לא נמצאו עובדים שלי התואמים לחיפוש." : "אין עדיין עובדים שלי."}
-          </p>
-        ) : (
-          <EmployeeTable
-            employees={filteredInternalEmployees}
-            onEdit={setEditingEmployee}
-            onDelete={deleteEmployee}
-            onToggleArchive={toggleEmployeeArchive}
-          />
-        )}
+      <div style={{ marginTop: 20 }}>
+        <EmployeeGroupCard icon="badge" title="העובדים שלי" count={internalEmployees.length}>
+          {filteredInternalEmployees.length === 0 ? (
+            <p className="empty-message">
+              {search ? "לא נמצאו עובדים שלי התואמים לחיפוש." : "אין עדיין עובדים שלי."}
+            </p>
+          ) : (
+            <EmployeeTable
+              employees={filteredInternalEmployees}
+              onEdit={setEditingEmployee}
+              onDelete={deleteEmployee}
+              onToggleArchive={toggleEmployeeArchive}
+            />
+          )}
+        </EmployeeGroupCard>
       </div>
 
       <div className="card" style={{ marginTop: 20 }}>
@@ -435,15 +461,13 @@ export default function Employees() {
         ) : (
           <div className="employees-contractor-list">
             {contractorCards.map(({ subcontractor, list, filteredList }) => (
-              <div className="employees-contractor-card" key={subcontractor.id}>
-                <div className="section-title-row">
-                  <div className="employees-contractor-title">
-                    <strong>{subcontractor.name}</strong>
-                    <span className="employees-contractor-count">{list.length} עובדים</span>
-                    {subcontractor.archived && (
-                      <span className="employees-status-archived">בארכיון</span>
-                    )}
-                  </div>
+              <EmployeeGroupCard
+                key={subcontractor.id}
+                icon="apartment"
+                title={subcontractor.name}
+                count={list.length}
+                isArchived={subcontractor.archived}
+                groupActions={
                   <div className="report-row-actions">
                     <button
                       className="edit-btn"
@@ -467,8 +491,8 @@ export default function Employees() {
                       {subcontractor.archived ? "שחזר" : "ארכיון"}
                     </button>
                   </div>
-                </div>
-
+                }
+              >
                 {filteredList.length === 0 ? (
                   <p className="empty-message">
                     {list.length === 0
@@ -488,7 +512,7 @@ export default function Employees() {
                     ))}
                   </div>
                 )}
-              </div>
+              </EmployeeGroupCard>
             ))}
           </div>
         )}

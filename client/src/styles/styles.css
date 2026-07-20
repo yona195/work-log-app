@@ -2555,6 +2555,22 @@ body.loading .menu-overlay {
     font-weight: 600;
 }
 
+/* Sets "הוסף עובד" apart from the עובד שלי/עובד קבלן toggle buttons right
+   above it (both otherwise render as .primary-btn blue) — extra top space
+   plus the same success green already used for exports (.excel-btn), not
+   a new color. */
+.employees-submit-btn {
+    margin-top: 4px;
+
+    background: var(--color-success);
+    border-color: var(--color-success);
+}
+
+.employees-submit-btn:hover {
+    background: #15803d;
+    border-color: #15803d;
+}
+
 .employees-toolbar {
     display: flex;
     flex-wrap: wrap;
@@ -2580,36 +2596,63 @@ body.loading .menu-overlay {
     gap: 12px;
 }
 
-.employees-contractor-card {
-    padding: 12px 14px;
+/* Shared shell for both "העובדים שלי" and each contractor's card — used
+   standalone (own employees) and nested inside .employees-contractor-list
+   (each contractor), so it carries its own surface/border/shadow rather
+   than relying on a parent .card. */
+.employees-group-card {
+    padding: 14px 16px;
 
     background: var(--color-surface);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-medium);
+    box-shadow: var(--shadow-small);
 }
 
-.employees-contractor-card .section-title-row {
+.employees-group-card .section-title-row {
     margin-bottom: 0;
 }
 
-.employees-contractor-title {
+.employees-group-title {
     display: flex;
     flex-wrap: wrap;
-    align-items: baseline;
-    gap: 4px 10px;
+    align-items: center;
+    gap: 6px 10px;
 
     font-size: 15px;
 }
 
-.employees-contractor-title strong {
-    color: var(--color-text);
-    font-weight: 700;
+.employees-group-icon {
+    font-size: 18px;
+    color: var(--color-muted);
 }
 
-.employees-contractor-count {
-    color: var(--color-muted);
-    font-size: 13px;
-    font-weight: 600;
+/* Deliberately larger/bolder than the employee names inside the card
+   (.employees-row-name, 14px/600), so the group level (contractor name /
+   "העובדים שלי") reads immediately as a different tier than the
+   individual employees listed under it. */
+.employees-group-title strong {
+    color: var(--color-text);
+    font-size: 19px;
+    font-weight: 800;
+}
+
+/* Same rounded-pill look as .filter-chip elsewhere in the app, so the
+   employee count reads as a scannable badge instead of plain text. */
+.employees-group-count {
+    display: inline-flex;
+    align-items: center;
+
+    padding: 3px 10px;
+
+    background: var(--color-primary-soft);
+    border: 1px solid rgba(37, 99, 235, 0.16);
+    border-radius: 999px;
+
+    color: var(--color-primary-hover);
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
 }
 
 .employees-status-archived {
