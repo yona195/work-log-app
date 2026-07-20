@@ -2555,14 +2555,33 @@ body.loading .menu-overlay {
     font-weight: 600;
 }
 
-/* Wraps the submit button instead of a plain <hr class="form-divider">:
-   padding (unlike margin) never collapses with whatever field precedes it
-   — either the toggle row (עובד שלי) or the contractor <select> (עובד
-   קבלן) — so the gap above "הוסף עובד" stays the same compact size in
-   both states instead of growing with the shared .form-divider's fixed
-   24px top margin. */
+/* Groups שיוך עובד, the conditional קבלן משנה field, and the submit row
+   as flex items with one uniform gap between them — a flex item's own
+   margin never collapses with a sibling's (unlike plain block siblings),
+   so the space above "הוסף עובד" is exactly `gap` regardless of whether
+   the conditional field is the last item or the toggle row is. */
+.employees-form-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 40px;
+}
+
+/* A flex item's auto height still includes its own last child's trailing
+   margin (e.g. <select>'s global margin-bottom:16px — unlike
+   .employee-actions, which .filter-grid-item .employee-actions already
+   zeroes out) — without this, that leftover margin would stack on top of
+   `gap` above and make the קבלן משנה field's item taller than the עובד
+   שלי toggle's item, breaking the otherwise-identical spacing this
+   uniform gap is meant to guarantee. */
+.employees-form-fields > div > *:last-child {
+    margin-bottom: 0;
+}
+
+/* Divider line + breathing room before the button itself — on top of the
+   container's own `gap`, so the total space above "הוסף עובד" stays the
+   same (~54px) in both states instead of stacking an extra fixed margin
+   on top of whatever gap already preceded it. */
 .employees-submit-row {
-    margin-top: 8px;
     padding-top: 14px;
 
     border-top: 1px solid var(--color-border);

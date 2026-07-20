@@ -336,59 +336,63 @@ export default function Employees() {
               onChange={(e) => setName(e.target.value)}
             />
 
-            <label>שיוך עובד</label>
-            <div className="employee-actions">
-              <button
-                type="button"
-                className={type === "internal" ? "primary-btn" : "secondary-btn"}
-                onClick={() => {
-                  setType("internal");
-                  setSubcontractorId("");
-                }}
-              >
-                עובד שלי
-              </button>
-              <button
-                type="button"
-                className={type === "subcontractor" ? "primary-btn" : "secondary-btn"}
-                onClick={() => setType("subcontractor")}
-              >
-                עובד קבלן
-              </button>
-            </div>
-
-            {type === "subcontractor" && (
+            <div className="employees-form-fields">
               <div>
-                <label>
-                  קבלן משנה
-                  <span className="required-mark"> *</span>
-                </label>
-                <select
-                  value={subcontractorId}
-                  onChange={(e) => setSubcontractorId(e.target.value)}
-                >
-                  <option value="">בחר קבלן משנה</option>
-                  {activeOnly(subcontractors).map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name}
-                    </option>
-                  ))}
-                </select>
-                {activeOnly(subcontractors).length === 0 && (
-                  <p className="field-error">עדיין אין קבלני משנה. הוסף קודם קבלן משנה בכרטיס הסמוך.</p>
-                )}
+                <label>שיוך עובד</label>
+                <div className="employee-actions">
+                  <button
+                    type="button"
+                    className={type === "internal" ? "primary-btn" : "secondary-btn"}
+                    onClick={() => {
+                      setType("internal");
+                      setSubcontractorId("");
+                    }}
+                  >
+                    עובד שלי
+                  </button>
+                  <button
+                    type="button"
+                    className={type === "subcontractor" ? "primary-btn" : "secondary-btn"}
+                    onClick={() => setType("subcontractor")}
+                  >
+                    עובד קבלן
+                  </button>
+                </div>
               </div>
-            )}
 
-            <div className="employees-submit-row">
-              <button
-                className="primary-btn employees-submit-btn"
-                type="button"
-                onClick={addEmployee}
-                disabled={!canAddEmployee}
-              >
-                {isAddingEmployee ? "מוסיף..." : "הוסף עובד"}
-              </button>
+              {type === "subcontractor" && (
+                <div>
+                  <label>
+                    קבלן משנה
+                    <span className="required-mark"> *</span>
+                  </label>
+                  <select
+                    value={subcontractorId}
+                    onChange={(e) => setSubcontractorId(e.target.value)}
+                  >
+                    <option value="">בחר קבלן משנה</option>
+                    {activeOnly(subcontractors).map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name}
+                      </option>
+                    ))}
+                  </select>
+                  {activeOnly(subcontractors).length === 0 && (
+                    <p className="field-error">עדיין אין קבלני משנה. הוסף קודם קבלן משנה בכרטיס הסמוך.</p>
+                  )}
+                </div>
+              )}
+
+              <div className="employees-submit-row">
+                <button
+                  className="primary-btn employees-submit-btn"
+                  type="button"
+                  onClick={addEmployee}
+                  disabled={!canAddEmployee}
+                >
+                  {isAddingEmployee ? "מוסיף..." : "הוסף עובד"}
+                </button>
+              </div>
             </div>
           </div>
         </div>
