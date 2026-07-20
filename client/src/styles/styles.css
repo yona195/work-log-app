@@ -2522,3 +2522,152 @@ body.loading .menu-overlay {
         justify-content: space-between;
     }
 }
+
+
+/* =========================================
+   עובדים וקבלנים - עיצוב קומפקטי
+========================================= */
+
+.employees-summary-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+
+    padding: 16px;
+
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-medium);
+
+    text-align: center;
+}
+
+.employees-summary-value {
+    color: var(--color-primary-hover);
+    font-size: 26px;
+    font-weight: 800;
+}
+
+.employees-summary-label {
+    color: var(--color-muted);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.employees-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.employees-search-input {
+    flex: 1 1 240px;
+    min-width: 200px;
+    margin: 0;
+}
+
+.employees-toolbar .checkbox-item {
+    flex-shrink: 0;
+    margin: 0;
+}
+
+.employees-contractor-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.employees-contractor-card {
+    padding: 12px 14px;
+
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-medium);
+}
+
+.employees-contractor-card .section-title-row {
+    margin-bottom: 0;
+}
+
+.employees-contractor-title {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px 10px;
+
+    font-size: 15px;
+}
+
+.employees-contractor-title strong {
+    color: var(--color-text);
+    font-weight: 700;
+}
+
+.employees-contractor-count {
+    color: var(--color-muted);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.employees-status-archived {
+    color: var(--color-warning);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.employees-compact-list {
+    margin-top: 8px;
+}
+
+.employees-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px 12px;
+
+    padding: 8px 4px;
+
+    border-top: 1px solid var(--color-border);
+
+    font-size: 14px;
+}
+
+.employees-row:first-child {
+    border-top: none;
+}
+
+.employees-row-name {
+    flex: 1 1 140px;
+    min-width: 0;
+
+    color: var(--color-text);
+    font-weight: 600;
+    overflow-wrap: break-word;
+}
+
+.employees-row-status {
+    flex-shrink: 0;
+
+    color: var(--color-muted);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.employees-row-status.is-archived {
+    color: var(--color-warning);
+}
+
+@media (max-width: 640px) {
+    .employees-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .employees-search-input {
+        min-width: 0;
+    }
+}

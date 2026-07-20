@@ -1,14 +1,18 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useData } from "../state/DataProvider.jsx";
 import { activeOnly } from "../lib/entities.js";
 import EditEmployeeModal from "../components/EditEmployeeModal.jsx";
 import EditSimpleItemModal from "../components/EditSimpleItemModal.jsx";
-import ActionsLegend from "../components/ActionsLegend.jsx";
 import Pagination, { usePagedList } from "../components/Pagination.jsx";
 
-// Paginates itself — this renders once per list (internal employees, each
-// subcontractor's employees, unassigned), so each gets its own independent
-// page state for free with no extra wiring in the parent.
+const matchesSearch = (text, value) => {
+  if (!text) return true;
+  return String(value || "").toLowerCase().includes(text);
+};
+
+// Paginates itself — this renders once per list (internal employees, plus
+// the legacy "unassigned" bucket), so each gets its own independent page
+// state for free with no extra wiring in the parent.
 function EmployeeTable({ employees, onEdit, onDelete, onToggleArchive }) {
   const { pageItems, page, setPage, totalPages, startIndex } = usePagedList(employees);
   return (
@@ -27,7 +31,9 @@ function EmployeeTable({ employees, onEdit, onDelete, onToggleArchive }) {
             <tr key={employee.id}>
               <td>{startIndex + index + 1}</td>
               <td>{employee.name}</td>
-              <td>{employee.archived ? "בארכיון" : "פעיל"}</td>
+              <td className={employee.archived ? "employees-row-status is-archived" : "employees-row-status"}>
+                {employee.archived ? "בארכיון" : "פעיל"}
+              </td>
               <td>
                 <div className="report-row-actions">
                   <button className="edit-btn" type="button" onClick={() => onEdit(employee)}>
@@ -54,6 +60,32 @@ function EmployeeTable({ employees, onEdit, onDelete, onToggleArchive }) {
   );
 }
 
+// Compact row (name / status / actions) used for a contractor's own
+// employees — deliberately not a <table>, so a contractor card with a
+// handful of employees doesn't need a header row and column widths of its
+// own; it just reads as a short list inside the card.
+function EmployeeRow({ employee, onEdit, onDelete, onToggleArchive }) {
+  return (
+    <div className="employees-row">
+      <span className="employees-row-name">{employee.name}</span>
+      <span className={employee.archived ? "employees-row-status is-archived" : "employees-row-status"}>
+        {employee.archived ? "בארכיון" : "פעיל"}
+      </span>
+      <div className="report-row-actions">
+        <button className="edit-btn" type="button" onClick={() => onEdit(employee)}>
+          ערוך
+        </button>
+        <button className="delete-btn" type="button" onClick={() => onDelete(employee)}>
+          מחק
+        </button>
+        <button className="archive-btn" type="button" onClick={() => onToggleArchive(employee)}>
+          {employee.archived ? "שחזר" : "ארכיון"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function Employees() {
   const { data, addItem, updateItem, deleteItem } = useData();
   const { employees, subcontractors } = data;
@@ -63,6 +95,7 @@ export default function Employees() {
   const [subcontractorId, setSubcontractorId] = useState("");
   const [subName, setSubName] = useState("");
   const [showArchived, setShowArchived] = useState(false);
+  const [searchText, setSearchText] = useState("");
   const [isAddingEmployee, setIsAddingEmployee] = useState(false);
   const [isAddingSubcontractor, setIsAddingSubcontractor] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState(null);
@@ -77,6 +110,48 @@ export default function Employees() {
   const subcontractorEmployees = visibleEmployees.filter(
     (e) => e.type === "subcontractor" || e.type === "external"
   );
+
+  const search = searchText.trim().toLowerCase();
+
+  const filteredInternalEmployees = useMemo(
+    () => internalEmployees.filter((e) => matchesSearch(search, e.name)),
+    [internalEmployees, search]
+  );
+
+  // Includes both truly-unassigned employees (no subcontractorId) and
+  // orphaned ones (subcontractorId points at a subcontractor that no longer
+  // exists, e.g. from before cascading delete was added) — either way,
+  // there's no subcontractor card left to render them under otherwise,
+  // which made them invisible on this page.
+  const existingSubcontractorIds = new Set(subcontractors.map((s) => String(s.id)));
+  const unassignedSubEmployees = subcontractorEmployees
+    .filter((e) => !e.subcontractorId || !existingSubcontractorIds.has(String(e.subcontractorId)))
+    .filter((e) => matchesSearch(search, e.name));
+
+  // A contractor stays visible while searching if its own name matches, or
+  // any of its employees' names do; if it's the contractor's own name that
+  // matched, its full roster is shown (the user searched for the
+  // contractor itself), otherwise only the matching employees are shown.
+  const contractorCards = useMemo(() => {
+    return visibleSubcontractors
+      .map((subcontractor) => {
+        const list = subcontractorEmployees.filter(
+          (e) => String(e.subcontractorId || "") === String(subcontractor.id)
+        );
+        const nameMatches = matchesSearch(search, subcontractor.name);
+        const filteredList = !search || nameMatches
+          ? list
+          : list.filter((e) => matchesSearch(search, e.name));
+        return { subcontractor, list, filteredList, nameMatches };
+      })
+      .filter(({ list, nameMatches }) => !search || nameMatches || list.some((e) => matchesSearch(search, e.name)));
+  }, [visibleSubcontractors, subcontractorEmployees, search]);
+
+  const employeeNameValid = name.trim().length > 0;
+  const contractorSelectionRequired = type === "subcontractor";
+  const contractorSelectionValid = !contractorSelectionRequired || Boolean(subcontractorId);
+  const canAddEmployee = employeeNameValid && contractorSelectionValid && !isAddingEmployee;
+  const canAddSubcontractor = subName.trim().length > 0 && !isAddingSubcontractor;
 
   const addEmployee = async () => {
     if (isAddingEmployee) return;
@@ -199,100 +274,151 @@ export default function Employees() {
     await deleteItem("subcontractors", subcontractor.id);
   };
 
-  // Includes both truly-unassigned employees (no subcontractorId) and
-  // orphaned ones (subcontractorId points at a subcontractor that no longer
-  // exists, e.g. from before cascading delete was added) — either way,
-  // there's no subcontractor card left to render them under otherwise,
-  // which made them invisible on this page.
-  const existingSubcontractorIds = new Set(subcontractors.map((s) => String(s.id)));
-  const unassignedSubEmployees = subcontractorEmployees.filter(
-    (e) => !e.subcontractorId || !existingSubcontractorIds.has(String(e.subcontractorId))
-  );
-
   return (
     <>
-      <div className="card" style={{ marginTop: 20 }}>
-        <h3>הוספת עובד</h3>
-
-        <label>שם עובד</label>
-        <input
-          placeholder="שם עובד"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />
-
-        <label>שיוך עובד</label>
-        <select value={type} onChange={(e) => setType(e.target.value)}>
-          <option value="internal">עובד שלי</option>
-          <option value="subcontractor">עובד קבלן משנה</option>
-        </select>
-
-        {type === "subcontractor" && (
-          <div>
-            <label>קבלן משנה</label>
-            <select
-              value={subcontractorId}
-              onChange={(e) => setSubcontractorId(e.target.value)}
-            >
-              <option value="">בחר קבלן משנה</option>
-              {activeOnly(subcontractors).map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
-            {activeOnly(subcontractors).length === 0 && (
-              <p>עדיין אין קבלני משנה. הוסף קודם קבלן משנה באזור הבא.</p>
-            )}
+      <div className="card">
+        <div className="filter-grid filter-grid-3">
+          <div className="filter-grid-item">
+            <div className="employees-summary-card">
+              <span className="employees-summary-value">{internalEmployees.length}</span>
+              <span className="employees-summary-label">העובדים שלי</span>
+            </div>
           </div>
-        )}
+          <div className="filter-grid-item">
+            <div className="employees-summary-card">
+              <span className="employees-summary-value">{subcontractorEmployees.length}</span>
+              <span className="employees-summary-label">עובדי קבלני משנה</span>
+            </div>
+          </div>
+          <div className="filter-grid-item">
+            <div className="employees-summary-card">
+              <span className="employees-summary-value">
+                {internalEmployees.length + subcontractorEmployees.length}
+              </span>
+              <span className="employees-summary-label">סה״כ עובדים</span>
+            </div>
+          </div>
+        </div>
+      </div>
 
-        <button
-          className="primary-btn"
-          type="button"
-          onClick={addEmployee}
-          disabled={isAddingEmployee}
-        >
-          {isAddingEmployee ? "מוסיף..." : "הוסף עובד"}
-        </button>
+      <div className="filter-grid filter-grid-2" style={{ marginTop: 20 }}>
+        <div className="filter-grid-item">
+          <div className="card" style={{ height: "100%" }}>
+            <h3>הוספת עובד</h3>
+
+            <label>שם עובד</label>
+            <input
+              placeholder="שם עובד"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+
+            <label>שיוך עובד</label>
+            <div className="employee-actions">
+              <button
+                type="button"
+                className={type === "internal" ? "primary-btn" : "secondary-btn"}
+                onClick={() => {
+                  setType("internal");
+                  setSubcontractorId("");
+                }}
+              >
+                עובד שלי
+              </button>
+              <button
+                type="button"
+                className={type === "subcontractor" ? "primary-btn" : "secondary-btn"}
+                onClick={() => setType("subcontractor")}
+              >
+                עובד קבלן
+              </button>
+            </div>
+
+            {type === "subcontractor" && (
+              <div>
+                <label>
+                  קבלן משנה
+                  <span className="required-mark"> *</span>
+                </label>
+                <select
+                  value={subcontractorId}
+                  onChange={(e) => setSubcontractorId(e.target.value)}
+                >
+                  <option value="">בחר קבלן משנה</option>
+                  {activeOnly(subcontractors).map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                    </option>
+                  ))}
+                </select>
+                {activeOnly(subcontractors).length === 0 && (
+                  <p className="field-error">עדיין אין קבלני משנה. הוסף קודם קבלן משנה בכרטיס הסמוך.</p>
+                )}
+              </div>
+            )}
+
+            <button
+              className="primary-btn"
+              type="button"
+              onClick={addEmployee}
+              disabled={!canAddEmployee}
+            >
+              {isAddingEmployee ? "מוסיף..." : "הוסף עובד"}
+            </button>
+          </div>
+        </div>
+
+        <div className="filter-grid-item">
+          <div className="card" style={{ height: "100%" }}>
+            <h3>הוספת קבלן משנה</h3>
+            <label>שם קבלן משנה</label>
+            <input
+              placeholder="שם קבלן המשנה"
+              value={subName}
+              onChange={(e) => setSubName(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && addSubcontractor()}
+            />
+            <button
+              className="primary-btn"
+              type="button"
+              onClick={addSubcontractor}
+              disabled={!canAddSubcontractor}
+            >
+              {isAddingSubcontractor ? "מוסיף..." : "הוסף קבלן משנה"}
+            </button>
+          </div>
+        </div>
       </div>
 
       <div className="card" style={{ marginTop: 20 }}>
-        <h3>הוספת קבלן משנה</h3>
-        <label>שם קבלן משנה</label>
-        <input
-          placeholder="שם קבלן המשנה"
-          value={subName}
-          onChange={(e) => setSubName(e.target.value)}
-        />
-        <button
-          className="primary-btn"
-          type="button"
-          onClick={addSubcontractor}
-          disabled={isAddingSubcontractor}
-        >
-          {isAddingSubcontractor ? "מוסיף..." : "הוסף קבלן משנה"}
-        </button>
-      </div>
-
-      <div className="card" style={{ marginTop: 20 }}>
-        <label className="checkbox-item" style={{ display: "inline-flex" }}>
+        <div className="employees-toolbar">
           <input
-            type="checkbox"
-            checked={showArchived}
-            onChange={(e) => setShowArchived(e.target.checked)}
+            type="text"
+            className="employees-search-input"
+            placeholder="חפש עובד או קבלן..."
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
           />
-          <span>הצג פריטים בארכיון</span>
-        </label>
+          <label className="checkbox-item" style={{ display: "inline-flex" }}>
+            <input
+              type="checkbox"
+              checked={showArchived}
+              onChange={(e) => setShowArchived(e.target.checked)}
+            />
+            <span>הצג פריטים בארכיון</span>
+          </label>
+        </div>
       </div>
 
       <div className="card" style={{ marginTop: 20 }}>
-        <h3>העובדים שלי - סה״כ {internalEmployees.length}</h3>
-        {internalEmployees.length === 0 ? (
-          <p>אין עדיין עובדים שלי.</p>
+        <h3>העובדים שלי</h3>
+        {filteredInternalEmployees.length === 0 ? (
+          <p className="empty-message">
+            {search ? "לא נמצאו עובדים שלי התואמים לחיפוש." : "אין עדיין עובדים שלי."}
+          </p>
         ) : (
           <EmployeeTable
-            employees={internalEmployees}
+            employees={filteredInternalEmployees}
             onEdit={setEditingEmployee}
             onDelete={deleteEmployee}
             onToggleArchive={toggleEmployeeArchive}
@@ -300,62 +426,73 @@ export default function Employees() {
         )}
       </div>
 
-      {visibleSubcontractors.map((subcontractor) => {
-        const list = subcontractorEmployees.filter(
-          (e) => String(e.subcontractorId || "") === String(subcontractor.id)
-        );
-        return (
-          <div className="card" style={{ marginTop: 20 }} key={subcontractor.id}>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                gap: 10,
-                flexWrap: "wrap",
-              }}
-            >
-              <h3>
-                {subcontractor.name}
-                {subcontractor.archived ? " (בארכיון)" : ""} - סה״כ {list.length}
-              </h3>
-              <div className="report-row-actions">
-                <button
-                  className="edit-btn"
-                  type="button"
-                  onClick={() => setEditingSubcontractor(subcontractor)}
-                >
-                  ערוך קבלן
-                </button>
-                <button
-                  className="delete-btn"
-                  type="button"
-                  onClick={() => deleteSubcontractor(subcontractor)}
-                >
-                  מחק קבלן
-                </button>
-                <button
-                  className="archive-btn"
-                  type="button"
-                  onClick={() => toggleSubcontractorArchive(subcontractor)}
-                >
-                  {subcontractor.archived ? "שחזר קבלן" : "ארכיון"}
-                </button>
+      <div className="card" style={{ marginTop: 20 }}>
+        <h3>קבלני משנה</h3>
+        {contractorCards.length === 0 ? (
+          <p className="empty-message">
+            {search ? "לא נמצאו קבלני משנה התואמים לחיפוש." : "אין עדיין קבלני משנה."}
+          </p>
+        ) : (
+          <div className="employees-contractor-list">
+            {contractorCards.map(({ subcontractor, list, filteredList }) => (
+              <div className="employees-contractor-card" key={subcontractor.id}>
+                <div className="section-title-row">
+                  <div className="employees-contractor-title">
+                    <strong>{subcontractor.name}</strong>
+                    <span className="employees-contractor-count">{list.length} עובדים</span>
+                    {subcontractor.archived && (
+                      <span className="employees-status-archived">בארכיון</span>
+                    )}
+                  </div>
+                  <div className="report-row-actions">
+                    <button
+                      className="edit-btn"
+                      type="button"
+                      onClick={() => setEditingSubcontractor(subcontractor)}
+                    >
+                      ערוך קבלן
+                    </button>
+                    <button
+                      className="delete-btn"
+                      type="button"
+                      onClick={() => deleteSubcontractor(subcontractor)}
+                    >
+                      מחק קבלן
+                    </button>
+                    <button
+                      className="archive-btn"
+                      type="button"
+                      onClick={() => toggleSubcontractorArchive(subcontractor)}
+                    >
+                      {subcontractor.archived ? "שחזר" : "ארכיון"}
+                    </button>
+                  </div>
+                </div>
+
+                {filteredList.length === 0 ? (
+                  <p className="empty-message">
+                    {list.length === 0
+                      ? "אין עובדים המשויכים לקבלן הזה."
+                      : "לא נמצאו עובדים התואמים לחיפוש."}
+                  </p>
+                ) : (
+                  <div className="employees-compact-list">
+                    {filteredList.map((employee) => (
+                      <EmployeeRow
+                        key={employee.id}
+                        employee={employee}
+                        onEdit={setEditingEmployee}
+                        onDelete={deleteEmployee}
+                        onToggleArchive={toggleEmployeeArchive}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
-            </div>
-            {list.length === 0 ? (
-              <p>אין עובדים המשויכים לקבלן הזה.</p>
-            ) : (
-              <EmployeeTable
-                employees={list}
-                onEdit={setEditingEmployee}
-                onDelete={deleteEmployee}
-                onToggleArchive={toggleEmployeeArchive}
-              />
-            )}
+            ))}
           </div>
-        );
-      })}
+        )}
+      </div>
 
       {unassignedSubEmployees.length > 0 && (
         <div className="card" style={{ marginTop: 20 }}>
@@ -368,21 +505,6 @@ export default function Employees() {
           />
         </div>
       )}
-
-      <div className="card" style={{ marginTop: 20 }}>
-        <h3>סיכום עובדים</h3>
-        <p>
-          עובדים שלי: <strong>{internalEmployees.length}</strong>
-        </p>
-        <p>
-          עובדי קבלני משנה: <strong>{subcontractorEmployees.length}</strong>
-        </p>
-        <p>
-          סה״כ עובדים כללי: <strong>{internalEmployees.length + subcontractorEmployees.length}</strong>
-        </p>
-      </div>
-
-      <ActionsLegend />
 
       {editingEmployee && (
         <EditEmployeeModal
