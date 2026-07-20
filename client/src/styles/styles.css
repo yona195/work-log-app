@@ -2366,17 +2366,25 @@ body.loading .menu-overlay {
     grid-area: summary;
     display: flex;
     flex-wrap: wrap;
-    align-items: center;
+    align-items: baseline;
     justify-content: flex-start;
-    gap: 6px 10px;
+    gap: 4px 10px;
 
     min-width: 0;
 }
 
+.workhistory-card-header-summary span:not(:last-child)::after {
+    content: "|";
+    margin-inline-start: 10px;
+    color: var(--color-border);
+    font-weight: 400;
+}
+
 /* No flex-grow: without it, the customer text would stretch across the
-   whole (often much wider) summary track, shoving the count badge away
-   from it — visually landing right next to the actions column instead of
-   staying grouped with the customer name. */
+   whole (often much wider) summary track, shoving the count away from it
+   — visually landing right next to the actions column instead of staying
+   grouped with the customer name. Same inline metadata style as the site
+   and building details (no badge/background) for a consistent look. */
 .workhistory-card-customer {
     flex: 0 1 auto;
     max-width: 100%;
@@ -2390,17 +2398,10 @@ body.loading .menu-overlay {
 
 .workhistory-card-count {
     flex: 0 0 auto;
-    display: inline-flex;
-    align-items: center;
 
-    padding: 3px 10px;
-
-    background: var(--color-background);
-    border-radius: 999px;
-
-    color: var(--color-muted);
-    font-size: 12px;
-    font-weight: 700;
+    color: var(--color-text);
+    font-size: 14px;
+    font-weight: 600;
     white-space: nowrap;
 }
 
