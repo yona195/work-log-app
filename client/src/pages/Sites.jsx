@@ -214,18 +214,17 @@ export default function Sites() {
       </div>
 
       <div className="card" style={{ marginTop: 20 }}>
-        <label className="checkbox-item" style={{ display: "inline-flex" }}>
-          <input
-            type="checkbox"
-            checked={showArchived}
-            onChange={(e) => setShowArchived(e.target.checked)}
-          />
-          <span>הצג פריטים בארכיון</span>
-        </label>
-      </div>
-
-      <div className="card" style={{ marginTop: 20 }}>
-        <h3>אתרי עבודה</h3>
+        <div className="section-title-row">
+          <h3>אתרי עבודה</h3>
+          <label className="checkbox-item" style={{ display: "inline-flex" }}>
+            <input
+              type="checkbox"
+              checked={showArchived}
+              onChange={(e) => setShowArchived(e.target.checked)}
+            />
+            <span>הצג פריטים בארכיון</span>
+          </label>
+        </div>
         {visibleSites.length === 0 ? (
           <p className="empty-message">אין עדיין אתרי עבודה.</p>
         ) : (
