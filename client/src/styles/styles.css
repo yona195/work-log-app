@@ -2779,18 +2779,8 @@ body.loading .menu-overlay {
 
 
 /* =========================================
-   תעריפים - קבוצות טופס, צביעת רווח, גלילת טבלה
+   תעריפים - צביעת רווח, גלילת טבלה
 ========================================= */
-
-.rates-group-title {
-    margin-bottom: 12px;
-
-    color: var(--color-primary);
-    font-size: 12px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.4px;
-}
 
 .rates-profit-positive {
     color: var(--color-success);

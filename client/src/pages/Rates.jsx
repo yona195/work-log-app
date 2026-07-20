@@ -9,7 +9,6 @@ import {
   activeEmployees,
 } from "../lib/entities.js";
 import EditRateModal from "../components/EditRateModal.jsx";
-import ActionsLegend from "../components/ActionsLegend.jsx";
 import DatePicker from "../components/DatePicker.jsx";
 import StatusBadge from "../components/StatusBadge.jsx";
 import Pagination, { usePagedList } from "../components/Pagination.jsx";
@@ -231,7 +230,6 @@ export default function Rates() {
       <div className="card">
         <h3>הוספת תעריף</h3>
 
-        <div className="rates-group-title">היקף התעריף</div>
         <div className="filter-grid filter-grid-2">
           <div className="filter-grid-item">
             <label>בחר מזמיני עבודה</label>
@@ -312,23 +310,31 @@ export default function Rates() {
 
         <hr className="form-divider" />
 
-        <div className="rates-group-title">עבור אילו עובדים</div>
-        <label>מקור עובדים</label>
-        <div className="employee-actions">
-          <button
-            type="button"
-            className={employeeSource === "internal" ? "primary-btn" : "secondary-btn"}
-            onClick={() => changeEmployeeSource("internal")}
-          >
-            העובדים שלי
-          </button>
-          <button
-            type="button"
-            className={employeeSource === "subcontractor" ? "primary-btn" : "secondary-btn"}
-            onClick={() => changeEmployeeSource("subcontractor")}
-          >
-            עובדי קבלן
-          </button>
+        <div className="filter-grid filter-grid-2">
+          <div className="filter-grid-item">
+            <label>שיוך עובד</label>
+            <div className="employee-actions">
+              <button
+                type="button"
+                className={employeeSource === "internal" ? "primary-btn" : "secondary-btn"}
+                onClick={() => changeEmployeeSource("internal")}
+              >
+                העובדים שלי
+              </button>
+              <button
+                type="button"
+                className={employeeSource === "subcontractor" ? "primary-btn" : "secondary-btn"}
+                onClick={() => changeEmployeeSource("subcontractor")}
+              >
+                עובדי קבלן
+              </button>
+            </div>
+          </div>
+
+          <div className="filter-grid-item">
+            <label>תאריך תחילה</label>
+            <DatePicker mode="single" value={effectiveFrom} onChange={setEffectiveFrom} />
+          </div>
         </div>
 
         {employeeSource === "subcontractor" && (
@@ -348,61 +354,56 @@ export default function Rates() {
           </>
         )}
 
-        {(employeeSource === "internal" || employeeSubcontractorId) && (
-          <>
-            <label>בחר עובדים</label>
-            <input
-              type="text"
-              placeholder="🔍 חפש עובד..."
-              value={employeeSearch}
-              onChange={(e) => setEmployeeSearch(e.target.value)}
-            />
-            <div className="checkbox-list">
-              {employeeTargets.length === 0 ? (
-                <p className="empty-message">אין עובדים תואמים</p>
-              ) : (
-                employeeTargets.map((target) => (
-                  <label className="checkbox-item" key={target.id}>
-                    <input
-                      type="checkbox"
-                      checked={selectedTargetIds.includes(target.id)}
-                      onChange={() =>
-                        toggle(selectedTargetIds, setSelectedTargetIds, target.id)
-                      }
-                    />
-                    <span>{target.label}</span>
-                  </label>
-                ))
-              )}
-            </div>
-            <div className="employee-actions">
-              <button
-                type="button"
-                className="secondary-btn"
-                onClick={() =>
-                  setSelectedTargetIds(employeeTargets.map((t) => t.id))
-                }
-              >
-                {employeeSource === "subcontractor" ? "בחר את כל עובדי הקבלן" : "בחר הכל"}
-              </button>
-              <button
-                type="button"
-                className="secondary-btn"
-                onClick={() => setSelectedTargetIds([])}
-              >
-                נקה הכל
-              </button>
-            </div>
-            <p>סה״כ עובדים שנבחרו: {selectedTargetIds.length}</p>
-          </>
-        )}
+        <label>בחר עובדים</label>
+        <input
+          type="text"
+          placeholder="🔍 חפש עובד..."
+          value={employeeSearch}
+          onChange={(e) => setEmployeeSearch(e.target.value)}
+        />
+        <div className="checkbox-list">
+          {employeeTargets.length === 0 ? (
+            <p className="empty-message">אין עובדים תואמים</p>
+          ) : (
+            employeeTargets.map((target) => (
+              <label className="checkbox-item" key={target.id}>
+                <input
+                  type="checkbox"
+                  checked={selectedTargetIds.includes(target.id)}
+                  onChange={() =>
+                    toggle(selectedTargetIds, setSelectedTargetIds, target.id)
+                  }
+                />
+                <span>{target.label}</span>
+              </label>
+            ))
+          )}
+        </div>
+        <div className="employee-actions">
+          <button
+            type="button"
+            className="secondary-btn"
+            onClick={() =>
+              setSelectedTargetIds(employeeTargets.map((t) => t.id))
+            }
+          >
+            {employeeSource === "subcontractor" ? "בחר את כל עובדי הקבלן" : "בחר הכל"}
+          </button>
+          <button
+            type="button"
+            className="secondary-btn"
+            onClick={() => setSelectedTargetIds([])}
+          >
+            נקה הכל
+          </button>
+        </div>
+        <p>סה״כ עובדים שנבחרו: {selectedTargetIds.length}</p>
 
         <hr className="form-divider" />
 
-        <div className="rates-group-title">פרטי התעריף</div>
-        <div className="filter-grid filter-grid-3">
+        <div className="filter-grid filter-grid-2">
           <div className="filter-grid-item">
-            <label>הכנסה לעובד ליום</label>
+            <label>הכנסה ליום</label>
             <input
               type="number"
               min="0"
@@ -415,7 +416,7 @@ export default function Rates() {
           </div>
 
           <div className="filter-grid-item">
-            <label>עלות לעובד ליום</label>
+            <label>עלות ליום</label>
             <input
               type="number"
               min="0"
@@ -425,11 +426,6 @@ export default function Rates() {
               value={cost}
               onChange={(e) => setCost(e.target.value)}
             />
-          </div>
-
-          <div className="filter-grid-item">
-            <label>תאריך תחילת התעריף</label>
-            <DatePicker mode="single" value={effectiveFrom} onChange={setEffectiveFrom} />
           </div>
         </div>
 
@@ -542,8 +538,6 @@ export default function Rates() {
         )}
         <Pagination page={ratesPage} totalPages={ratesTotalPages} onChange={setRatesPage} />
       </div>
-
-      <ActionsLegend />
 
       {editingRate && (
         <EditRateModal rate={editingRate} onClose={() => setEditingRate(null)} />
