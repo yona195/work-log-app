@@ -91,6 +91,12 @@ export const COLLECTIONS = {
 
 export const COLLECTION_NAMES = Object.keys(COLLECTIONS);
 
+// Name of the always-present, protected default building auto-created for
+// every site (see createItem/initDb below) — a site is the billing unit,
+// "building" is just a location tag with zero financial meaning, and every
+// site must always have at least one selectable building.
+const GENERAL_BUILDING_NAME = "כללי";
+
 /* =========================================
    Schema — created once on startup.
 ========================================= */
@@ -174,6 +180,23 @@ export async function initDb() {
     } catch (err) {
       if (!/duplicate column/i.test(err.message)) throw err;
     }
+  }
+
+  // Sites created before the auto-"כללי" behavior existed (createItem
+  // above) don't have one yet — back-fill so every site always has a
+  // default building to fall back to when another building is deleted.
+  const { rows: sitesWithoutGeneral } = await client.execute(`
+    SELECT sites.id FROM sites
+    LEFT JOIN buildings
+      ON buildings.siteId = sites.id AND buildings.name = '${GENERAL_BUILDING_NAME}'
+    WHERE buildings.id IS NULL
+  `);
+  for (const row of sitesWithoutGeneral) {
+    // eslint-disable-next-line no-await-in-loop
+    await client.execute({
+      sql: `INSERT INTO buildings (id, siteId, name) VALUES (?, ?, ?)`,
+      args: [generateId(), row.id, GENERAL_BUILDING_NAME],
+    });
   }
 }
 
@@ -295,6 +318,19 @@ export async function createItem(collection, body = {}) {
     sql: `INSERT INTO ${def.table} (${columns.join(", ")}) VALUES (${placeholders})`,
     args,
   });
+
+  // A site is purely a billing unit; "building" is just an internal
+  // location tag with zero financial meaning, and every site must always
+  // have at least one selectable building. This lives here (the generic
+  // create path used by every caller of POST /:collection, not just the
+  // Sites page's own form) so the invariant holds no matter how a site
+  // gets created.
+  if (collection === "sites") {
+    await client.execute({
+      sql: `INSERT INTO buildings (id, siteId, name) VALUES (?, ?, ?)`,
+      args: [generateId(), id, GENERAL_BUILDING_NAME],
+    });
+  }
 
   return getById(def, id);
 }

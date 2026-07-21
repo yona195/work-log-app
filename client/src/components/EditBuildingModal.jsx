@@ -2,6 +2,12 @@ import { useMemo, useState } from "react";
 import { useData } from "../state/DataProvider.jsx";
 import { activeOnly } from "../lib/entities.js";
 
+// Reserved for the auto-created default building (see Sites.jsx) — this
+// modal never opens for that building itself (no edit button reaches it),
+// but a *different* building must not be renamed into it either, since that
+// would make it ambiguous which one is the real fallback target.
+const GENERAL_BUILDING_NAME = "כללי";
+
 export default function EditBuildingModal({ building, onClose }) {
   const { data, updateItem } = useData();
   const sites = activeOnly(data.sites);
@@ -29,6 +35,10 @@ export default function EditBuildingModal({ building, onClose }) {
     }
     if (!siteId) {
       alert("נא לבחור אתר עבודה");
+      return;
+    }
+    if (trimmed === GENERAL_BUILDING_NAME) {
+      alert(`השם "${GENERAL_BUILDING_NAME}" שמור למבנה ברירת המחדל של האתר.`);
       return;
     }
     if (!confirm("לשמור את השינויים?")) return;

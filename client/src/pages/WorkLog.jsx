@@ -329,11 +329,6 @@ export default function WorkLog() {
         alert(VALIDATION_MESSAGE);
         return;
       }
-      if (selectedBuildings.length > 1) {
-        alert("בעריכת רשומה ניתן לבחור מבנה אחד בלבד.");
-        return;
-      }
-
       const editingLogs = editingLogIds
         .map((id) => workLogs.find((log) => String(log.id) === String(id)))
         .filter(Boolean);
@@ -360,9 +355,12 @@ export default function WorkLog() {
 
       setIsSubmitting(true);
       try {
+        // Buildings are just a location tag on the record, never a billing
+        // unit — the whole selected set is stored on each record as-is, not
+        // split into one record per building.
         const patch = {
           employeeIds: selectedEmployees,
-          buildingIds: [selectedBuildings[0]],
+          buildingIds: selectedBuildings,
           siteId,
           customerId,
         };
@@ -393,16 +391,12 @@ export default function WorkLog() {
       return;
     }
 
-    // Editing represents exactly one existing daily/single-building record —
-    // restricting both to exactly one keeps "שמור שינויים" from silently
-    // turning into a multi-record creation.
+    // Editing represents exactly one existing daily record — restricting to
+    // exactly one date keeps "שמור שינויים" from silently turning into a
+    // multi-record creation. Multiple buildings are fine (just a tag set).
     if (editingLogIds.length === 1) {
       if (uniqueDates.length > 1) {
         alert("בעריכת רשומה ניתן לבחור תאריך אחד בלבד.");
-        return;
-      }
-      if (selectedBuildings.length > 1) {
-        alert("בעריכת רשומה ניתן לבחור מבנה אחד בלבד.");
         return;
       }
     }
@@ -434,7 +428,7 @@ export default function WorkLog() {
         await updateItem("workLogs", editingLogIds[0], {
           date: datesToUse[0],
           employeeIds: selectedEmployees,
-          buildingIds: [selectedBuildings[0]],
+          buildingIds: selectedBuildings,
           siteId,
           customerId,
           notes: notes.trim(),
@@ -443,25 +437,24 @@ export default function WorkLog() {
         return;
       }
 
-      // One record per unique day × selected building — each work record is
-      // expected (by the data model and every report) to carry exactly one
-      // building, so multiple buildings for the same days become separate
-      // records instead of one record with several buildings.
+      // One record per unique day — a building is just a location tag on
+      // the record (the site is the billing unit), so selecting several
+      // buildings for the same day stores them all on that single record
+      // instead of multiplying it into one record per building (which used
+      // to double-count revenue/cost for that day).
       const createdIds = [];
       try {
         for (const logDate of datesToUse) {
-          for (const buildingId of selectedBuildings) {
-            // eslint-disable-next-line no-await-in-loop
-            const created = await addItem("workLogs", {
-              date: logDate,
-              employeeIds: selectedEmployees,
-              buildingIds: [buildingId],
-              siteId,
-              customerId,
-              notes: notes.trim(),
-            });
-            createdIds.push(created.id);
-          }
+          // eslint-disable-next-line no-await-in-loop
+          const created = await addItem("workLogs", {
+            date: logDate,
+            employeeIds: selectedEmployees,
+            buildingIds: selectedBuildings,
+            siteId,
+            customerId,
+            notes: notes.trim(),
+          });
+          createdIds.push(created.id);
         }
       } catch (err) {
         // A failure partway through must not leave a partial batch behind —
@@ -481,9 +474,7 @@ export default function WorkLog() {
       setNotes("");
 
       if (createdIds.length > 1) {
-        alert(
-          `נוצרו ${createdIds.length} רשומות עבודה (${datesToUse.length} ימים × ${selectedBuildings.length} מבנים).`
-        );
+        alert(`נוצרו ${createdIds.length} רשומות עבודה (${datesToUse.length} ימי עבודה).`);
       }
     } finally {
       setIsSubmitting(false);
@@ -508,11 +499,13 @@ export default function WorkLog() {
     .filter((e) => selectedEmployees.includes(e.id))
     .map((e) => ({ id: e.id, label: `${e.name} - ${getEmployeeAffiliationName(data, e)}` }));
 
+  // One record per date, regardless of how many buildings are tagged —
+  // buildings never multiply the record (or financial) count.
   const recordsCount = editingLogIds.length === 1
-    ? Math.min(uniqueDates.length, 1) * Math.min(selectedBuildings.length, 1)
+    ? Math.min(uniqueDates.length, 1)
     : editingLogIds.length > 1
       ? editingLogIds.length
-      : uniqueDates.length * selectedBuildings.length;
+      : uniqueDates.length;
 
   const isMultiEdit = editingLogIds.length > 1;
 

@@ -1,14 +1,21 @@
 import { useState } from "react";
 import { useData } from "../state/DataProvider.jsx";
-import { activeOnly } from "../lib/entities.js";
+import { activeOnly, getBuildingIds } from "../lib/entities.js";
 import EditSimpleItemModal from "../components/EditSimpleItemModal.jsx";
 import EditBuildingModal from "../components/EditBuildingModal.jsx";
 import GroupCard from "../components/GroupCard.jsx";
 import CompactRow from "../components/CompactRow.jsx";
 
+// The default building auto-created for every site (see server/src/db.js) —
+// a fixed, protected name: no edit/delete/archive, and never assignable to
+// a second, manually-created building (that would make "which building is
+// actually the fallback?" ambiguous).
+const GENERAL_BUILDING_NAME = "כללי";
+const isGeneralBuilding = (building) => building.name === GENERAL_BUILDING_NAME;
+
 export default function Sites() {
   const { data, addItem, updateItem, deleteItem } = useData();
-  const { sites, buildings } = data;
+  const { sites, buildings, workLogs } = data;
 
   const [siteName, setSiteName] = useState("");
   const [isAddingSite, setIsAddingSite] = useState(false);
@@ -54,6 +61,10 @@ export default function Sites() {
       alert("נא להזין שם מבנה");
       return;
     }
+    if (trimmed === GENERAL_BUILDING_NAME) {
+      alert(`השם "${GENERAL_BUILDING_NAME}" שמור למבנה ברירת המחדל של האתר, שכבר קיים אוטומטית.`);
+      return;
+    }
     setIsAddingBuilding(true);
     try {
       await addItem("buildings", { siteId: buildingSiteId, name: trimmed });
@@ -78,14 +89,38 @@ export default function Sites() {
     await updateItem("buildings", building.id, { archived: true });
   };
 
+  // Deliberately the opposite of the site/customer/subcontractor → rates
+  // policy (cascade-delete there): a building is just an internal location
+  // tag, not a billing unit, so deleting one must never break or wipe out
+  // work-log records that already reference it. Every affected record gets
+  // repointed to the site's own "כללי" building instead — every other field
+  // (date, employees, site, customer) stays exactly as it was.
   const deleteBuilding = async (building) => {
-    if (
-      !confirm(
-        `למחוק את ${building.name} לצמיתות? בשונה מהעברה לארכיון, מחיקה תשפיע גם על דוחות והיסטוריה שכבר נרשמו עם המבנה הזה.`
-      )
-    ) {
-      return;
+    if (isGeneralBuilding(building)) return; // no delete button reaches here anyway
+    const generalBuilding = buildings.find(
+      (b) => String(b.siteId) === String(building.siteId) && isGeneralBuilding(b)
+    );
+    const affectedLogs = workLogs.filter((log) =>
+      getBuildingIds(log).map(String).includes(String(building.id))
+    );
+
+    const confirmMessage =
+      affectedLogs.length > 0
+        ? `למחוק את ${building.name} לצמיתות? ${affectedLogs.length} רשומות עבודה שמצביעות על המבנה הזה יעברו אוטומטית למבנה "${GENERAL_BUILDING_NAME}" של האתר - שאר נתוני הרשומות (תאריך, עובדים, אתר, מזמין) יישארו ללא שינוי.`
+        : `למחוק את ${building.name} לצמיתות?`;
+    if (!confirm(confirmMessage)) return;
+
+    for (const log of affectedLogs) {
+      const remainingIds = getBuildingIds(log)
+        .map(String)
+        .filter((id) => id !== String(building.id));
+      const nextIds = generalBuilding && !remainingIds.includes(String(generalBuilding.id))
+        ? [...remainingIds, generalBuilding.id]
+        : remainingIds;
+      // eslint-disable-next-line no-await-in-loop
+      await updateItem("workLogs", log.id, { buildingIds: nextIds });
     }
+
     await deleteItem("buildings", building.id);
   };
 
@@ -274,11 +309,17 @@ export default function Sites() {
                       {siteBuildings.map((building) => (
                         <CompactRow
                           key={building.id}
-                          name={building.name}
+                          name={
+                            isGeneralBuilding(building)
+                              ? `${building.name} (ברירת מחדל)`
+                              : building.name
+                          }
                           archived={building.archived}
-                          onEdit={() => setEditingBuilding(building)}
-                          onDelete={() => deleteBuilding(building)}
-                          onToggleArchive={() => toggleBuildingArchive(building)}
+                          onEdit={isGeneralBuilding(building) ? undefined : () => setEditingBuilding(building)}
+                          onDelete={isGeneralBuilding(building) ? undefined : () => deleteBuilding(building)}
+                          onToggleArchive={
+                            isGeneralBuilding(building) ? undefined : () => toggleBuildingArchive(building)
+                          }
                         />
                       ))}
                     </div>
@@ -297,11 +338,13 @@ export default function Sites() {
             {orphanedBuildings.map((building) => (
               <CompactRow
                 key={building.id}
-                name={building.name}
+                name={isGeneralBuilding(building) ? `${building.name} (ברירת מחדל)` : building.name}
                 archived={building.archived}
-                onEdit={() => setEditingBuilding(building)}
-                onDelete={() => deleteBuilding(building)}
-                onToggleArchive={() => toggleBuildingArchive(building)}
+                onEdit={isGeneralBuilding(building) ? undefined : () => setEditingBuilding(building)}
+                onDelete={isGeneralBuilding(building) ? undefined : () => deleteBuilding(building)}
+                onToggleArchive={
+                  isGeneralBuilding(building) ? undefined : () => toggleBuildingArchive(building)
+                }
               />
             ))}
           </div>
