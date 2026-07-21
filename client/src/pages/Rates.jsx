@@ -10,8 +10,9 @@ import {
 } from "../lib/entities.js";
 import EditRateModal from "../components/EditRateModal.jsx";
 import DatePicker from "../components/DatePicker.jsx";
-import StatusBadge from "../components/StatusBadge.jsx";
 import SelectionPanel from "../components/SelectionPanel.jsx";
+import GroupCard from "../components/GroupCard.jsx";
+import CompactRow from "../components/CompactRow.jsx";
 import { usePagedList, ListPagination } from "../components/Pagination.jsx";
 
 export default function Rates() {
@@ -23,7 +24,9 @@ export default function Rates() {
   const [selectedTargetIds, setSelectedTargetIds] = useState([]);
   const [revenue, setRevenue] = useState("");
   const [cost, setCost] = useState("");
-  const [editingRate, setEditingRate] = useState(null);
+  // Array of the rate(s) currently open in EditRateModal — a single-row
+  // edit passes one rate, a group edit passes every rate in that group.
+  const [editingRates, setEditingRates] = useState(null);
   const [effectiveFrom, setEffectiveFrom] = useState(todayISO());
   const [showArchived, setShowArchived] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -110,15 +113,52 @@ export default function Rates() {
     });
   }, [rates, sites, showArchived]);
 
+  // Rates that share customer + site + revenue + cost + effective date are
+  // presented as one card (same "group card with a compact child list"
+  // pattern as contractors/employees) — a unique rate is just a group of
+  // one, rendered with the exact same card, not a different style. Grouping
+  // is recomputed fresh from `rates` on every render, so editing a single
+  // rate's shared fields away from its group (or into another group)
+  // "moves" it automatically with no extra bookkeeping.
+  const groupedRates = useMemo(() => {
+    const groups = new Map();
+    sortedRates.forEach((rate) => {
+      const key = JSON.stringify({
+        customerId: String(rate.customerId || ""),
+        siteId: String(rate.siteId || ""),
+        revenue: Number(rate.revenuePerWorker) || 0,
+        cost: Number(rate.costPerWorker) || 0,
+        effectiveFrom: normalizeDate(rate.effectiveFrom),
+      });
+      if (!groups.has(key)) {
+        groups.set(key, {
+          key,
+          customerId: rate.customerId,
+          siteId: rate.siteId,
+          revenuePerWorker: Number(rate.revenuePerWorker) || 0,
+          costPerWorker: Number(rate.costPerWorker) || 0,
+          effectiveFrom: rate.effectiveFrom,
+          rates: [],
+        });
+      }
+      groups.get(key).rates.push(rate);
+    });
+    return Array.from(groups.values());
+  }, [sortedRates]);
+
   const [ratesPageSize, setRatesPageSize] = useState(5);
 
+  // Pages through GROUPS (cards), not individual rate rows — otherwise a
+  // group could be split across two pages.
   const {
-    pageItems: pagedRates,
+    pageItems: pagedGroups,
     page: ratesPage,
     setPage: setRatesPage,
     totalPages: ratesTotalPages,
     startIndex: ratesStartIndex,
-  } = usePagedList(sortedRates, ratesPageSize);
+  } = usePagedList(groupedRates, ratesPageSize);
+
+  const pagedRates = useMemo(() => pagedGroups.flatMap((g) => g.rates), [pagedGroups]);
 
   useEffect(() => {
     setRatesPage(1);
@@ -191,6 +231,47 @@ export default function Rates() {
       return;
     }
     await deleteItem("rates", rate.id);
+  };
+
+  // Group-level actions apply to every rate in the group together — the
+  // group only exists because they all share customer/site/revenue/cost/
+  // effective-date, so archiving/deleting "the group" means archiving/
+  // deleting all of them.
+  const isGroupArchived = (group) => group.rates.every((r) => r.archived);
+
+  const toggleRateGroupArchive = async (group) => {
+    if (isGroupArchived(group)) {
+      for (const rate of group.rates) {
+        // eslint-disable-next-line no-await-in-loop
+        await updateItem("rates", rate.id, { archived: false });
+      }
+      return;
+    }
+    if (
+      !confirm(
+        `להעביר את כל ${group.rates.length} התעריפים בקבוצה לארכיון? התעריפים לא יופיעו יותר לבחירה, אבל הדוחות הקיימים לא ישתנו.`
+      )
+    ) {
+      return;
+    }
+    for (const rate of group.rates) {
+      // eslint-disable-next-line no-await-in-loop
+      await updateItem("rates", rate.id, { archived: true });
+    }
+  };
+
+  const deleteRateGroup = async (group) => {
+    if (
+      !confirm(
+        `למחוק את כל ${group.rates.length} התעריפים בקבוצה לצמיתות? בשונה מהעברה לארכיון, מחיקה תשפיע גם על חישובים כספיים היסטוריים שכבר השתמשו בתעריפים האלה.`
+      )
+    ) {
+      return;
+    }
+    for (const rate of group.rates) {
+      // eslint-disable-next-line no-await-in-loop
+      await deleteItem("rates", rate.id);
+    }
   };
 
   const addRates = async () => {
@@ -534,6 +615,15 @@ export default function Rates() {
           <p>עדיין לא הוגדרו תעריפים.</p>
         ) : (
           <>
+          <label className="checkbox-item rates-select-all-row">
+            <input
+              type="checkbox"
+              checked={isAllCurrentPageSelected}
+              onChange={toggleSelectAllCurrentPage}
+            />
+            <span>בחר הכל בעמוד</span>
+          </label>
+
           {selectedRateIds.length > 0 && (
             <div className="worklog-bulk-actions">
               <span>{selectedRateIds.length} תעריפים נבחרו</span>
@@ -542,102 +632,87 @@ export default function Rates() {
               </button>
             </div>
           )}
-          <div className="rates-table-scroll">
-          <table>
-            <thead>
-              <tr>
-                <th>
-                  <input
-                    type="checkbox"
-                    checked={isAllCurrentPageSelected}
-                    onChange={toggleSelectAllCurrentPage}
-                    aria-label="בחר הכל / נקה הכל"
-                  />
-                </th>
-                <th>#</th>
-                <th>מזמין עבודה</th>
-                <th>אתר</th>
-                <th>עובד / קבלן</th>
-                <th>שיוך</th>
-                <th>הכנסה</th>
-                <th>עלות</th>
-                <th>רווח</th>
-                <th>בתוקף מתאריך</th>
-                <th>סטטוס</th>
-                <th className="actions-column">פעולות</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pagedRates.map((rate, index) => {
-                const revenueValue = Number(rate.revenuePerWorker) || 0;
-                const costValue = Number(rate.costPerWorker) || 0;
-                const isEmployeeRate = rate.rateType === "employee";
-                const employee = isEmployeeRate
-                  ? employees.find(
-                      (e) => String(e.id) === String(rate.employeeId)
-                    )
-                  : null;
-                const targetName = isEmployeeRate
-                  ? employee?.name || ""
-                  : getName(subcontractors, rate.subcontractorId);
-                const affiliationName =
-                  isEmployeeRate && employee
-                    ? getEmployeeAffiliationName(data, employee)
-                    : "קבלן משנה";
-                const profitValue = revenueValue - costValue;
 
-                return (
-                  <tr key={rate.id}>
-                    <td>
-                      <input
-                        type="checkbox"
-                        checked={selectedRateIds.includes(rate.id)}
-                        onChange={() => toggleRateSelection(rate.id)}
-                      />
-                    </td>
-                    <td>{ratesStartIndex + index + 1}</td>
-                    <td>{getName(customers, rate.customerId) || "מזמין לא נמצא"}</td>
-                    <td>{getName(sites, rate.siteId) || "אתר לא נמצא"}</td>
-                    <td>{targetName || "לא נמצא"}</td>
-                    <td>{affiliationName}</td>
-                    <td>{formatCurrency(revenueValue)}</td>
-                    <td>{formatCurrency(costValue)}</td>
-                    <td className={profitValue >= 0 ? "rates-profit-positive" : "rates-profit-negative"}>
-                      {formatCurrency(profitValue)}
-                    </td>
-                    <td dir="ltr">{formatExcelDate(rate.effectiveFrom)}</td>
-                    <td><StatusBadge archived={rate.archived} /></td>
-                    <td>
-                      <div className="report-row-actions">
-                        <button
-                          className="edit-btn"
-                          type="button"
-                          onClick={() => setEditingRate(rate)}
-                        >
-                          ערוך
-                        </button>
-                        <button
-                          className="delete-btn"
-                          type="button"
-                          onClick={() => deleteRate(rate)}
-                        >
-                          מחק
-                        </button>
-                        <button
-                          className="archive-btn"
-                          type="button"
-                          onClick={() => toggleRateArchive(rate)}
-                        >
-                          {rate.archived ? "שחזר" : "ארכיון"}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          <div className="employees-contractor-list">
+            {pagedGroups.map((group) => {
+              const groupArchived = isGroupArchived(group);
+              const groupProfit = group.revenuePerWorker - group.costPerWorker;
+              return (
+                <GroupCard
+                  key={group.key}
+                  icon="payments"
+                  title={`${getName(customers, group.customerId) || "מזמין לא נמצא"} · ${
+                    getName(sites, group.siteId) || "אתר לא נמצא"
+                  }`}
+                  count={group.rates.length}
+                  countLabel={group.rates.length === 1 ? "עובד" : "עובדים"}
+                  isArchived={groupArchived}
+                  groupActions={
+                    <div className="report-row-actions">
+                      <button
+                        className="edit-btn"
+                        type="button"
+                        onClick={() => setEditingRates(group.rates)}
+                      >
+                        ערוך קבוצה
+                      </button>
+                      <button
+                        className="delete-btn"
+                        type="button"
+                        onClick={() => deleteRateGroup(group)}
+                      >
+                        מחק קבוצה
+                      </button>
+                      <button
+                        className="archive-btn"
+                        type="button"
+                        onClick={() => toggleRateGroupArchive(group)}
+                      >
+                        {groupArchived ? "שחזר" : "ארכיון"}
+                      </button>
+                    </div>
+                  }
+                >
+                  <div className="rates-group-summary">
+                    <span>הכנסה: {formatCurrency(group.revenuePerWorker)}</span>
+                    <span>עלות: {formatCurrency(group.costPerWorker)}</span>
+                    <span className={groupProfit >= 0 ? "rates-profit-positive" : "rates-profit-negative"}>
+                      רווח: {formatCurrency(groupProfit)}
+                    </span>
+                    <span dir="ltr">בתוקף מ-{formatExcelDate(group.effectiveFrom)}</span>
+                  </div>
+                  <div className="employees-compact-list">
+                    {group.rates.map((rate) => {
+                      const isEmployeeRate = rate.rateType === "employee";
+                      const employee = isEmployeeRate
+                        ? employees.find((e) => String(e.id) === String(rate.employeeId))
+                        : null;
+                      const targetName = isEmployeeRate
+                        ? employee?.name || ""
+                        : getName(subcontractors, rate.subcontractorId);
+                      const affiliationName =
+                        isEmployeeRate && employee
+                          ? getEmployeeAffiliationName(data, employee)
+                          : "קבלן משנה";
+                      return (
+                        <CompactRow
+                          key={rate.id}
+                          name={`${targetName || "לא נמצא"} - ${affiliationName}`}
+                          archived={rate.archived}
+                          selected={selectedRateIds.includes(rate.id)}
+                          onToggleSelect={() => toggleRateSelection(rate.id)}
+                          onEdit={() => setEditingRates([rate])}
+                          onDelete={() => deleteRate(rate)}
+                          onToggleArchive={() => toggleRateArchive(rate)}
+                        />
+                      );
+                    })}
+                  </div>
+                </GroupCard>
+              );
+            })}
           </div>
+
           <ListPagination
             page={ratesPage}
             totalPages={ratesTotalPages}
@@ -645,14 +720,14 @@ export default function Rates() {
             pageSize={ratesPageSize}
             onPageSizeChange={setRatesPageSize}
             startIndex={ratesStartIndex}
-            totalItems={sortedRates.length}
+            totalItems={groupedRates.length}
           />
           </>
         )}
       </div>
 
-      {editingRate && (
-        <EditRateModal rate={editingRate} onClose={() => setEditingRate(null)} />
+      {editingRates && (
+        <EditRateModal rates={editingRates} onClose={() => setEditingRates(null)} />
       )}
     </>
   );

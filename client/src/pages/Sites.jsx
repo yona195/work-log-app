@@ -15,7 +15,7 @@ const isGeneralBuilding = (building) => building.name === GENERAL_BUILDING_NAME;
 
 export default function Sites() {
   const { data, addItem, updateItem, deleteItem } = useData();
-  const { sites, buildings, workLogs } = data;
+  const { sites, buildings, workLogs, rates } = data;
 
   const [siteName, setSiteName] = useState("");
   const [isAddingSite, setIsAddingSite] = useState(false);
@@ -157,16 +157,37 @@ export default function Sites() {
     }
   };
 
+  // Unlike deleteBuilding above, a site IS the billing unit — deleting one
+  // deletes everything that depends on it (rates and work-log/history
+  // records), it never falls back to something else. This only fires from
+  // the explicit delete action below; archiving a site (toggleSiteArchive)
+  // never touches rates or work logs, same as archiving anywhere else in
+  // the app.
   const deleteSite = async (site) => {
     const siteBuildings = buildingsOfSite(site);
-    const buildingNote =
-      siteBuildings.length > 0 ? ` וכל ${siteBuildings.length} המבנים שלו` : "";
+    const siteRates = rates.filter((r) => String(r.siteId) === String(site.id));
+    const siteWorkLogs = workLogs.filter((log) => String(log.siteId) === String(site.id));
+
+    const cascadeParts = [];
+    if (siteBuildings.length > 0) cascadeParts.push(`${siteBuildings.length} המבנים שלו`);
+    if (siteRates.length > 0) cascadeParts.push(`${siteRates.length} תעריפים`);
+    if (siteWorkLogs.length > 0) cascadeParts.push(`${siteWorkLogs.length} רשומות עבודה`);
+    const cascadeNote = cascadeParts.length > 0 ? ` וכל ${cascadeParts.join(", ")}` : "";
+
     if (
       !confirm(
-        `למחוק את ${site.name}${buildingNote} לצמיתות? בשונה מהעברה לארכיון, מחיקה תשפיע גם על דוחות והיסטוריה שכבר נרשמו.`
+        `למחוק את ${site.name}${cascadeNote} לצמיתות? בשונה מהעברה לארכיון, מחיקה תשפיע גם על דוחות והיסטוריה שכבר נרשמו.`
       )
     ) {
       return;
+    }
+    for (const log of siteWorkLogs) {
+      // eslint-disable-next-line no-await-in-loop
+      await deleteItem("workLogs", log.id);
+    }
+    for (const rate of siteRates) {
+      // eslint-disable-next-line no-await-in-loop
+      await deleteItem("rates", rate.id);
     }
     for (const building of siteBuildings) {
       // eslint-disable-next-line no-await-in-loop

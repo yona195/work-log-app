@@ -6,11 +6,23 @@ import StatusBadge from "./StatusBadge.jsx";
 // just reads as a short list inside the card. Each action button only
 // renders when its handler is passed, so a caller can omit one/all of them
 // for a protected/locked row (e.g. a site's default "כללי" building) without
-// needing a separate "locked" prop.
-export default function CompactRow({ name, archived, onEdit, onDelete, onToggleArchive }) {
+// needing a separate "locked" prop. The leading checkbox works the same way
+// (only rendered when a caller needs row-level multi-select, e.g. Rates.jsx).
+export default function CompactRow({
+  name,
+  archived,
+  onEdit,
+  onDelete,
+  onToggleArchive,
+  selected,
+  onToggleSelect,
+}) {
   const hasActions = onEdit || onDelete || onToggleArchive;
   return (
     <div className="employees-row">
+      {onToggleSelect && (
+        <input type="checkbox" checked={Boolean(selected)} onChange={onToggleSelect} />
+      )}
       <span className="employees-row-name">{name}</span>
       <StatusBadge archived={archived} />
       {hasActions && (

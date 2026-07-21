@@ -2885,7 +2885,25 @@ body.loading .menu-overlay {
     font-weight: 700;
 }
 
-.rates-table-scroll {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
+.rates-select-all-row {
+    display: inline-flex;
+    margin-bottom: 12px;
+}
+
+.rates-group-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 14px;
+
+    margin-top: 2px;
+    margin-bottom: 4px;
+
+    font-size: 14px;
+}
+
+.rates-group-summary span:not(:last-child)::after {
+    content: "|";
+    margin-inline-start: 14px;
+    color: var(--color-border);
+    font-weight: 400;
 }
