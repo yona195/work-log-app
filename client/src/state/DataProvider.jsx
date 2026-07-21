@@ -42,6 +42,21 @@ export function DataProvider({ children }) {
     load();
   }, [load]);
 
+  // Quietly re-pulls the full dataset without flipping `phase` back to
+  // "loading" (which would replace the whole app with the full-screen
+  // loading state) — for callers whose own mutation had a server-side side
+  // effect not reflected in the item it got back (e.g. creating a site also
+  // creates its "כללי" building, which addItem's local-state patch never
+  // sees since the API only returns the site).
+  const refresh = useCallback(async () => {
+    try {
+      const result = await api.getData();
+      setData({ ...EMPTY_DATA, ...result });
+    } catch (err) {
+      console.error("Failed to refresh data:", err);
+    }
+  }, []);
+
   // Wraps a mutation so it drives the sync indicator without touching the
   // initial-load phase (a failed save must not blank the whole app). `meta`
   // (collection + what kind of change) drives the toast copy — every
@@ -132,6 +147,7 @@ export function DataProvider({ children }) {
     sync,
     error,
     reload: load,
+    refresh,
     addItem,
     updateItem,
     deleteItem,

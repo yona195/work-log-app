@@ -14,7 +14,7 @@ const GENERAL_BUILDING_NAME = "כללי";
 const isGeneralBuilding = (building) => building.name === GENERAL_BUILDING_NAME;
 
 export default function Sites() {
-  const { data, addItem, updateItem, deleteItem } = useData();
+  const { data, addItem, updateItem, deleteItem, refresh } = useData();
   const { sites, buildings, workLogs, rates } = data;
 
   const [siteName, setSiteName] = useState("");
@@ -45,6 +45,11 @@ export default function Sites() {
     try {
       await addItem("sites", { name: trimmed });
       setSiteName("");
+      // The server also creates a "כללי" building for the new site as a
+      // side effect, but the response to this call only carries the site
+      // itself — refresh so that building shows up immediately instead of
+      // only after a manual reload.
+      await refresh();
     } finally {
       setIsAddingSite(false);
     }
@@ -330,11 +335,7 @@ export default function Sites() {
                       {siteBuildings.map((building) => (
                         <CompactRow
                           key={building.id}
-                          name={
-                            isGeneralBuilding(building)
-                              ? `${building.name} (ברירת מחדל)`
-                              : building.name
-                          }
+                          name={building.name}
                           archived={building.archived}
                           onEdit={isGeneralBuilding(building) ? undefined : () => setEditingBuilding(building)}
                           onDelete={isGeneralBuilding(building) ? undefined : () => deleteBuilding(building)}
@@ -359,7 +360,7 @@ export default function Sites() {
             {orphanedBuildings.map((building) => (
               <CompactRow
                 key={building.id}
-                name={isGeneralBuilding(building) ? `${building.name} (ברירת מחדל)` : building.name}
+                name={building.name}
                 archived={building.archived}
                 onEdit={isGeneralBuilding(building) ? undefined : () => setEditingBuilding(building)}
                 onDelete={isGeneralBuilding(building) ? undefined : () => deleteBuilding(building)}

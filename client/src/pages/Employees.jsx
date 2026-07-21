@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useData } from "../state/DataProvider.jsx";
-import { activeOnly } from "../lib/entities.js";
+import { activeOnly, getEmployeeIds } from "../lib/entities.js";
 import EditEmployeeModal from "../components/EditEmployeeModal.jsx";
 import EditSimpleItemModal from "../components/EditSimpleItemModal.jsx";
 import StatusBadge from "../components/StatusBadge.jsx";
@@ -63,7 +63,7 @@ function EmployeeTable({ employees, onEdit, onDelete, onToggleArchive }) {
 
 export default function Employees() {
   const { data, addItem, updateItem, deleteItem } = useData();
-  const { employees, subcontractors } = data;
+  const { employees, subcontractors, rates, workLogs } = data;
 
   const [name, setName] = useState("");
   const [type, setType] = useState("internal");
@@ -185,14 +185,70 @@ export default function Employees() {
     await updateItem("employees", employee.id, { archived: true });
   };
 
+  // Rates/work-logs a single employee's deletion would affect — a rate is
+  // always deleted outright (it's theirs alone); a work-log/history record
+  // is deleted outright only if this employee is its sole participant,
+  // otherwise just has them removed from it (same rule already used for
+  // the employee-filtered delete in WorkHistory.jsx).
+  const employeeDependents = (employee) => {
+    const employeeRates = rates.filter(
+      (r) => r.rateType === "employee" && String(r.employeeId) === String(employee.id)
+    );
+    const employeeLogs = workLogs.filter((log) =>
+      getEmployeeIds(log).map(String).includes(String(employee.id))
+    );
+    return { employeeRates, employeeLogs };
+  };
+
+  // Applies the cascade for one employee: deletes their rates, and for
+  // each work log they appear in either removes just them (other
+  // participants stay, along with the date/site/customer) or deletes the
+  // whole record if they were its only participant. `logState` is a
+  // shared, mutable {logId -> current employeeIds} map so that when
+  // several of the same subcontractor's employees are deleted together in
+  // one pass, each one sees the previous ones' already-applied removals
+  // instead of working off a now-stale snapshot.
+  const cascadeDeleteEmployeeDependents = async (employee, logState) => {
+    const { employeeRates } = employeeDependents(employee);
+    for (const rate of employeeRates) {
+      // eslint-disable-next-line no-await-in-loop
+      await deleteItem("rates", rate.id);
+    }
+
+    for (const [logId, currentIds] of logState.entries()) {
+      if (!currentIds.includes(String(employee.id))) continue;
+      const remainingIds = currentIds.filter((id) => id !== String(employee.id));
+      if (remainingIds.length === 0) {
+        // eslint-disable-next-line no-await-in-loop
+        await deleteItem("workLogs", logId);
+        logState.delete(logId);
+      } else {
+        // eslint-disable-next-line no-await-in-loop
+        await updateItem("workLogs", logId, { employeeIds: remainingIds });
+        logState.set(logId, remainingIds);
+      }
+    }
+  };
+
   const deleteEmployee = async (employee) => {
+    const { employeeRates, employeeLogs } = employeeDependents(employee);
+    const cascadeParts = [];
+    if (employeeRates.length > 0) cascadeParts.push(`${employeeRates.length} תעריפים`);
+    if (employeeLogs.length > 0) cascadeParts.push(`${employeeLogs.length} רשומות עבודה`);
+    const cascadeNote =
+      cascadeParts.length > 0
+        ? ` יושפעו ${cascadeParts.join(", ")} - רשומות עם עובדים נוספים יישארו, ורק ${employee.name} יוסר מהן.`
+        : "";
+
     if (
       !confirm(
-        `למחוק את ${employee.name} לצמיתות? בשונה מהעברה לארכיון, מחיקה תשפיע גם על דוחות והיסטוריה שכבר נרשמו עם העובד הזה.`
+        `למחוק את ${employee.name} לצמיתות?${cascadeNote} בשונה מהעברה לארכיון, מחיקה תשפיע גם על דוחות והיסטוריה שכבר נרשמו עם העובד הזה.`
       )
     ) {
       return;
     }
+    const logState = new Map(workLogs.map((log) => [log.id, getEmployeeIds(log).map(String)]));
+    await cascadeDeleteEmployeeDependents(employee, logState);
     await deleteItem("employees", employee.id);
   };
 
@@ -231,18 +287,35 @@ export default function Employees() {
     }
   };
 
+  // A subcontractor-level "general" rate (legacy rateType, points at the
+  // subcontractor directly rather than one of its employees) belongs to
+  // the subcontractor itself, not to any one employee — it doesn't get
+  // caught by cascadeDeleteEmployeeDependents below, so it's cleared here.
+  const subcontractorGeneralRates = (subcontractor) =>
+    rates.filter(
+      (r) => r.rateType !== "employee" && String(r.subcontractorId || "") === String(subcontractor.id)
+    );
+
   const deleteSubcontractor = async (subcontractor) => {
     const subEmployees = subcontractorEmployeesOf(subcontractor);
+    const generalRates = subcontractorGeneralRates(subcontractor);
     const employeeNote =
       subEmployees.length > 0 ? ` וכל ${subEmployees.length} העובדים שלו` : "";
     if (
       !confirm(
-        `למחוק את ${subcontractor.name}${employeeNote} לצמיתות? בשונה מהעברה לארכיון, מחיקה תשפיע גם על דוחות והיסטוריה שכבר נרשמו.`
+        `למחוק את ${subcontractor.name}${employeeNote} לצמיתות? בשונה מהעברה לארכיון, מחיקה תשפיע גם על דוחות והיסטוריה שכבר נרשמו (תעריפים, רישום עבודה והיסטוריה של כל עובדיו).`
       )
     ) {
       return;
     }
+    for (const rate of generalRates) {
+      // eslint-disable-next-line no-await-in-loop
+      await deleteItem("rates", rate.id);
+    }
+    const logState = new Map(workLogs.map((log) => [log.id, getEmployeeIds(log).map(String)]));
     for (const employee of subEmployees) {
+      // eslint-disable-next-line no-await-in-loop
+      await cascadeDeleteEmployeeDependents(employee, logState);
       // eslint-disable-next-line no-await-in-loop
       await deleteItem("employees", employee.id);
     }
