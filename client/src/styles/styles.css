@@ -2848,6 +2848,36 @@ body.loading .menu-overlay {
     overflow-wrap: break-word;
 }
 
+/* Groups the optional select checkbox with the name as one flex item, so
+   the two always travel together — without this, a lone checkbox with no
+   sizing of its own could get wrapped onto its own line by .employees-row's
+   flex-wrap, landing far from the name/status/actions it belongs next to. */
+.employees-row-main {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    flex: 1 1 160px;
+    min-width: 140px;
+}
+
+/* Without this, the checkbox is a bare <input> and inherits the global
+   input{width:100%; padding; margin-bottom} rule meant for text fields —
+   at 100% of the row it swallows all the flex space meant for the name
+   next to it (and reads as an oversized, oddly-padded control). Same
+   18px/no-margin treatment as .checkbox-item input elsewhere. */
+.employees-row-main input[type="checkbox"] {
+    width: 18px;
+    min-width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+
+    margin: 0;
+
+    accent-color: var(--color-primary);
+    cursor: pointer;
+}
+
 @media (max-width: 640px) {
     .employees-toolbar {
         flex-direction: column;

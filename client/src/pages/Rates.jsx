@@ -410,7 +410,7 @@ export default function Rates() {
                 className="secondary-btn"
                 onClick={() => setSelectedCustomerIds(activeCustomers.map((c) => c.id))}
               >
-                בחר את כל המזמינים
+                בחר הכל
               </button>
               <button
                 type="button"
@@ -448,7 +448,7 @@ export default function Rates() {
                 className="secondary-btn"
                 onClick={() => setSelectedSiteIds(activeSites.map((s) => s.id))}
               >
-                בחר את כל האתרים
+                בחר הכל
               </button>
               <button
                 type="button"
@@ -621,15 +621,17 @@ export default function Rates() {
               checked={isAllCurrentPageSelected}
               onChange={toggleSelectAllCurrentPage}
             />
-            <span>בחר הכל בעמוד</span>
+            <span>בחר הכל</span>
           </label>
 
           {selectedRateIds.length > 0 && (
             <div className="worklog-bulk-actions">
               <span>{selectedRateIds.length} תעריפים נבחרו</span>
-              <button className="delete-btn" type="button" onClick={bulkDeleteSelectedRates}>
-                מחק את הנבחרים ({selectedRateIds.length})
-              </button>
+              <div className="report-row-actions">
+                <button className="delete-btn" type="button" onClick={bulkDeleteSelectedRates}>
+                  מחק נבחרים ({selectedRateIds.length})
+                </button>
+              </div>
             </div>
           )}
 

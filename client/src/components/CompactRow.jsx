@@ -20,10 +20,12 @@ export default function CompactRow({
   const hasActions = onEdit || onDelete || onToggleArchive;
   return (
     <div className="employees-row">
-      {onToggleSelect && (
-        <input type="checkbox" checked={Boolean(selected)} onChange={onToggleSelect} />
-      )}
-      <span className="employees-row-name">{name}</span>
+      <div className="employees-row-main">
+        {onToggleSelect && (
+          <input type="checkbox" checked={Boolean(selected)} onChange={onToggleSelect} />
+        )}
+        <span className="employees-row-name">{name}</span>
+      </div>
       <StatusBadge archived={archived} />
       {hasActions && (
         <div className="report-row-actions">
