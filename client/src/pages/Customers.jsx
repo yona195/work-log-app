@@ -5,21 +5,14 @@ import EditSimpleItemModal from "../components/EditSimpleItemModal.jsx";
 import StatusBadge from "../components/StatusBadge.jsx";
 import Pagination, { usePagedList } from "../components/Pagination.jsx";
 
-export default function SimpleManager({
-  collection,
-  placeholder,
-  editTitle,
-  title,
-  nameLabel,
-  rowIcon,
-}) {
+export default function Customers() {
   const { data, addItem, updateItem, deleteItem } = useData();
+  const { customers, rates, workLogs } = data;
   const [name, setName] = useState("");
   const [showArchived, setShowArchived] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
-  const items = data[collection] || [];
-  const visibleItems = showArchived ? items : activeOnly(items);
+  const visibleItems = showArchived ? customers : activeOnly(customers);
   const {
     pageItems: pagedItems,
     page,
@@ -37,7 +30,7 @@ export default function SimpleManager({
     }
     setIsSubmitting(true);
     try {
-      await addItem(collection, { name: trimmed });
+      await addItem("customers", { name: trimmed });
       setName("");
     } finally {
       setIsSubmitting(false);
@@ -46,7 +39,7 @@ export default function SimpleManager({
 
   const toggleArchive = async (item) => {
     if (item.archived) {
-      await updateItem(collection, item.id, { archived: false });
+      await updateItem("customers", item.id, { archived: false });
       return;
     }
     if (
@@ -56,27 +49,50 @@ export default function SimpleManager({
     ) {
       return;
     }
-    await updateItem(collection, item.id, { archived: true });
+    await updateItem("customers", item.id, { archived: true });
   };
 
+  // A customer IS a billing unit (like a site) — deleting one deletes
+  // everything that depends on it (rates and work-log/history records),
+  // it never falls back to something else. This only fires from the
+  // explicit delete action below; archiving a customer never touches
+  // rates or work logs, same as archiving anywhere else in the app.
   const deleteItemConfirmed = async (item) => {
+    const customerRates = rates.filter((r) => String(r.customerId || "") === String(item.id));
+    const customerWorkLogs = workLogs.filter(
+      (log) => String(log.customerId || "") === String(item.id)
+    );
+
+    const cascadeParts = [];
+    if (customerRates.length > 0) cascadeParts.push(`${customerRates.length} תעריפים`);
+    if (customerWorkLogs.length > 0) cascadeParts.push(`${customerWorkLogs.length} רשומות עבודה`);
+    const cascadeNote = cascadeParts.length > 0 ? ` וכל ${cascadeParts.join(", ")}` : "";
+
     if (
       !confirm(
-        `למחוק את ${item.name} לצמיתות? בשונה מהעברה לארכיון, מחיקה תשפיע גם על דוחות והיסטוריה שכבר נרשמו עם הפריט הזה.`
+        `למחוק את ${item.name}${cascadeNote} לצמיתות? בשונה מהעברה לארכיון, מחיקה תשפיע גם על דוחות והיסטוריה שכבר נרשמו עם הפריט הזה.`
       )
     ) {
       return;
     }
-    await deleteItem(collection, item.id);
+    for (const log of customerWorkLogs) {
+      // eslint-disable-next-line no-await-in-loop
+      await deleteItem("workLogs", log.id);
+    }
+    for (const rate of customerRates) {
+      // eslint-disable-next-line no-await-in-loop
+      await deleteItem("rates", rate.id);
+    }
+    await deleteItem("customers", item.id);
   };
 
   return (
     <>
       <div className="card">
-        <h3>{title}</h3>
-        <label>{nameLabel}</label>
+        <h3>הוספת מזמין עבודה</h3>
+        <label>שם מזמין</label>
         <input
-          placeholder={placeholder}
+          placeholder="שם מזמין"
           value={name}
           onChange={(e) => setName(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && add()}
@@ -119,12 +135,7 @@ export default function SimpleManager({
               {pagedItems.map((item, index) => (
                 <tr key={item.id}>
                   <td>{startIndex + index + 1}</td>
-                  <td>
-                    <span className="material-symbols-rounded row-icon" aria-hidden="true">
-                      {rowIcon}
-                    </span>
-                    {item.name}
-                  </td>
+                  <td>{item.name}</td>
                   <td><StatusBadge archived={item.archived} /></td>
                   <td>
                     <div className="report-row-actions">
@@ -161,9 +172,9 @@ export default function SimpleManager({
 
       {editingItem && (
         <EditSimpleItemModal
-          title={editTitle}
+          title="עריכת מזמין עבודה"
           initialName={editingItem.name}
-          onSave={(newName) => updateItem(collection, editingItem.id, { name: newName })}
+          onSave={(newName) => updateItem("customers", editingItem.id, { name: newName })}
           onClose={() => setEditingItem(null)}
         />
       )}

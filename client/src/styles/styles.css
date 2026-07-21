@@ -668,17 +668,6 @@ tbody tr:hover {
     color: var(--color-muted);
 }
 
-/* Small identity icon before a record's name in a management-page table
-   (Material Symbols Rounded — already loaded globally and used by the
-   PDF/Excel buttons and Employees' group-card icons). */
-.row-icon {
-    margin-inline-end: 6px;
-
-    font-size: 16px;
-    color: var(--color-muted);
-    vertical-align: middle;
-}
-
 .empty-message {
     padding: 22px;
 

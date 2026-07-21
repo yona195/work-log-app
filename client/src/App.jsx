@@ -13,7 +13,7 @@ import EmployeeReports from "./pages/EmployeeReports.jsx";
 import Employees from "./pages/Employees.jsx";
 import Sites from "./pages/Sites.jsx";
 import Rates from "./pages/Rates.jsx";
-import SimpleManager from "./pages/SimpleManager.jsx";
+import Customers from "./pages/Customers.jsx";
 
 function AuthenticatedApp() {
   const { phase, error } = useData();
@@ -40,20 +40,7 @@ function AuthenticatedApp() {
         <Route path="/employees" element={<Employees />} />
         <Route path="/sites" element={<Sites />} />
         <Route path="/buildings" element={<Navigate to="/sites" replace />} />
-        <Route
-          path="/customers"
-          element={
-            <SimpleManager
-              collection="customers"
-              placeholder="שם מזמין"
-              editTitle="עריכת מזמין עבודה"
-              title="הוספת מזמין עבודה"
-              nameLabel="שם מזמין"
-              rowIcon="storefront"
-              key="customers"
-            />
-          }
-        />
+        <Route path="/customers" element={<Customers />} />
         <Route path="/rates" element={<Rates />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
