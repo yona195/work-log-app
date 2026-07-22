@@ -113,13 +113,16 @@ export default function Rates() {
     });
   }, [rates, sites, showArchived]);
 
-  // Rates that share customer + site + revenue + cost + effective date are
-  // presented as one card (same "group card with a compact child list"
-  // pattern as contractors/employees) — a unique rate is just a group of
-  // one, rendered with the exact same card, not a different style. Grouping
-  // is recomputed fresh from `rates` on every render, so editing a single
-  // rate's shared fields away from its group (or into another group)
-  // "moves" it automatically with no extra bookkeeping.
+  // Rates that share customer + site + revenue + cost are presented as one
+  // card (same "group card with a compact child list" pattern as
+  // contractors/employees) — a unique rate is just a group of one, rendered
+  // with the exact same card, not a different style. Effective-from date is
+  // deliberately NOT part of the grouping key: it's shown per employee row
+  // instead of in the group header, since two rates can share everything
+  // else but start on different dates. Grouping is recomputed fresh from
+  // `rates` on every render, so editing a single rate's shared fields away
+  // from its group (or into another group) "moves" it automatically with
+  // no extra bookkeeping.
   const groupedRates = useMemo(() => {
     const groups = new Map();
     sortedRates.forEach((rate) => {
@@ -128,7 +131,6 @@ export default function Rates() {
         siteId: String(rate.siteId || ""),
         revenue: Number(rate.revenuePerWorker) || 0,
         cost: Number(rate.costPerWorker) || 0,
-        effectiveFrom: normalizeDate(rate.effectiveFrom),
       });
       if (!groups.has(key)) {
         groups.set(key, {
@@ -137,7 +139,6 @@ export default function Rates() {
           siteId: rate.siteId,
           revenuePerWorker: Number(rate.revenuePerWorker) || 0,
           costPerWorker: Number(rate.costPerWorker) || 0,
-          effectiveFrom: rate.effectiveFrom,
           rates: [],
         });
       }
@@ -205,6 +206,41 @@ export default function Rates() {
       await deleteItem("rates", id).catch(() => {});
     }
     setSelectedRateIds([]);
+  };
+
+  // Per-card "select all" — scoped to just this group's rates, independent
+  // of every other card and of the page-level "select all" above (both
+  // read/write the same selectedRateIds array, just intersected with a
+  // different id subset, so neither has to know about the other).
+  const isGroupFullySelected = (group) =>
+    group.rates.every((r) => selectedRateIds.includes(r.id));
+
+  const toggleSelectAllInGroup = (group) =>
+    setSelectedRateIds((prev) =>
+      isGroupFullySelected(group)
+        ? prev.filter((id) => !group.rates.some((r) => r.id === id))
+        : [...new Set([...prev, ...group.rates.map((r) => r.id)])]
+    );
+
+  // Hidden behind an explicit "advanced options" toggle on purpose, so the
+  // whole page can never be wiped by an accidental click — it's a second,
+  // separate door from the regular multi-select delete above.
+  const [advancedOptionsEnabled, setAdvancedOptionsEnabled] = useState(false);
+
+  const deleteAllVisibleRates = async () => {
+    if (
+      !confirm(
+        `למחוק את כל ${sortedRates.length} התעריפים המוצגים כרגע (בהתאם לסינון הארכיון) לצמיתות? פעולה זו אינה הפיכה ותשפיע על חישובים כספיים היסטוריים.`
+      )
+    ) {
+      return;
+    }
+    for (const rate of sortedRates) {
+      // eslint-disable-next-line no-await-in-loop
+      await deleteItem("rates", rate.id).catch(() => {});
+    }
+    setSelectedRateIds([]);
+    setAdvancedOptionsEnabled(false);
   };
 
   const toggleRateArchive = async (rate) => {
@@ -615,14 +651,33 @@ export default function Rates() {
           <p>עדיין לא הוגדרו תעריפים.</p>
         ) : (
           <>
-          <label className="checkbox-item rates-select-all-row">
-            <input
-              type="checkbox"
-              checked={isAllCurrentPageSelected}
-              onChange={toggleSelectAllCurrentPage}
-            />
-            <span>בחר הכל</span>
-          </label>
+          <div className="rates-select-all-row">
+            <label className="checkbox-item">
+              <input
+                type="checkbox"
+                checked={isAllCurrentPageSelected}
+                onChange={toggleSelectAllCurrentPage}
+              />
+              <span>בחר הכל</span>
+            </label>
+            <label className="checkbox-item">
+              <input
+                type="checkbox"
+                checked={advancedOptionsEnabled}
+                onChange={(e) => setAdvancedOptionsEnabled(e.target.checked)}
+              />
+              <span>אפשרויות מתקדמות</span>
+            </label>
+          </div>
+
+          {advancedOptionsEnabled && (
+            <div className="rates-danger-zone">
+              <span>אפשרות מתקדמת: מחיקת כל התעריפים המוצגים כרגע ({sortedRates.length})</span>
+              <button className="delete-btn" type="button" onClick={deleteAllVisibleRates}>
+                מחק את כל התעריפים בעמוד
+              </button>
+            </div>
+          )}
 
           {selectedRateIds.length > 0 && (
             <div className="worklog-bulk-actions">
@@ -643,6 +698,16 @@ export default function Rates() {
                 <GroupCard
                   key={group.key}
                   icon="payments"
+                  selectionControl={
+                    <input
+                      type="checkbox"
+                      checked={isGroupFullySelected(group)}
+                      onChange={() => toggleSelectAllInGroup(group)}
+                      aria-label={`בחר הכל - ${getName(customers, group.customerId) || "מזמין לא נמצא"} · ${
+                        getName(sites, group.siteId) || "אתר לא נמצא"
+                      }`}
+                    />
+                  }
                   title={`${getName(customers, group.customerId) || "מזמין לא נמצא"} · ${
                     getName(sites, group.siteId) || "אתר לא נמצא"
                   }`}
@@ -681,7 +746,6 @@ export default function Rates() {
                     <span className={groupProfit >= 0 ? "rates-profit-positive" : "rates-profit-negative"}>
                       רווח: {formatCurrency(groupProfit)}
                     </span>
-                    <span dir="ltr">בתוקף מ-{formatExcelDate(group.effectiveFrom)}</span>
                   </div>
                   <div className="employees-compact-list">
                     {group.rates.map((rate) => {
@@ -699,7 +763,15 @@ export default function Rates() {
                       return (
                         <CompactRow
                           key={rate.id}
-                          name={`${targetName || "לא נמצא"} - ${affiliationName}`}
+                          name={
+                            <>
+                              {targetName || "לא נמצא"} - {affiliationName}
+                              {" · "}
+                              <span dir="ltr" className="rates-row-date">
+                                {formatExcelDate(rate.effectiveFrom)}
+                              </span>
+                            </>
+                          }
                           archived={rate.archived}
                           selected={selectedRateIds.includes(rate.id)}
                           onToggleSelect={() => toggleRateSelection(rate.id)}

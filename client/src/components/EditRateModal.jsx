@@ -12,10 +12,13 @@ import DatePicker from "./DatePicker.jsx";
 // rates: one or more rates being edited together. A single rate behaves
 // exactly as before (target/employee picker included, since that's the one
 // field a single rate actually has to itself). 2+ rates are already
-// guaranteed identical in customer/site/revenue/cost/effectiveFrom by the
-// caller (they're a group precisely because of that) — the target picker is
-// hidden (each rate keeps its own employee/subcontractor) and saving applies
-// the shared fields to every rate in the group.
+// guaranteed identical in customer/site/revenue/cost by the caller (they're
+// a group precisely because of that) — the target picker is hidden (each
+// rate keeps its own employee/subcontractor) and saving applies the shared
+// fields to every rate in the group. Effective-from is NOT one of those
+// shared fields (a group can contain rates with different dates), so it's
+// hidden in group edit too and never included in the group patch — each
+// rate keeps its own date.
 export default function EditRateModal({ rates, onClose }) {
   const { data, updateItem } = useData();
   const customers = activeOnly(data.customers);
@@ -83,7 +86,7 @@ export default function EditRateModal({ rates, onClose }) {
       alert("נא להזין עלות תקינה");
       return;
     }
-    if (!effectiveFrom) {
+    if (!isGroupEdit && !effectiveFrom) {
       alert("נא לבחור תאריך תחילת תעריף");
       return;
     }
@@ -97,7 +100,10 @@ export default function EditRateModal({ rates, onClose }) {
     setIsSubmitting(true);
     try {
       if (isGroupEdit) {
-        const patch = { customerId, siteId, revenuePerWorker, costPerWorker, effectiveFrom };
+        // effectiveFrom is deliberately excluded — a group can contain rates
+        // with different dates, so a group edit must not collapse them all
+        // to whichever date happened to seed the (hidden) form field.
+        const patch = { customerId, siteId, revenuePerWorker, costPerWorker };
         for (const rate of rates) {
           // eslint-disable-next-line no-await-in-loop
           await updateItem("rates", rate.id, patch);
@@ -182,8 +188,12 @@ export default function EditRateModal({ rates, onClose }) {
           onChange={(e) => setCost(e.target.value)}
         />
 
-        <label>תאריך תחילת תעריף</label>
-        <DatePicker mode="single" value={effectiveFrom} onChange={setEffectiveFrom} />
+        {!isGroupEdit && (
+          <>
+            <label>תאריך תחילת תעריף</label>
+            <DatePicker mode="single" value={effectiveFrom} onChange={setEffectiveFrom} />
+          </>
+        )}
 
         <div className="modal-actions">
           <button

@@ -2868,6 +2868,22 @@ body.loading .menu-overlay {
     cursor: pointer;
 }
 
+/* Same fix as .employees-row-main above, for the per-card "select all in
+   this group" checkbox (Rates.jsx) rendered via GroupCard's
+   selectionControl prop — otherwise it inherits the global input{width:100%}
+   rule and swallows the group title's flex space. */
+.employees-group-title input[type="checkbox"] {
+    width: 18px;
+    min-width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+
+    margin: 0;
+
+    accent-color: var(--color-primary);
+    cursor: pointer;
+}
+
 @media (max-width: 640px) {
     .employees-toolbar {
         flex-direction: column;
@@ -2895,8 +2911,40 @@ body.loading .menu-overlay {
 }
 
 .rates-select-all-row {
-    display: inline-flex;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
     margin-bottom: 12px;
+}
+
+/* Hidden behind the "אפשרויות מתקדמות" checkbox on purpose — a distinct
+   red-tinted block (not just a regular button) so a page-wide, irreversible
+   delete never looks like a routine action. */
+.rates-danger-zone {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 10px;
+
+    margin-bottom: 12px;
+    padding: 10px 14px;
+
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: var(--radius-medium);
+
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--color-danger);
+}
+
+/* The per-employee-row effective-from date (Rates.jsx) — muted/regular
+   weight so it reads as metadata next to the bold name, not a second name. */
+.rates-row-date {
+    color: var(--color-muted);
+    font-weight: 400;
 }
 
 .rates-group-summary {
