@@ -219,6 +219,11 @@ export default function DatePicker({
         type="button"
         className="date-picker-trigger"
         onClick={() => setOpen((prev) => !prev)}
+        title={
+          mode === "multi-range"
+            ? "בחרו תאריך התחלה ותאריך סיום לטווח; אפשר לחזור על כך לטווחים נוספים. לחיצה על טווח קיים מוחקת אותו."
+            : undefined
+        }
       >
         <span className={displayText ? "" : "date-picker-placeholder"}>
           {displayText || placeholder}
@@ -230,12 +235,8 @@ export default function DatePicker({
 
       {open && (
         <div className="date-picker-popover">
-          {mode === "multi-range" && (
-            <p className="date-picker-hint">
-              {pendingStart
-                ? "עכשיו בחרו את תאריך הסיום של הטווח."
-                : "בחרו תאריך התחלה ותאריך סיום לטווח - אפשר לחזור על זה כמה פעמים לטווחים נוספים. לחיצה על טווח קיים תמחק אותו."}
-            </p>
+          {mode === "multi-range" && pendingStart && (
+            <p className="date-picker-hint">עכשיו בחרו את תאריך הסיום של הטווח.</p>
           )}
           <div className="date-picker-months">
             {monthsToShow.map(({ year, month }) => (

@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useData } from "../state/DataProvider.jsx";
 import { normalizeDate, formatExcelDate } from "../lib/format.js";
-import { isoRangeInclusive } from "../lib/calendar.js";
+import { isoRangeInclusive, todayISO } from "../lib/calendar.js";
 import {
   getName,
   getEmployeeIds,
@@ -38,10 +38,15 @@ export default function WorkLog() {
 
   // Multiple independent date ranges (not just one from/to), so the same
   // employees/site/building/customer can be logged for several separate
-  // spans (e.g. two different work weeks) in one submit. Starts empty —
-  // pre-selecting today by default meant clicking today again removed it
-  // instead of starting a range from it.
-  const [selectedRanges, setSelectedRanges] = useState([]);
+  // spans (e.g. two different work weeks) in one submit. Defaults to today
+  // — the common case is logging today's work, so it should already count
+  // toward "ייווצרו X רשומות" without the user having to pick it manually.
+  // Clicking today's cell in the calendar removes it, same as clicking any
+  // other already-selected range — that's the existing, intentional
+  // "click an existing range to delete it" behavior, not special-cased.
+  const [selectedRanges, setSelectedRanges] = useState([
+    { start: todayISO(), end: todayISO() },
+  ]);
   const [group, setGroup] = useState(""); // "" | "internal" | "all-subcontractors"
   const [selectedContractorIds, setSelectedContractorIds] = useState([]);
   const [contractorSearch, setContractorSearch] = useState("");
@@ -268,7 +273,7 @@ export default function WorkLog() {
   const cancelEdit = () => {
     setEditingLogIds([]);
     setSelectedRecentLogIds([]);
-    setSelectedRanges([]);
+    setSelectedRanges([{ start: todayISO(), end: todayISO() }]);
     setGroup("");
     setSelectedContractorIds([]);
     setContractorSearch("");
