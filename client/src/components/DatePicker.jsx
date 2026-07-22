@@ -145,7 +145,6 @@ export default function DatePicker({
   const isSelected = (iso) => {
     if (mode === "single") return iso === value;
     if (mode === "range") return iso === value?.from || iso === value?.to;
-    if (iso === pendingStart) return true;
     return ranges.some((r) => iso === r.start || iso === r.end);
   };
 
@@ -176,23 +175,39 @@ export default function DatePicker({
       return;
     }
 
-    // multi-range
-    if (pendingStart === null) {
-      const existingIndex = ranges.findIndex((r) => iso >= r.start && iso <= r.end);
-      if (existingIndex !== -1) {
-        const next = ranges.slice();
-        next.splice(existingIndex, 1);
-        onChange(next);
-        return;
+    // multi-range. A date clicked with no pending pick is selected
+    // immediately as its own single-day range — no second click needed —
+    // and stays "pending" only in the sense that the very next click can
+    // still turn it into a real range: clicking a *different* date extends
+    // it (chronologically normalized), while clicking that *same* date
+    // again cancels it. Once either happens, pendingStart clears, so a
+    // third click always starts a fresh, independent pick — never appends
+    // to what was just completed.
+    if (pendingStart !== null) {
+      const withoutPending = ranges.filter(
+        (r) => !(r.start === pendingStart && r.end === pendingStart)
+      );
+      if (iso === pendingStart) {
+        onChange(withoutPending);
+      } else {
+        const start = pendingStart <= iso ? pendingStart : iso;
+        const end = pendingStart <= iso ? iso : pendingStart;
+        onChange([...withoutPending, { start, end }]);
       }
-      setPendingStart(iso);
+      setPendingStart(null);
       return;
     }
 
-    const start = pendingStart <= iso ? pendingStart : iso;
-    const end = pendingStart <= iso ? iso : pendingStart;
-    onChange([...ranges, { start, end }]);
-    setPendingStart(null);
+    const existingIndex = ranges.findIndex((r) => iso >= r.start && iso <= r.end);
+    if (existingIndex !== -1) {
+      const next = ranges.slice();
+      next.splice(existingIndex, 1);
+      onChange(next);
+      return;
+    }
+
+    onChange([...ranges, { start: iso, end: iso }]);
+    setPendingStart(iso);
   };
 
   const displayText = useMemo(() => {
@@ -221,7 +236,7 @@ export default function DatePicker({
         onClick={() => setOpen((prev) => !prev)}
         title={
           mode === "multi-range"
-            ? "בחרו תאריך התחלה ותאריך סיום לטווח; אפשר לחזור על כך לטווחים נוספים. לחיצה על טווח קיים מוחקת אותו."
+            ? "לחיצה על תאריך בוחרת אותו מיד; לחיצה על תאריך נוסף הופכת אותו לטווח. לחיצה על תאריך/טווח קיים מוחקת אותו."
             : undefined
         }
       >
@@ -236,7 +251,9 @@ export default function DatePicker({
       {open && (
         <div className="date-picker-popover">
           {mode === "multi-range" && pendingStart && (
-            <p className="date-picker-hint">עכשיו בחרו את תאריך הסיום של הטווח.</p>
+            <p className="date-picker-hint">
+              התאריך נבחר. אפשר ללחוץ על תאריך נוסף כדי ליצור טווח, או ללחוץ עליו שוב לביטול.
+            </p>
           )}
           <div className="date-picker-months">
             {monthsToShow.map(({ year, month }) => (
