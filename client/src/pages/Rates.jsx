@@ -222,26 +222,25 @@ export default function Rates() {
         : [...new Set([...prev, ...group.rates.map((r) => r.id)])]
     );
 
-  // Hidden behind an explicit "advanced options" toggle on purpose, so the
-  // whole page can never be wiped by an accidental click — it's a second,
-  // separate door from the regular multi-select delete above.
-  const [advancedOptionsEnabled, setAdvancedOptionsEnabled] = useState(false);
-
-  const deleteAllVisibleRates = async () => {
+  const bulkArchiveSelectedRates = async () => {
     if (
       !confirm(
-        `למחוק את כל ${sortedRates.length} התעריפים המוצגים כרגע (בהתאם לסינון הארכיון) לצמיתות? פעולה זו אינה הפיכה ותשפיע על חישובים כספיים היסטוריים.`
+        `להעביר את ${selectedRateIds.length} התעריפים שנבחרו לארכיון? התעריפים לא יופיעו יותר לבחירה, אבל הדוחות הקיימים לא ישתנו.`
       )
     ) {
       return;
     }
-    for (const rate of sortedRates) {
+    for (const id of selectedRateIds) {
       // eslint-disable-next-line no-await-in-loop
-      await deleteItem("rates", rate.id).catch(() => {});
+      await updateItem("rates", id, { archived: true });
     }
     setSelectedRateIds([]);
-    setAdvancedOptionsEnabled(false);
   };
+
+  // "מחק נבחרים" is hidden behind this explicit "advanced options" toggle
+  // on purpose, so bulk delete is never one accidental click away — it's a
+  // second, separate door alongside the regular per-row/per-group delete.
+  const [advancedOptionsEnabled, setAdvancedOptionsEnabled] = useState(false);
 
   const toggleRateArchive = async (rate) => {
     if (rate.archived) {
@@ -668,27 +667,19 @@ export default function Rates() {
               />
               <span>אפשרויות מתקדמות</span>
             </label>
-          </div>
-
-          {advancedOptionsEnabled && (
-            <div className="rates-danger-zone">
-              <span>אפשרות מתקדמת: מחיקת כל התעריפים המוצגים כרגע ({sortedRates.length})</span>
-              <button className="delete-btn" type="button" onClick={deleteAllVisibleRates}>
-                מחק את כל התעריפים בעמוד
-              </button>
-            </div>
-          )}
-
-          {selectedRateIds.length > 0 && (
-            <div className="worklog-bulk-actions">
-              <span>{selectedRateIds.length} תעריפים נבחרו</span>
+            {selectedRateIds.length > 0 && (
               <div className="report-row-actions">
-                <button className="delete-btn" type="button" onClick={bulkDeleteSelectedRates}>
-                  מחק נבחרים ({selectedRateIds.length})
+                <button className="archive-btn" type="button" onClick={bulkArchiveSelectedRates}>
+                  ארכיון ({selectedRateIds.length})
                 </button>
+                {advancedOptionsEnabled && (
+                  <button className="delete-btn" type="button" onClick={bulkDeleteSelectedRates}>
+                    מחק נבחרים ({selectedRateIds.length})
+                  </button>
+                )}
               </div>
-            </div>
-          )}
+            )}
+          </div>
 
           <div className="employees-contractor-list">
             {pagedGroups.map((group) => {

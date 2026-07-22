@@ -2910,34 +2910,17 @@ body.loading .menu-overlay {
     font-weight: 700;
 }
 
+/* Fixed-height header row: the checkboxes stay put, and the archive/delete
+   buttons fold in and out of this SAME row (via .report-row-actions) as
+   selection changes, instead of a separate banner appearing below and
+   pushing the rest of the page down. Wraps on narrow screens rather than
+   ever hiding/collapsing as a whole row. */
 .rates-select-all-row {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: 10px;
     margin-bottom: 12px;
-}
-
-/* Hidden behind the "אפשרויות מתקדמות" checkbox on purpose — a distinct
-   red-tinted block (not just a regular button) so a page-wide, irreversible
-   delete never looks like a routine action. */
-.rates-danger-zone {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    justify-content: space-between;
-    gap: 10px;
-
-    margin-bottom: 12px;
-    padding: 10px 14px;
-
-    background: #fef2f2;
-    border: 1px solid #fecaca;
-    border-radius: var(--radius-medium);
-
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--color-danger);
 }
 
 /* The per-employee-row effective-from date (Rates.jsx) — muted/regular
