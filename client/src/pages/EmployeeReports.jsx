@@ -9,7 +9,7 @@ import { buildEmployeeReportHtml } from "../lib/pdf.js";
 import { exportEmployeeWorkExcel, exportEmployeeSummaryExcel } from "../lib/excel.js";
 import { useDateRangeFilter } from "../components/PeriodFilter.jsx";
 import DatePicker from "../components/DatePicker.jsx";
-import SelectionPanel from "../components/SelectionPanel.jsx";
+import WorkforceSelectionFields from "../components/WorkforceSelectionFields.jsx";
 import { exportPdfDirect, NO_DATA_MESSAGE } from "../lib/pdfExport.js";
 
 const toggle = (list, id) =>
@@ -137,35 +137,20 @@ export default function EmployeeReports() {
     dateRange.period !== "custom" || Boolean(dateRange.customFrom && dateRange.customTo);
   const employeesValid = selectedEmployeeIds.length > 0;
   const canExport = periodValid && employeesValid;
-  const showContractorField = group === "all-subcontractors";
 
-  const employeePanelItems = employeeOptions.map((employee) => ({
-    id: employee.id,
-    label: `${employee.name} - ${getEmployeeAffiliationName(data, employee)}${
+  const employeeLabel = (employee) =>
+    `${employee.name} - ${getEmployeeAffiliationName(data, employee)}${
       isEmployeeArchived(employee, subcontractors) ? " (בארכיון)" : ""
-    }`,
-  }));
+    }`;
+
+  const selectedEmployeeItems = employees
+    .filter((e) => selectedEmployeeIds.includes(e.id))
+    .map((e) => ({ id: e.id, label: employeeLabel(e) }));
 
   const selectAllEmployees = () =>
     setSelectedEmployeeIds((prev) => [
       ...new Set([...prev, ...employeeOptions.map((e) => e.id)]),
     ]);
-
-  const employeePanel = (
-    <SelectionPanel
-      title="בחירת עובדים"
-      required
-      search={employeeSearch}
-      onSearchChange={setEmployeeSearch}
-      searchPlaceholder="🔍 חפש עובד..."
-      items={employeePanelItems}
-      selectedIds={selectedEmployeeIds}
-      onToggle={toggleEmployee}
-      onSelectAll={selectAllEmployees}
-      onClearAll={() => setSelectedEmployeeIds([])}
-      emptyMessage="אין עובדים תואמים"
-    />
-  );
 
   return (
     <div className="card">
@@ -199,75 +184,38 @@ export default function EmployeeReports() {
 
       <div className="form-section">
         <h4 className="form-section-title">בחירת כוח אדם</h4>
-        <div className="employee-actions">
-          <button
-            type="button"
-            className={group === "" ? "primary-btn" : "secondary-btn"}
-            onClick={() => handleGroupChange("")}
-          >
-            כל העובדים
-          </button>
-          <button
-            type="button"
-            className={group === "internal" ? "primary-btn" : "secondary-btn"}
-            onClick={() => handleGroupChange("internal")}
-          >
-            העובדים שלי
-          </button>
-          <button
-            type="button"
-            className={group === "all-subcontractors" ? "primary-btn" : "secondary-btn"}
-            onClick={() => handleGroupChange("all-subcontractors")}
-          >
-            עובדי קבלן
-          </button>
-        </div>
-
-        {showContractorField ? (
-          <div className="filter-grid filter-grid-2" style={{ marginTop: 14 }}>
-            <div className="filter-grid-item">
-              <SelectionPanel
-                title="בחירת קבלן"
-                search={contractorSearch}
-                onSearchChange={setContractorSearch}
-                searchPlaceholder="🔍 חפש קבלן..."
-                items={relevantSubcontractors.map((s) => ({
-                  id: s.id,
-                  label: `${s.name}${s.archived ? " (בארכיון)" : ""}`,
-                }))}
-                selectedIds={selectedSubcontractorIds}
-                onToggle={toggleSubcontractor}
-                onSelectAll={() =>
-                  setSelectedSubcontractorIds((prev) => [
-                    ...new Set([...prev, ...relevantSubcontractors.map((s) => s.id)]),
-                  ])
-                }
-                onClearAll={() => setSelectedSubcontractorIds([])}
-                emptyMessage="אין קבלני משנה עם עובדים"
-              />
-            </div>
-
-            <div className="filter-grid-item">
-              {selectedSubcontractorIds.length === 0 ? (
-                <>
-                  <label>
-                    בחירת עובדים
-                    <span className="required-mark"> *</span>
-                  </label>
-                  <div className="empty-message">יש לבחור קבלן תחילה</div>
-                </>
-              ) : (
-                employeePanel
-              )}
-            </div>
-          </div>
-        ) : (
-          <div style={{ marginTop: 14 }}>{employeePanel}</div>
-        )}
+        <WorkforceSelectionFields
+          group={group}
+          onGroupChange={handleGroupChange}
+          contractorSearch={contractorSearch}
+          onContractorSearchChange={setContractorSearch}
+          contractorItems={relevantSubcontractors.map((s) => ({
+            id: s.id,
+            label: `${s.name}${s.archived ? " (בארכיון)" : ""}`,
+          }))}
+          selectedContractorIds={selectedSubcontractorIds}
+          onToggleContractor={toggleSubcontractor}
+          onSelectAllContractors={() =>
+            setSelectedSubcontractorIds((prev) => [
+              ...new Set([...prev, ...relevantSubcontractors.map((s) => s.id)]),
+            ])
+          }
+          onClearAllContractors={() => setSelectedSubcontractorIds([])}
+          employeeSearch={employeeSearch}
+          onEmployeeSearchChange={setEmployeeSearch}
+          employeeItems={employeeOptions.map((employee) => ({
+            id: employee.id,
+            label: employeeLabel(employee),
+          }))}
+          selectedEmployeeIds={selectedEmployeeIds}
+          onToggleEmployee={toggleEmployee}
+          onSelectAllEmployees={selectAllEmployees}
+          onClearAllEmployees={() => setSelectedEmployeeIds([])}
+          selectedEmployeeItems={selectedEmployeeItems}
+          required
+        />
 
         {!employeesValid && <p className="field-error">יש לבחור לפחות עובד אחד</p>}
-
-        <p id="employeeCountText">סה״כ עובדים שנבחרו: {selectedEmployeeIds.length}</p>
       </div>
 
       <hr className="form-divider" />

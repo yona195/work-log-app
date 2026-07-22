@@ -15,8 +15,7 @@ import {
 } from "../lib/entities.js";
 import DatePicker from "../components/DatePicker.jsx";
 import DuplicateConflictModal from "../components/DuplicateConflictModal.jsx";
-import SelectionPanel from "../components/SelectionPanel.jsx";
-import SelectedItemsPanel from "../components/SelectedItemsPanel.jsx";
+import WorkforceSelectionFields from "../components/WorkforceSelectionFields.jsx";
 
 const VALIDATION_MESSAGE = "נא לבחור תאריך, עובד, אתר, מבנה ומזמין";
 
@@ -657,126 +656,29 @@ export default function WorkLog() {
 
         <div className="form-section">
           <h4 className="form-section-title">בחירת כוח אדם</h4>
-          <div className="employee-actions">
-            <button
-              type="button"
-              className={group === "" ? "primary-btn" : "secondary-btn"}
-              onClick={() => changeWorkforceType("")}
-            >
-              כל העובדים
-            </button>
-            <button
-              type="button"
-              className={group === "internal" ? "primary-btn" : "secondary-btn"}
-              onClick={() => changeWorkforceType("internal")}
-            >
-              העובדים שלי
-            </button>
-            <button
-              type="button"
-              className={group === "all-subcontractors" ? "primary-btn" : "secondary-btn"}
-              onClick={() => changeWorkforceType("all-subcontractors")}
-            >
-              עובדי קבלן
-            </button>
-          </div>
-
-          {group === "all-subcontractors" ? (
-            <div
-              className="filter-grid filter-grid-3 worklog-workforce-grid"
-              style={{ marginTop: 14 }}
-            >
-              <div className="filter-grid-item">
-                <SelectionPanel
-                  title="בחירת קבלן"
-                  search={contractorSearch}
-                  onSearchChange={setContractorSearch}
-                  searchPlaceholder="🔍 חפש קבלן..."
-                  items={relevantContractors.map((s) => ({ id: s.id, label: s.name }))}
-                  selectedIds={selectedContractorIds}
-                  onToggle={toggleContractor}
-                  onSelectAll={selectAllContractors}
-                  onClearAll={clearAllContractors}
-                  emptyMessage="אין קבלני משנה עם עובדים"
-                />
-              </div>
-
-              <div className="filter-grid-item">
-                {selectedContractorIds.length === 0 ? (
-                  <div>
-                    <label>
-                      בחירת עובדי הקבלן
-                      <span className="required-mark"> *</span>
-                    </label>
-                    <div className="checkbox-list">
-                      <div className="empty-message">יש לבחור קבלן תחילה</div>
-                    </div>
-                  </div>
-                ) : (
-                  <SelectionPanel
-                    title="בחירת עובדי הקבלן"
-                    required
-                    search={employeeSearch}
-                    onSearchChange={setEmployeeSearch}
-                    searchPlaceholder="🔍 חפש עובד..."
-                    items={employeeOptions.map((e) => ({
-                      id: e.id,
-                      label: `${e.name} - ${getEmployeeAffiliationName(data, e)}`,
-                    }))}
-                    selectedIds={selectedEmployees}
-                    onToggle={toggleEmployee}
-                    onSelectAll={selectAllEmployees}
-                    onClearAll={() => setSelectedEmployees([])}
-                    emptyMessage="אין עובדים תואמים"
-                  />
-                )}
-              </div>
-
-              <div className="filter-grid-item">
-                <SelectedItemsPanel
-                  title="עובדים שנבחרו"
-                  items={selectedEmployeeItems}
-                  onRemove={toggleEmployee}
-                  onClearAll={() => setSelectedEmployees([])}
-                  emptyMessage="טרם נבחרו עובדים"
-                />
-              </div>
-            </div>
-          ) : (
-            <div
-              className="filter-grid filter-grid-2 worklog-workforce-grid"
-              style={{ marginTop: 14 }}
-            >
-              <div className="filter-grid-item">
-                <SelectionPanel
-                  title="בחירת עובדים"
-                  required
-                  search={employeeSearch}
-                  onSearchChange={setEmployeeSearch}
-                  searchPlaceholder="🔍 חפש עובד..."
-                  items={employeeOptions.map((e) => ({
-                    id: e.id,
-                    label: `${e.name} - ${getEmployeeAffiliationName(data, e)}`,
-                  }))}
-                  selectedIds={selectedEmployees}
-                  onToggle={toggleEmployee}
-                  onSelectAll={selectAllEmployees}
-                  onClearAll={() => setSelectedEmployees([])}
-                  emptyMessage="אין עובדים תואמים"
-                />
-              </div>
-
-              <div className="filter-grid-item">
-                <SelectedItemsPanel
-                  title="עובדים שנבחרו"
-                  items={selectedEmployeeItems}
-                  onRemove={toggleEmployee}
-                  onClearAll={() => setSelectedEmployees([])}
-                  emptyMessage="טרם נבחרו עובדים"
-                />
-              </div>
-            </div>
-          )}
+          <WorkforceSelectionFields
+            group={group}
+            onGroupChange={changeWorkforceType}
+            contractorSearch={contractorSearch}
+            onContractorSearchChange={setContractorSearch}
+            contractorItems={relevantContractors.map((s) => ({ id: s.id, label: s.name }))}
+            selectedContractorIds={selectedContractorIds}
+            onToggleContractor={toggleContractor}
+            onSelectAllContractors={selectAllContractors}
+            onClearAllContractors={clearAllContractors}
+            employeeSearch={employeeSearch}
+            onEmployeeSearchChange={setEmployeeSearch}
+            employeeItems={employeeOptions.map((e) => ({
+              id: e.id,
+              label: `${e.name} - ${getEmployeeAffiliationName(data, e)}`,
+            }))}
+            selectedEmployeeIds={selectedEmployees}
+            onToggleEmployee={toggleEmployee}
+            onSelectAllEmployees={selectAllEmployees}
+            onClearAllEmployees={() => setSelectedEmployees([])}
+            selectedEmployeeItems={selectedEmployeeItems}
+            required
+          />
         </div>
 
         <hr className="form-divider" />

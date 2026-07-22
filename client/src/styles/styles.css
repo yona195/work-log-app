@@ -599,14 +599,6 @@ tbody tr:hover {
     margin-bottom: 12px;
 }
 
-#employeeCountText {
-    margin-bottom: 18px;
-
-    font-size: 16px;
-    font-weight: 700;
-
-    color: var(--color-primary);
-}
 
 /* =========================================
    11. אזור המבנים
@@ -1181,11 +1173,6 @@ tbody tr:hover {
         min-width: 20px;
         height: 20px;
         margin: 0;
-    }
-
-    #employeeCountText {
-        font-size: 16px;
-        margin-bottom: 14px;
     }
 
     .employee-actions {
@@ -2272,7 +2259,7 @@ body.loading .menu-overlay {
 /* בחירת כוח אדם - מעטפת אחידה לכל הפאנלים (בחירה / נבחרו / מצב ריק),
    כך שכולם מיושרים באותו גובה, ריפוד וכותרת בלי קשר לתוכן שבפנים. */
 
-.worklog-workforce-grid .filter-grid-item {
+.workforce-selection-grid .filter-grid-item {
     display: flex;
 
     padding: 14px;
@@ -2282,17 +2269,17 @@ body.loading .menu-overlay {
     border-radius: var(--radius-medium);
 }
 
-.worklog-workforce-grid .filter-grid-item > div {
+.workforce-selection-grid .filter-grid-item > div {
     display: flex;
     flex-direction: column;
     width: 100%;
 }
 
-.worklog-workforce-grid .checkbox-list {
+.workforce-selection-grid .checkbox-list {
     flex: 1;
 }
 
-.worklog-workforce-grid label:first-child {
+.workforce-selection-grid label:first-child {
     margin-top: 0;
 }
 
