@@ -2923,6 +2923,15 @@ body.loading .menu-overlay {
     margin-bottom: 12px;
 }
 
+/* Pushed to the opposite (inline-end) side of the row from the two
+   checkboxes via auto margin, so it lines up under "הצג פריטים בארכיון"
+   in the section-title-row above (also pushed to that side by
+   justify-content: space-between there) instead of sitting right next to
+   "בחר הכל"/"מצב מתקדם". */
+.rates-bulk-actions {
+    margin-inline-start: auto;
+}
+
 /* The per-employee-row effective-from date (Rates.jsx) — muted/regular
    weight so it reads as metadata next to the bold name, not a second name. */
 .rates-row-date {

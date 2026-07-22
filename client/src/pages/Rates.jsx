@@ -237,10 +237,10 @@ export default function Rates() {
     setSelectedRateIds([]);
   };
 
-  // "מחק נבחרים" is hidden behind this explicit "advanced options" toggle
-  // on purpose, so bulk delete is never one accidental click away — it's a
-  // second, separate door alongside the regular per-row/per-group delete.
-  const [advancedOptionsEnabled, setAdvancedOptionsEnabled] = useState(false);
+  // Every delete button on this page (row/group/bulk) is hidden until this
+  // is checked — "ארכיון"/"ערוך" stay visible either way, since only delete
+  // is dangerous enough to need a second, explicit door.
+  const [advancedModeEnabled, setAdvancedModeEnabled] = useState(false);
 
   const toggleRateArchive = async (rate) => {
     if (rate.archived) {
@@ -662,19 +662,19 @@ export default function Rates() {
             <label className="checkbox-item">
               <input
                 type="checkbox"
-                checked={advancedOptionsEnabled}
-                onChange={(e) => setAdvancedOptionsEnabled(e.target.checked)}
+                checked={advancedModeEnabled}
+                onChange={(e) => setAdvancedModeEnabled(e.target.checked)}
               />
-              <span>אפשרויות מתקדמות</span>
+              <span>מצב מתקדם</span>
             </label>
             {selectedRateIds.length > 0 && (
-              <div className="report-row-actions">
+              <div className="report-row-actions rates-bulk-actions">
                 <button className="archive-btn" type="button" onClick={bulkArchiveSelectedRates}>
                   ארכיון ({selectedRateIds.length})
                 </button>
-                {advancedOptionsEnabled && (
+                {advancedModeEnabled && (
                   <button className="delete-btn" type="button" onClick={bulkDeleteSelectedRates}>
-                    מחק נבחרים ({selectedRateIds.length})
+                    מחק ({selectedRateIds.length})
                   </button>
                 )}
               </div>
@@ -714,13 +714,15 @@ export default function Rates() {
                       >
                         ערוך קבוצה
                       </button>
-                      <button
-                        className="delete-btn"
-                        type="button"
-                        onClick={() => deleteRateGroup(group)}
-                      >
-                        מחק קבוצה
-                      </button>
+                      {advancedModeEnabled && (
+                        <button
+                          className="delete-btn"
+                          type="button"
+                          onClick={() => deleteRateGroup(group)}
+                        >
+                          מחק קבוצה
+                        </button>
+                      )}
                       <button
                         className="archive-btn"
                         type="button"
@@ -767,7 +769,7 @@ export default function Rates() {
                           selected={selectedRateIds.includes(rate.id)}
                           onToggleSelect={() => toggleRateSelection(rate.id)}
                           onEdit={() => setEditingRates([rate])}
-                          onDelete={() => deleteRate(rate)}
+                          onDelete={advancedModeEnabled ? () => deleteRate(rate) : undefined}
                           onToggleArchive={() => toggleRateArchive(rate)}
                         />
                       );
