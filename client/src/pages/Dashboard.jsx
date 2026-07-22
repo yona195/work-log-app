@@ -101,10 +101,10 @@ export default function Dashboard() {
     <>
       <div>
         <div className="card">
-          <div className="dashboard-summary-header">
+          <div className="card-header-select-row">
             <h3>סיכום כספי</h3>
             <select
-              className="dashboard-period-select"
+              className="card-header-select"
               value={period}
               onChange={(e) => handlePeriodChange(e.target.value)}
             >

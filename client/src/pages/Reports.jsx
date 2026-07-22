@@ -1,5 +1,7 @@
-import { useMemo, useState } from "react";
-import PeriodFilter, { useDateRangeFilter } from "../components/PeriodFilter.jsx";
+import { useEffect, useMemo, useState } from "react";
+import { useDateRangeFilter } from "../components/PeriodFilter.jsx";
+import DatePicker from "../components/DatePicker.jsx";
+import SelectionPanel from "../components/SelectionPanel.jsx";
 import { useData } from "../state/DataProvider.jsx";
 import {
   getEmployeeAffiliationName,
@@ -11,13 +13,8 @@ import { buildWorkLogReportHtml, buildEmployerReportHtml } from "../lib/pdf.js";
 import { exportToExcel, exportFinancialSummaryToExcel } from "../lib/excel.js";
 import { exportPdfDirect } from "../lib/pdfExport.js";
 
-const EMPTY_FILTERS = {
-  group: "",
-  subcontractorId: "",
-  employeeId: "",
-  siteId: "",
-  customerId: "",
-};
+const toggle = (list, id) =>
+  list.includes(id) ? list.filter((x) => x !== id) : [...list, id];
 
 export default function Reports() {
   const { data } = useData();
@@ -25,48 +22,92 @@ export default function Reports() {
 
   const dateRange = useDateRangeFilter();
   const [reportType, setReportType] = useState("customer"); // "customer" | "employer"
-  const [filters, setFilters] = useState(EMPTY_FILTERS);
+  const [siteId, setSiteId] = useState("");
+  const [customerId, setCustomerId] = useState("");
+  const [group, setGroup] = useState("");
   const [showArchived, setShowArchived] = useState(false);
+  const [employeeSearch, setEmployeeSearch] = useState("");
+  const [contractorSearch, setContractorSearch] = useState("");
   const [pdfLoading, setPdfLoading] = useState(false);
 
-  const setFilter = (key, value) => setFilters((prev) => ({ ...prev, [key]: value }));
+  // Empty means "unrestricted" (matches the field's original single-select
+  // "כל העובדים/כל קבלני המשנה" default) — only once something is actually
+  // checked does the report narrow to just those. Kept as arrays (rather
+  // than a single id) so the report can be scoped to several specific
+  // employees/contractors at once, same as the worklog/employee-reports
+  // selection panels.
+  const [selectedSubcontractorIds, setSelectedSubcontractorIds] = useState([]);
+  const [selectedEmployeeIds, setSelectedEmployeeIds] = useState([]);
 
   // Switching workforce type invalidates whatever contractor/employee was
   // picked under the previous type — never leave a hidden filter active.
   const changeWorkforceType = (value) => {
-    setFilters((prev) => ({ ...prev, group: value, subcontractorId: "", employeeId: "" }));
+    setGroup(value);
+    setSelectedSubcontractorIds([]);
+    setSelectedEmployeeIds([]);
   };
 
-  const changeSubcontractor = (value) => {
-    setFilters((prev) => ({ ...prev, subcontractorId: value, employeeId: "" }));
-  };
+  const toggleSubcontractor = (id) => setSelectedSubcontractorIds(toggle(selectedSubcontractorIds, id));
+  const toggleEmployee = (id) => setSelectedEmployeeIds(toggle(selectedEmployeeIds, id));
+
+  // A subcontractor selection change can make the previous employee
+  // selection stale (ids no longer in employeeOptions) — start over empty.
+  useEffect(() => {
+    setSelectedEmployeeIds([]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [group, selectedSubcontractorIds]);
 
   // Archived employees/subcontractors/sites/customers are hidden from these
   // filter lists by default so they don't clutter the common case; the
   // "הצג גם פריטים מהארכיון" checkbox brings them back for pulling a report
   // that includes someone/something no longer active.
-  const visibleSubcontractors = showArchived ? subcontractors : activeOnly(subcontractors);
   const visibleSites = showArchived ? sites : activeOnly(sites);
   const visibleCustomers = showArchived ? customers : activeOnly(customers);
 
+  const relevantSubcontractors = useMemo(() => {
+    if (group !== "all-subcontractors") return [];
+    const idsWithEmployees = new Set(
+      employees
+        .filter((e) => e.type !== "internal")
+        .map((e) => String(e.subcontractorId || ""))
+    );
+    const text = contractorSearch.trim().toLowerCase();
+    return subcontractors.filter(
+      (s) =>
+        idsWithEmployees.has(String(s.id)) &&
+        (showArchived || !s.archived) &&
+        (!text || s.name.toLowerCase().includes(text))
+    );
+  }, [subcontractors, employees, group, showArchived, contractorSearch]);
+
   const employeeOptions = useMemo(() => {
+    const text = employeeSearch.trim().toLowerCase();
     return employees.filter((employee) => {
       if (!showArchived && isEmployeeArchived(employee, subcontractors)) return false;
       const isInternal = employee.type === "internal";
       const isSub = employee.type === "subcontractor" || employee.type === "external";
-      let matchesGroup = true;
-      if (filters.group === "internal") matchesGroup = isInternal;
-      if (filters.group === "all-subcontractors") matchesGroup = isSub;
-      const matchesSub =
-        !filters.subcontractorId ||
-        String(employee.subcontractorId || "") === String(filters.subcontractorId);
-      return matchesGroup && matchesSub;
+      if (group === "internal" && !isInternal) return false;
+      if (group === "all-subcontractors") {
+        if (!isSub) return false;
+        if (!selectedSubcontractorIds.includes(String(employee.subcontractorId || "")))
+          return false;
+      }
+      if (text && !employee.name.toLowerCase().includes(text)) return false;
+      return true;
     });
-  }, [employees, subcontractors, filters.group, filters.subcontractorId, showArchived]);
+  }, [employees, subcontractors, group, selectedSubcontractorIds, showArchived, employeeSearch]);
 
   const effectiveFilters = useMemo(
-    () => ({ ...filters, from: dateRange.from, to: dateRange.to }),
-    [filters, dateRange.from, dateRange.to]
+    () => ({
+      from: dateRange.from,
+      to: dateRange.to,
+      group,
+      subcontractorId: selectedSubcontractorIds.length > 0 ? selectedSubcontractorIds : "",
+      employeeId: selectedEmployeeIds.length > 0 ? selectedEmployeeIds : "",
+      siteId,
+      customerId,
+    }),
+    [dateRange.from, dateRange.to, group, selectedSubcontractorIds, selectedEmployeeIds, siteId, customerId]
   );
 
   const filteredLogs = useMemo(
@@ -107,34 +148,68 @@ export default function Reports() {
   const periodValid =
     dateRange.period !== "custom" || Boolean(dateRange.customFrom && dateRange.customTo);
   const canExport = periodValid;
-  const showContractorField = filters.group === "all-subcontractors";
+  const showContractorField = group === "all-subcontractors";
+
+  const employeePanel = (
+    <SelectionPanel
+      title="בחירת עובדים"
+      search={employeeSearch}
+      onSearchChange={setEmployeeSearch}
+      searchPlaceholder="🔍 חפש עובד..."
+      items={employeeOptions.map((employee) => ({
+        id: employee.id,
+        label: `${employee.name} - ${getEmployeeAffiliationName(data, employee)}${
+          isEmployeeArchived(employee, subcontractors) ? " (בארכיון)" : ""
+        }`,
+      }))}
+      selectedIds={selectedEmployeeIds}
+      onToggle={toggleEmployee}
+      onSelectAll={() =>
+        setSelectedEmployeeIds((prev) => [
+          ...new Set([...prev, ...employeeOptions.map((e) => e.id)]),
+        ])
+      }
+      onClearAll={() => setSelectedEmployeeIds([])}
+      emptyMessage="אין עובדים תואמים"
+    />
+  );
 
   return (
     <div className="card">
-      <h3>הגדרת הדוח</h3>
+      <div className="card-header-select-row">
+        <h3>הגדרת הדוח</h3>
+        <select
+          className="card-header-select"
+          value={dateRange.period}
+          onChange={(e) => dateRange.setPeriod(e.target.value)}
+        >
+          <option value="current-month">החודש הנוכחי</option>
+          <option value="last-three-months">שלושה חודשים אחרונים</option>
+          <option value="custom">בחירת תאריך</option>
+        </select>
+      </div>
+
+      {dateRange.period === "custom" && (
+        <div style={{ marginBottom: 18 }}>
+          <label>טווח תאריכים</label>
+          <DatePicker
+            mode="range"
+            value={{ from: dateRange.customFrom, to: dateRange.customTo }}
+            onChange={({ from, to }) => {
+              dateRange.setCustomFrom(from);
+              dateRange.setCustomTo(to);
+            }}
+          />
+          {!periodValid && <p className="field-error">יש לבחור טווח תאריכים מלא</p>}
+        </div>
+      )}
 
       <div className="form-section">
-        <h4 className="form-section-title">פרטי הדוח</h4>
-        <div className="filter-grid filter-grid-3">
-          <div className="filter-grid-item">
-            <PeriodFilter
-              period={dateRange.period}
-              onPeriodChange={dateRange.setPeriod}
-              customFrom={dateRange.customFrom}
-              customTo={dateRange.customTo}
-              onCustomFromChange={dateRange.setCustomFrom}
-              onCustomToChange={dateRange.setCustomTo}
-              required
-              errorMessage={periodValid ? "" : "יש לבחור טווח תאריכים מלא"}
-            />
-          </div>
-
+        <h4 className="form-section-title">היקף הדוח</h4>
+        <div className="filter-grid filter-grid-2">
           <div className="filter-grid-item">
             <label>מזמין עבודה</label>
-            <select
-              value={filters.customerId}
-              onChange={(e) => setFilter("customerId", e.target.value)}
-            >
+            <select value={customerId} onChange={(e) => setCustomerId(e.target.value)}>
               <option value="">כל המזמינים</option>
               {visibleCustomers.map((customer) => (
                 <option key={customer.id} value={customer.id}>
@@ -147,10 +222,7 @@ export default function Reports() {
 
           <div className="filter-grid-item">
             <label>אתר עבודה</label>
-            <select
-              value={filters.siteId}
-              onChange={(e) => setFilter("siteId", e.target.value)}
-            >
+            <select value={siteId} onChange={(e) => setSiteId(e.target.value)}>
               <option value="">כל האתרים</option>
               {visibleSites.map((site) => (
                 <option key={site.id} value={site.id}>
@@ -168,21 +240,21 @@ export default function Reports() {
         <div className="employee-actions">
           <button
             type="button"
-            className={filters.group === "" ? "primary-btn" : "secondary-btn"}
+            className={group === "" ? "primary-btn" : "secondary-btn"}
             onClick={() => changeWorkforceType("")}
           >
             כל העובדים
           </button>
           <button
             type="button"
-            className={filters.group === "internal" ? "primary-btn" : "secondary-btn"}
+            className={group === "internal" ? "primary-btn" : "secondary-btn"}
             onClick={() => changeWorkforceType("internal")}
           >
             העובדים שלי
           </button>
           <button
             type="button"
-            className={filters.group === "all-subcontractors" ? "primary-btn" : "secondary-btn"}
+            className={group === "all-subcontractors" ? "primary-btn" : "secondary-btn"}
             onClick={() => changeWorkforceType("all-subcontractors")}
           >
             עובדי קבלן
@@ -192,69 +264,48 @@ export default function Reports() {
         {showContractorField ? (
           <div className="filter-grid filter-grid-2" style={{ marginTop: 14 }}>
             <div className="filter-grid-item">
-              <label>קבלן משנה</label>
-              <select
-                value={filters.subcontractorId}
-                onChange={(e) => changeSubcontractor(e.target.value)}
-              >
-                <option value="">כל קבלני המשנה</option>
-                {visibleSubcontractors.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name}
-                    {s.archived ? " (בארכיון)" : ""}
-                  </option>
-                ))}
-              </select>
+              <SelectionPanel
+                title="בחירת קבלנים"
+                search={contractorSearch}
+                onSearchChange={setContractorSearch}
+                searchPlaceholder="🔍 חפש קבלן..."
+                items={relevantSubcontractors.map((s) => ({
+                  id: s.id,
+                  label: `${s.name}${s.archived ? " (בארכיון)" : ""}`,
+                }))}
+                selectedIds={selectedSubcontractorIds}
+                onToggle={toggleSubcontractor}
+                onSelectAll={() =>
+                  setSelectedSubcontractorIds((prev) => [
+                    ...new Set([...prev, ...relevantSubcontractors.map((s) => s.id)]),
+                  ])
+                }
+                onClearAll={() => setSelectedSubcontractorIds([])}
+                emptyMessage="אין קבלני משנה עם עובדים"
+              />
             </div>
 
-            <div className="filter-grid-item">
-              <label>עובד</label>
-              <select
-                value={filters.employeeId}
-                onChange={(e) => setFilter("employeeId", e.target.value)}
-              >
-                <option value="">כל העובדים</option>
-                {employeeOptions.map((employee) => (
-                  <option key={employee.id} value={employee.id}>
-                    {employee.name} - {getEmployeeAffiliationName(data, employee)}
-                    {isEmployeeArchived(employee, subcontractors) ? " (בארכיון)" : ""}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <div className="filter-grid-item">{employeePanel}</div>
           </div>
         ) : (
-          <div style={{ marginTop: 14 }}>
-            <label>עובד</label>
-            <select
-              value={filters.employeeId}
-              onChange={(e) => setFilter("employeeId", e.target.value)}
-            >
-              <option value="">כל העובדים</option>
-              {employeeOptions.map((employee) => (
-                <option key={employee.id} value={employee.id}>
-                  {employee.name} - {getEmployeeAffiliationName(data, employee)}
-                  {isEmployeeArchived(employee, subcontractors) ? " (בארכיון)" : ""}
-                </option>
-              ))}
-            </select>
-          </div>
+          <div style={{ marginTop: 14 }}>{employeePanel}</div>
         )}
-
-        <label className="checkbox-item" style={{ display: "inline-flex", marginTop: 8 }}>
-          <input
-            type="checkbox"
-            checked={showArchived}
-            onChange={(e) => setShowArchived(e.target.checked)}
-          />
-          <span>הצג גם פריטים מהארכיון</span>
-        </label>
       </div>
 
       <hr className="form-divider" />
 
       <div className="form-section">
-        <h4 className="form-section-title">הפקת הדוח</h4>
+        <div className="section-title-row">
+          <h4 className="form-section-title" style={{ marginBottom: 0 }}>הפקת הדוח</h4>
+          <label className="checkbox-item" style={{ display: "inline-flex" }}>
+            <input
+              type="checkbox"
+              checked={showArchived}
+              onChange={(e) => setShowArchived(e.target.checked)}
+            />
+            <span>הצג גם פריטים מהארכיון</span>
+          </label>
+        </div>
 
         <label>סוג הדוח</label>
         <div className="employee-actions">

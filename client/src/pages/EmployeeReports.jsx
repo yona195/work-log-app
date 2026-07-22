@@ -7,7 +7,8 @@ import {
 import { filterReportLogs } from "../lib/reports.js";
 import { buildEmployeeReportHtml } from "../lib/pdf.js";
 import { exportEmployeeWorkExcel, exportEmployeeSummaryExcel } from "../lib/excel.js";
-import PeriodFilter, { useDateRangeFilter } from "../components/PeriodFilter.jsx";
+import { useDateRangeFilter } from "../components/PeriodFilter.jsx";
+import DatePicker from "../components/DatePicker.jsx";
 import SelectionPanel from "../components/SelectionPanel.jsx";
 import { exportPdfDirect, NO_DATA_MESSAGE } from "../lib/pdfExport.js";
 
@@ -168,58 +169,62 @@ export default function EmployeeReports() {
 
   return (
     <div className="card">
-      <h3>הגדרת הדוח</h3>
-
-      <div className="form-section">
-        <h4 className="form-section-title">פרטי הדוח</h4>
-        <div className="filter-grid filter-grid-2">
-          <div className="filter-grid-item">
-            <PeriodFilter
-              period={dateRange.period}
-              onPeriodChange={dateRange.setPeriod}
-              customFrom={dateRange.customFrom}
-              customTo={dateRange.customTo}
-              onCustomFromChange={dateRange.setCustomFrom}
-              onCustomToChange={dateRange.setCustomTo}
-              required
-              errorMessage={periodValid ? "" : "יש לבחור טווח תאריכים מלא"}
-            />
-          </div>
-
-          <div className="filter-grid-item">
-            <label>סוג עובדים</label>
-            <div className="employee-actions">
-              <button
-                type="button"
-                className={group === "" ? "primary-btn" : "secondary-btn"}
-                onClick={() => handleGroupChange("")}
-              >
-                כל העובדים
-              </button>
-              <button
-                type="button"
-                className={group === "internal" ? "primary-btn" : "secondary-btn"}
-                onClick={() => handleGroupChange("internal")}
-              >
-                העובדים שלי
-              </button>
-              <button
-                type="button"
-                className={group === "all-subcontractors" ? "primary-btn" : "secondary-btn"}
-                onClick={() => handleGroupChange("all-subcontractors")}
-              >
-                עובדי קבלן
-              </button>
-            </div>
-          </div>
-        </div>
+      <div className="card-header-select-row">
+        <h3>הגדרת הדוח</h3>
+        <select
+          className="card-header-select"
+          value={dateRange.period}
+          onChange={(e) => dateRange.setPeriod(e.target.value)}
+        >
+          <option value="current-month">החודש הנוכחי</option>
+          <option value="last-three-months">שלושה חודשים אחרונים</option>
+          <option value="custom">בחירת תאריך</option>
+        </select>
       </div>
 
+      {dateRange.period === "custom" && (
+        <div style={{ marginBottom: 18 }}>
+          <label>טווח תאריכים</label>
+          <DatePicker
+            mode="range"
+            value={{ from: dateRange.customFrom, to: dateRange.customTo }}
+            onChange={({ from, to }) => {
+              dateRange.setCustomFrom(from);
+              dateRange.setCustomTo(to);
+            }}
+          />
+          {!periodValid && <p className="field-error">יש לבחור טווח תאריכים מלא</p>}
+        </div>
+      )}
+
       <div className="form-section">
-        <h4 className="form-section-title">בחירת עובדים</h4>
+        <h4 className="form-section-title">בחירת כוח אדם</h4>
+        <div className="employee-actions">
+          <button
+            type="button"
+            className={group === "" ? "primary-btn" : "secondary-btn"}
+            onClick={() => handleGroupChange("")}
+          >
+            כל העובדים
+          </button>
+          <button
+            type="button"
+            className={group === "internal" ? "primary-btn" : "secondary-btn"}
+            onClick={() => handleGroupChange("internal")}
+          >
+            העובדים שלי
+          </button>
+          <button
+            type="button"
+            className={group === "all-subcontractors" ? "primary-btn" : "secondary-btn"}
+            onClick={() => handleGroupChange("all-subcontractors")}
+          >
+            עובדי קבלן
+          </button>
+        </div>
 
         {showContractorField ? (
-          <div className="filter-grid filter-grid-2">
+          <div className="filter-grid filter-grid-2" style={{ marginTop: 14 }}>
             <div className="filter-grid-item">
               <SelectionPanel
                 title="בחירת קבלן"
@@ -257,27 +262,28 @@ export default function EmployeeReports() {
             </div>
           </div>
         ) : (
-          employeePanel
+          <div style={{ marginTop: 14 }}>{employeePanel}</div>
         )}
 
         {!employeesValid && <p className="field-error">יש לבחור לפחות עובד אחד</p>}
 
         <p id="employeeCountText">סה״כ עובדים שנבחרו: {selectedEmployeeIds.length}</p>
-
-        <label className="checkbox-item" style={{ display: "inline-flex", marginTop: 8 }}>
-          <input
-            type="checkbox"
-            checked={showArchived}
-            onChange={(e) => setShowArchived(e.target.checked)}
-          />
-          <span>הצג גם פריטים מהארכיון</span>
-        </label>
       </div>
 
       <hr className="form-divider" />
 
       <div className="form-section">
-        <h4 className="form-section-title">הפקת הדוח</h4>
+        <div className="section-title-row">
+          <h4 className="form-section-title" style={{ marginBottom: 0 }}>הפקת הדוח</h4>
+          <label className="checkbox-item" style={{ display: "inline-flex" }}>
+            <input
+              type="checkbox"
+              checked={showArchived}
+              onChange={(e) => setShowArchived(e.target.checked)}
+            />
+            <span>הצג גם פריטים מהארכיון</span>
+          </label>
+        </div>
 
         <label>סוג הדוח</label>
         <div className="employee-actions">
