@@ -14,6 +14,7 @@ import SelectionPanel from "../components/SelectionPanel.jsx";
 import GroupCard from "../components/GroupCard.jsx";
 import CompactRow from "../components/CompactRow.jsx";
 import { usePagedList, ListPagination } from "../components/Pagination.jsx";
+import { useBulkSelection } from "../components/useBulkSelection.js";
 
 export default function Rates() {
   const { data, addItem, updateItem, deleteItem } = useData();
@@ -30,7 +31,6 @@ export default function Rates() {
   const [effectiveFrom, setEffectiveFrom] = useState(todayISO());
   const [showArchived, setShowArchived] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedRateIds, setSelectedRateIds] = useState([]);
 
   // "Employee source": every rate created here is a personal (per-employee)
   // rate — pick "העובדים שלי" or one or more contractors, then only that
@@ -166,32 +166,26 @@ export default function Rates() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ratesPageSize]);
 
-  // Drops any selected id that's no longer in the visible (filtered) list —
-  // covers both a single-row delete/archive-toggle on a selected row and
-  // the showArchived filter hiding a previously-selected row — so "X
-  // selected" never counts a row that's no longer on screen.
-  useEffect(() => {
-    const validIds = new Set(sortedRates.map((r) => r.id));
-    setSelectedRateIds((prev) => prev.filter((id) => validIds.has(id)));
-  }, [sortedRates]);
-
-  const toggleRateSelection = (id) =>
-    setSelectedRateIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-    );
+  const {
+    selectedIds: selectedRateIds,
+    toggle: toggleRateSelection,
+    isFullySelected: isRateGroupFullySelected,
+    toggleAll: toggleAllRates,
+    clear: clearRateSelection,
+  } = useBulkSelection(sortedRates);
 
   // "Select all" is scoped to the current page only — simplest behavior
   // for a paginated table, and selection isn't cleared on page change, so
   // rows picked on other pages stay picked.
-  const isAllCurrentPageSelected =
-    pagedRates.length > 0 && pagedRates.every((r) => selectedRateIds.includes(r.id));
+  const isAllCurrentPageSelected = isRateGroupFullySelected(pagedRates);
+  const toggleSelectAllCurrentPage = () => toggleAllRates(pagedRates);
 
-  const toggleSelectAllCurrentPage = () =>
-    setSelectedRateIds((prev) =>
-      isAllCurrentPageSelected
-        ? prev.filter((id) => !pagedRates.some((r) => r.id === id))
-        : [...new Set([...prev, ...pagedRates.map((r) => r.id)])]
-    );
+  // Per-card "select all" — scoped to just this group's rates, independent
+  // of every other card and of the page-level "select all" above (both
+  // read/write the same selectedRateIds array, just intersected with a
+  // different id subset, so neither has to know about the other).
+  const isGroupFullySelected = (group) => isRateGroupFullySelected(group.rates);
+  const toggleSelectAllInGroup = (group) => toggleAllRates(group.rates);
 
   const bulkDeleteSelectedRates = async () => {
     if (
@@ -205,22 +199,8 @@ export default function Rates() {
       // eslint-disable-next-line no-await-in-loop
       await deleteItem("rates", id).catch(() => {});
     }
-    setSelectedRateIds([]);
+    clearRateSelection();
   };
-
-  // Per-card "select all" — scoped to just this group's rates, independent
-  // of every other card and of the page-level "select all" above (both
-  // read/write the same selectedRateIds array, just intersected with a
-  // different id subset, so neither has to know about the other).
-  const isGroupFullySelected = (group) =>
-    group.rates.every((r) => selectedRateIds.includes(r.id));
-
-  const toggleSelectAllInGroup = (group) =>
-    setSelectedRateIds((prev) =>
-      isGroupFullySelected(group)
-        ? prev.filter((id) => !group.rates.some((r) => r.id === id))
-        : [...new Set([...prev, ...group.rates.map((r) => r.id)])]
-    );
 
   const bulkArchiveSelectedRates = async () => {
     if (
@@ -234,7 +214,7 @@ export default function Rates() {
       // eslint-disable-next-line no-await-in-loop
       await updateItem("rates", id, { archived: true });
     }
-    setSelectedRateIds([]);
+    clearRateSelection();
   };
 
   // Every delete button on this page (row/group/bulk) is hidden until this
@@ -650,7 +630,7 @@ export default function Rates() {
           <p>עדיין לא הוגדרו תעריפים.</p>
         ) : (
           <>
-          <div className="rates-select-all-row">
+          <div className="bulk-select-row">
             <label className="checkbox-item">
               <input
                 type="checkbox"
@@ -668,7 +648,7 @@ export default function Rates() {
               <span>מצב מתקדם</span>
             </label>
             {selectedRateIds.length > 0 && (
-              <div className="report-row-actions rates-bulk-actions">
+              <div className="report-row-actions bulk-actions-inline">
                 <button className="archive-btn" type="button" onClick={bulkArchiveSelectedRates}>
                   ארכיון ({selectedRateIds.length})
                 </button>

@@ -1802,6 +1802,25 @@ body.loading .menu-overlay {
     white-space: nowrap;
 }
 
+/* Same shrink-to-fit treatment for a row-select checkbox column (Customers/
+   Employees "unassigned" tables), plus the same width:100%-inherited-from-
+   text-inputs fix already applied elsewhere to bare checkboxes outside
+   .checkbox-item. */
+.select-column {
+    width: 1%;
+    white-space: nowrap;
+}
+
+.select-column input[type="checkbox"] {
+    width: 18px;
+    min-width: 18px;
+    height: 18px;
+    margin: 0;
+
+    accent-color: var(--color-primary);
+    cursor: pointer;
+}
+
 .report-row-actions {
     display: flex;
     gap: 8px;
@@ -2869,7 +2888,7 @@ body.loading .menu-overlay {
 }
 
 /* Same fix as .employees-row-main above, for the per-card "select all in
-   this group" checkbox (Rates.jsx) rendered via GroupCard's
+   this group" checkbox (Rates/Employees/Sites) rendered via GroupCard's
    selectionControl prop — otherwise it inherits the global input{width:100%}
    rule and swallows the group title's flex space. */
 .employees-group-title input[type="checkbox"] {
@@ -2882,6 +2901,42 @@ body.loading .menu-overlay {
 
     accent-color: var(--color-primary);
     cursor: pointer;
+}
+
+/* Fixed-height header row shared by every management page's bulk-select UI
+   (Rates/Employees/Sites/Customers): "בחר הכל"/"מצב מתקדם" checkboxes stay
+   put, and the archive/delete buttons fold in and out of this SAME row (via
+   .bulk-actions-inline below) as selection changes, instead of a separate
+   banner appearing/disappearing and pushing the rest of the page down.
+   Wraps on narrow screens rather than ever hiding/collapsing as a whole
+   row. */
+.bulk-select-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+/* .checkbox-item's base margin-bottom is normally cancelled only via
+   :last-child (for stacked lists) — here the checkboxes sit in a flex ROW
+   where "last child" flips depending on whether the archive/delete buttons
+   are rendered after them, so relying on :last-child gave each checkbox an
+   inconsistent bottom margin (present/absent) as selection changed. That
+   asymmetric margin shifted its centered position by a few px — this
+   unconditional override keeps every checkbox's vertical center fixed
+   regardless of what else is in the row. */
+.bulk-select-row .checkbox-item {
+    margin-bottom: 0;
+}
+
+/* Pushed to the opposite (inline-end) side of the row from the two
+   checkboxes via auto margin, so it lines up under the page's "הצג פריטים
+   בארכיון"/"הצג פריטים מהארכיון" checkbox in the section-title-row above
+   (also pushed to that side by justify-content: space-between there)
+   instead of sitting right next to "בחר הכל"/"מצב מתקדם". */
+.bulk-actions-inline {
+    margin-inline-start: auto;
 }
 
 @media (max-width: 640px) {
@@ -2908,40 +2963,6 @@ body.loading .menu-overlay {
 .rates-profit-negative {
     color: var(--color-danger);
     font-weight: 700;
-}
-
-/* Fixed-height header row: the checkboxes stay put, and the archive/delete
-   buttons fold in and out of this SAME row (via .report-row-actions) as
-   selection changes, instead of a separate banner appearing below and
-   pushing the rest of the page down. Wraps on narrow screens rather than
-   ever hiding/collapsing as a whole row. */
-.rates-select-all-row {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 12px;
-}
-
-/* .checkbox-item's base margin-bottom is normally cancelled only via
-   :last-child (for stacked lists) — here the checkboxes sit in a flex ROW
-   where "last child" flips depending on whether the archive/delete buttons
-   are rendered after them, so relying on :last-child gave each checkbox an
-   inconsistent bottom margin (present/absent) as selection changed. That
-   asymmetric margin shifted its centered position by a few px — this
-   unconditional override keeps every checkbox's vertical center fixed
-   regardless of what else is in the row. */
-.rates-select-all-row .checkbox-item {
-    margin-bottom: 0;
-}
-
-/* Pushed to the opposite (inline-end) side of the row from the two
-   checkboxes via auto margin, so it lines up under "הצג פריטים בארכיון"
-   in the section-title-row above (also pushed to that side by
-   justify-content: space-between there) instead of sitting right next to
-   "בחר הכל"/"מצב מתקדם". */
-.rates-bulk-actions {
-    margin-inline-start: auto;
 }
 
 /* The per-employee-row effective-from date (Rates.jsx) — muted/regular

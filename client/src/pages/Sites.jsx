@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useData } from "../state/DataProvider.jsx";
 import { activeOnly, getBuildingIds } from "../lib/entities.js";
 import EditSimpleItemModal from "../components/EditSimpleItemModal.jsx";
-import EditBuildingModal from "../components/EditBuildingModal.jsx";
 import GroupCard from "../components/GroupCard.jsx";
 import CompactRow from "../components/CompactRow.jsx";
+import { useBulkSelection } from "../components/useBulkSelection.js";
 
 // The default building auto-created for every site (see server/src/db.js) —
 // a fixed, protected name: no edit/delete/archive, and never assignable to
@@ -30,6 +30,31 @@ export default function Sites() {
 
   const visibleSites = showArchived ? sites : activeOnly(sites);
   const visibleBuildings = showArchived ? buildings : activeOnly(buildings);
+
+  // The auto-created default building is never individually selectable
+  // (it has no edit/delete/archive of its own either) — excluded up front
+  // so it can never end up in the selection or be swept up by a group's
+  // "select all".
+  const selectableBuildings = useMemo(
+    () => visibleBuildings.filter((b) => !isGeneralBuilding(b)),
+    [visibleBuildings]
+  );
+
+  const {
+    selectedIds: selectedBuildingIds,
+    toggle: toggleBuildingSelection,
+    isFullySelected: isBuildingGroupFullySelected,
+    toggleAll: toggleAllBuildings,
+    clear: clearBuildingSelection,
+  } = useBulkSelection(selectableBuildings);
+
+  const isAllVisibleBuildingsSelected = isBuildingGroupFullySelected(selectableBuildings);
+  const toggleSelectAllVisibleBuildings = () => toggleAllBuildings(selectableBuildings);
+
+  // Every delete button on this page (row/group/bulk) is hidden until this
+  // is checked — "ארכיון"/"ערוך" stay visible either way, since only delete
+  // is dangerous enough to need a second, explicit door.
+  const [advancedModeEnabled, setAdvancedModeEnabled] = useState(false);
 
   const canAddSite = siteName.trim().length > 0 && !isAddingSite;
   const canAddBuilding = Boolean(buildingSiteId) && buildingName.trim().length > 0 && !isAddingBuilding;
@@ -99,12 +124,34 @@ export default function Sites() {
   // tag, not a billing unit, so deleting one must never break or wipe out
   // work-log records that already reference it. Every affected record gets
   // repointed to the site's own "כללי" building instead — every other field
-  // (date, employees, site, customer) stays exactly as it was.
+  // (date, employees, site, customer) stays exactly as it was. `logState`
+  // is a shared, mutable {logId -> current buildingIds} map so that when
+  // several buildings are deleted together in one bulk pass, each one sees
+  // the previous ones' already-applied repoints instead of a stale snapshot.
+  const deleteBuildingsCascade = async (buildingsToDelete, logState) => {
+    for (const building of buildingsToDelete) {
+      if (isGeneralBuilding(building)) continue; // never reaches here anyway
+      const generalBuilding = buildings.find(
+        (b) => String(b.siteId) === String(building.siteId) && isGeneralBuilding(b)
+      );
+      for (const [logId, currentIds] of logState.entries()) {
+        if (!currentIds.includes(String(building.id))) continue;
+        const remainingIds = currentIds.filter((id) => id !== String(building.id));
+        const nextIds =
+          generalBuilding && !remainingIds.includes(String(generalBuilding.id))
+            ? [...remainingIds, generalBuilding.id]
+            : remainingIds;
+        // eslint-disable-next-line no-await-in-loop
+        await updateItem("workLogs", logId, { buildingIds: nextIds });
+        logState.set(logId, nextIds);
+      }
+      // eslint-disable-next-line no-await-in-loop
+      await deleteItem("buildings", building.id);
+    }
+  };
+
   const deleteBuilding = async (building) => {
     if (isGeneralBuilding(building)) return; // no delete button reaches here anyway
-    const generalBuilding = buildings.find(
-      (b) => String(b.siteId) === String(building.siteId) && isGeneralBuilding(b)
-    );
     const affectedLogs = workLogs.filter((log) =>
       getBuildingIds(log).map(String).includes(String(building.id))
     );
@@ -115,18 +162,37 @@ export default function Sites() {
         : `למחוק את ${building.name} לצמיתות?`;
     if (!confirm(confirmMessage)) return;
 
-    for (const log of affectedLogs) {
-      const remainingIds = getBuildingIds(log)
-        .map(String)
-        .filter((id) => id !== String(building.id));
-      const nextIds = generalBuilding && !remainingIds.includes(String(generalBuilding.id))
-        ? [...remainingIds, generalBuilding.id]
-        : remainingIds;
-      // eslint-disable-next-line no-await-in-loop
-      await updateItem("workLogs", log.id, { buildingIds: nextIds });
-    }
+    const logState = new Map(workLogs.map((log) => [log.id, getBuildingIds(log).map(String)]));
+    await deleteBuildingsCascade([building], logState);
+  };
 
-    await deleteItem("buildings", building.id);
+  const bulkArchiveSelectedBuildings = async () => {
+    if (
+      !confirm(
+        `להעביר את ${selectedBuildingIds.length} המבנים שנבחרו לארכיון? המבנים לא יופיעו יותר לבחירה ברשומות חדשות, אבל הדוחות הקיימים לא ישתנו.`
+      )
+    ) {
+      return;
+    }
+    for (const id of selectedBuildingIds) {
+      // eslint-disable-next-line no-await-in-loop
+      await updateItem("buildings", id, { archived: true });
+    }
+    clearBuildingSelection();
+  };
+
+  const bulkDeleteSelectedBuildings = async () => {
+    const selected = buildings.filter((b) => selectedBuildingIds.includes(b.id));
+    if (
+      !confirm(
+        `למחוק ${selected.length} מבנים שנבחרו לצמיתות? רשומות עבודה שמצביעות עליהם יעברו אוטומטית למבנה "${GENERAL_BUILDING_NAME}" של האתר המתאים - שאר נתוני הרשומות יישארו ללא שינוי.`
+      )
+    ) {
+      return;
+    }
+    const logState = new Map(workLogs.map((log) => [log.id, getBuildingIds(log).map(String)]));
+    await deleteBuildingsCascade(selected, logState);
+    clearBuildingSelection();
   };
 
   // Actions on a site cascade to its own buildings (archive/restore/
@@ -286,6 +352,40 @@ export default function Sites() {
             <span>הצג פריטים בארכיון</span>
           </label>
         </div>
+
+        {selectableBuildings.length > 0 && (
+          <div className="bulk-select-row">
+            <label className="checkbox-item">
+              <input
+                type="checkbox"
+                checked={isAllVisibleBuildingsSelected}
+                onChange={toggleSelectAllVisibleBuildings}
+              />
+              <span>בחר הכל</span>
+            </label>
+            <label className="checkbox-item">
+              <input
+                type="checkbox"
+                checked={advancedModeEnabled}
+                onChange={(e) => setAdvancedModeEnabled(e.target.checked)}
+              />
+              <span>מצב מתקדם</span>
+            </label>
+            {selectedBuildingIds.length > 0 && (
+              <div className="report-row-actions bulk-actions-inline">
+                <button className="archive-btn" type="button" onClick={bulkArchiveSelectedBuildings}>
+                  ארכיון ({selectedBuildingIds.length})
+                </button>
+                {advancedModeEnabled && (
+                  <button className="delete-btn" type="button" onClick={bulkDeleteSelectedBuildings}>
+                    מחק ({selectedBuildingIds.length})
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
         {visibleSites.length === 0 ? (
           <p className="empty-message">אין עדיין אתרי עבודה.</p>
         ) : (
@@ -294,6 +394,7 @@ export default function Sites() {
               const siteBuildings = visibleBuildings.filter(
                 (b) => String(b.siteId || "") === String(site.id)
               );
+              const selectableSiteBuildings = siteBuildings.filter((b) => !isGeneralBuilding(b));
               return (
                 <GroupCard
                   key={site.id}
@@ -302,6 +403,16 @@ export default function Sites() {
                   count={siteBuildings.length}
                   countLabel="מבנים"
                   isArchived={site.archived}
+                  selectionControl={
+                    selectableSiteBuildings.length > 0 && (
+                      <input
+                        type="checkbox"
+                        checked={isBuildingGroupFullySelected(selectableSiteBuildings)}
+                        onChange={() => toggleAllBuildings(selectableSiteBuildings)}
+                        aria-label={`בחר הכל - ${site.name}`}
+                      />
+                    )
+                  }
                   groupActions={
                     <div className="report-row-actions">
                       <button
@@ -311,13 +422,15 @@ export default function Sites() {
                       >
                         ערוך אתר
                       </button>
-                      <button
-                        className="delete-btn"
-                        type="button"
-                        onClick={() => deleteSite(site)}
-                      >
-                        מחק אתר
-                      </button>
+                      {advancedModeEnabled && (
+                        <button
+                          className="delete-btn"
+                          type="button"
+                          onClick={() => deleteSite(site)}
+                        >
+                          מחק אתר
+                        </button>
+                      )}
                       <button
                         className="archive-btn"
                         type="button"
@@ -337,8 +450,16 @@ export default function Sites() {
                           key={building.id}
                           name={building.name}
                           archived={building.archived}
+                          selected={selectedBuildingIds.includes(building.id)}
+                          onToggleSelect={
+                            isGeneralBuilding(building) ? undefined : () => toggleBuildingSelection(building.id)
+                          }
                           onEdit={isGeneralBuilding(building) ? undefined : () => setEditingBuilding(building)}
-                          onDelete={isGeneralBuilding(building) ? undefined : () => deleteBuilding(building)}
+                          onDelete={
+                            isGeneralBuilding(building) || !advancedModeEnabled
+                              ? undefined
+                              : () => deleteBuilding(building)
+                          }
                           onToggleArchive={
                             isGeneralBuilding(building) ? undefined : () => toggleBuildingArchive(building)
                           }
@@ -362,8 +483,16 @@ export default function Sites() {
                 key={building.id}
                 name={building.name}
                 archived={building.archived}
+                selected={selectedBuildingIds.includes(building.id)}
+                onToggleSelect={
+                  isGeneralBuilding(building) ? undefined : () => toggleBuildingSelection(building.id)
+                }
                 onEdit={isGeneralBuilding(building) ? undefined : () => setEditingBuilding(building)}
-                onDelete={isGeneralBuilding(building) ? undefined : () => deleteBuilding(building)}
+                onDelete={
+                  isGeneralBuilding(building) || !advancedModeEnabled
+                    ? undefined
+                    : () => deleteBuilding(building)
+                }
                 onToggleArchive={
                   isGeneralBuilding(building) ? undefined : () => toggleBuildingArchive(building)
                 }
@@ -383,8 +512,15 @@ export default function Sites() {
       )}
 
       {editingBuilding && (
-        <EditBuildingModal
-          building={editingBuilding}
+        <EditSimpleItemModal
+          title="עריכת מבנה"
+          initialName={editingBuilding.name}
+          validate={(newName) =>
+            newName === GENERAL_BUILDING_NAME
+              ? `השם "${GENERAL_BUILDING_NAME}" שמור למבנה ברירת המחדל של האתר.`
+              : null
+          }
+          onSave={(newName) => updateItem("buildings", editingBuilding.id, { name: newName })}
           onClose={() => setEditingBuilding(null)}
         />
       )}

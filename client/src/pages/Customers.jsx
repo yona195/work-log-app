@@ -4,6 +4,7 @@ import { activeOnly } from "../lib/entities.js";
 import EditSimpleItemModal from "../components/EditSimpleItemModal.jsx";
 import StatusBadge from "../components/StatusBadge.jsx";
 import Pagination, { usePagedList } from "../components/Pagination.jsx";
+import { useBulkSelection } from "../components/useBulkSelection.js";
 
 export default function Customers() {
   const { data, addItem, updateItem, deleteItem } = useData();
@@ -20,6 +21,23 @@ export default function Customers() {
     totalPages,
     startIndex,
   } = usePagedList(visibleItems);
+
+  const {
+    selectedIds: selectedCustomerIds,
+    toggle: toggleCustomerSelection,
+    isFullySelected: isCustomerGroupFullySelected,
+    toggleAll: toggleAllCustomers,
+    clear: clearCustomerSelection,
+  } = useBulkSelection(visibleItems);
+
+  // "Select all" is scoped to the current page only, matching Rates.jsx.
+  const isAllCurrentPageSelected = isCustomerGroupFullySelected(pagedItems);
+  const toggleSelectAllCurrentPage = () => toggleAllCustomers(pagedItems);
+
+  // Every delete button on this page (row/bulk) is hidden until this is
+  // checked — "ארכיון"/"ערוך" stay visible either way, since only delete
+  // is dangerous enough to need a second, explicit door.
+  const [advancedModeEnabled, setAdvancedModeEnabled] = useState(false);
 
   const add = async () => {
     if (isSubmitting) return;
@@ -57,6 +75,22 @@ export default function Customers() {
   // it never falls back to something else. This only fires from the
   // explicit delete action below; archiving a customer never touches
   // rates or work logs, same as archiving anywhere else in the app.
+  const deleteCustomerCascade = async (item) => {
+    const customerRates = rates.filter((r) => String(r.customerId || "") === String(item.id));
+    const customerWorkLogs = workLogs.filter(
+      (log) => String(log.customerId || "") === String(item.id)
+    );
+    for (const log of customerWorkLogs) {
+      // eslint-disable-next-line no-await-in-loop
+      await deleteItem("workLogs", log.id);
+    }
+    for (const rate of customerRates) {
+      // eslint-disable-next-line no-await-in-loop
+      await deleteItem("rates", rate.id);
+    }
+    await deleteItem("customers", item.id);
+  };
+
   const deleteItemConfirmed = async (item) => {
     const customerRates = rates.filter((r) => String(r.customerId || "") === String(item.id));
     const customerWorkLogs = workLogs.filter(
@@ -75,15 +109,38 @@ export default function Customers() {
     ) {
       return;
     }
-    for (const log of customerWorkLogs) {
-      // eslint-disable-next-line no-await-in-loop
-      await deleteItem("workLogs", log.id);
+    await deleteCustomerCascade(item);
+  };
+
+  const bulkArchiveSelectedCustomers = async () => {
+    if (
+      !confirm(
+        `להעביר את ${selectedCustomerIds.length} המזמינים שנבחרו לארכיון? המזמינים לא יופיעו יותר לבחירה ברשומות חדשות, אבל הדוחות הקיימים לא ישתנו.`
+      )
+    ) {
+      return;
     }
-    for (const rate of customerRates) {
+    for (const id of selectedCustomerIds) {
       // eslint-disable-next-line no-await-in-loop
-      await deleteItem("rates", rate.id);
+      await updateItem("customers", id, { archived: true });
     }
-    await deleteItem("customers", item.id);
+    clearCustomerSelection();
+  };
+
+  const bulkDeleteSelectedCustomers = async () => {
+    const selected = customers.filter((c) => selectedCustomerIds.includes(c.id));
+    if (
+      !confirm(
+        `למחוק ${selected.length} מזמינים שנבחרו לצמיתות? בשונה מהעברה לארכיון, מחיקה תשפיע גם על דוחות והיסטוריה שכבר נרשמו איתם (תעריפים ורישומי עבודה).`
+      )
+    ) {
+      return;
+    }
+    for (const item of selected) {
+      // eslint-disable-next-line no-await-in-loop
+      await deleteCustomerCascade(item);
+    }
+    clearCustomerSelection();
   };
 
   return (
@@ -119,12 +176,47 @@ export default function Customers() {
             <span>הצג פריטים בארכיון</span>
           </label>
         </div>
+
+        {visibleItems.length > 0 && (
+          <div className="bulk-select-row">
+            <label className="checkbox-item">
+              <input
+                type="checkbox"
+                checked={isAllCurrentPageSelected}
+                onChange={toggleSelectAllCurrentPage}
+              />
+              <span>בחר הכל</span>
+            </label>
+            <label className="checkbox-item">
+              <input
+                type="checkbox"
+                checked={advancedModeEnabled}
+                onChange={(e) => setAdvancedModeEnabled(e.target.checked)}
+              />
+              <span>מצב מתקדם</span>
+            </label>
+            {selectedCustomerIds.length > 0 && (
+              <div className="report-row-actions bulk-actions-inline">
+                <button className="archive-btn" type="button" onClick={bulkArchiveSelectedCustomers}>
+                  ארכיון ({selectedCustomerIds.length})
+                </button>
+                {advancedModeEnabled && (
+                  <button className="delete-btn" type="button" onClick={bulkDeleteSelectedCustomers}>
+                    מחק ({selectedCustomerIds.length})
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
         {visibleItems.length === 0 ? (
           <p>אין עדיין נתונים</p>
         ) : (
           <table>
             <thead>
               <tr>
+                <th className="select-column" aria-hidden="true" />
                 <th>#</th>
                 <th>שם</th>
                 <th>סטטוס</th>
@@ -134,6 +226,13 @@ export default function Customers() {
             <tbody>
               {pagedItems.map((item, index) => (
                 <tr key={item.id}>
+                  <td className="select-column">
+                    <input
+                      type="checkbox"
+                      checked={selectedCustomerIds.includes(item.id)}
+                      onChange={() => toggleCustomerSelection(item.id)}
+                    />
+                  </td>
                   <td>{startIndex + index + 1}</td>
                   <td>{item.name}</td>
                   <td><StatusBadge archived={item.archived} /></td>
@@ -146,13 +245,15 @@ export default function Customers() {
                       >
                         ערוך
                       </button>
-                      <button
-                        className="delete-btn"
-                        type="button"
-                        onClick={() => deleteItemConfirmed(item)}
-                      >
-                        מחק
-                      </button>
+                      {advancedModeEnabled && (
+                        <button
+                          className="delete-btn"
+                          type="button"
+                          onClick={() => deleteItemConfirmed(item)}
+                        >
+                          מחק
+                        </button>
+                      )}
                       <button
                         className="archive-btn"
                         type="button"

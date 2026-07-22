@@ -1,28 +1,51 @@
 import { useMemo, useState } from "react";
 import { useData } from "../state/DataProvider.jsx";
 import { activeOnly, getEmployeeIds } from "../lib/entities.js";
-import EditEmployeeModal from "../components/EditEmployeeModal.jsx";
 import EditSimpleItemModal from "../components/EditSimpleItemModal.jsx";
 import StatusBadge from "../components/StatusBadge.jsx";
 import GroupCard from "../components/GroupCard.jsx";
 import CompactRow from "../components/CompactRow.jsx";
 import Pagination, { usePagedList } from "../components/Pagination.jsx";
+import { useBulkSelection } from "../components/useBulkSelection.js";
 
 const matchesSearch = (text, value) => {
   if (!text) return true;
   return String(value || "").toLowerCase().includes(text);
 };
 
-// Paginates itself — this renders once per list (internal employees, plus
-// the legacy "unassigned" bucket), so each gets its own independent page
-// state for free with no extra wiring in the parent.
-function EmployeeTable({ employees, onEdit, onDelete, onToggleArchive }) {
+// Paginates itself — this renders once for the legacy "unassigned" bucket,
+// so it gets its own independent page state for free with no extra wiring
+// in the parent. `selectedIds`/`toggleSelect`/`isFullySelected`/`toggleAll`
+// come from the parent's single shared useBulkSelection instance, so this
+// table's selection lives in the exact same array as every other section's
+// — a bulk archive/delete triggered from the page header covers rows here
+// too, and this table's own header checkbox is just isFullySelected/
+// toggleAll scoped to its current page.
+function EmployeeTable({
+  employees,
+  onEdit,
+  onDelete,
+  onToggleArchive,
+  selectedIds,
+  toggleSelect,
+  isFullySelected,
+  toggleAll,
+  advancedModeEnabled,
+}) {
   const { pageItems, page, setPage, totalPages, startIndex } = usePagedList(employees);
   return (
     <>
       <table>
         <thead>
           <tr>
+            <th className="select-column">
+              <input
+                type="checkbox"
+                checked={isFullySelected(pageItems)}
+                onChange={() => toggleAll(pageItems)}
+                aria-label="בחר הכל בעמוד זה"
+              />
+            </th>
             <th>#</th>
             <th>שם עובד</th>
             <th>סטטוס</th>
@@ -32,6 +55,13 @@ function EmployeeTable({ employees, onEdit, onDelete, onToggleArchive }) {
         <tbody>
           {pageItems.map((employee, index) => (
             <tr key={employee.id}>
+              <td className="select-column">
+                <input
+                  type="checkbox"
+                  checked={selectedIds.includes(employee.id)}
+                  onChange={() => toggleSelect(employee.id)}
+                />
+              </td>
               <td>{startIndex + index + 1}</td>
               <td>{employee.name}</td>
               <td><StatusBadge archived={employee.archived} /></td>
@@ -40,9 +70,11 @@ function EmployeeTable({ employees, onEdit, onDelete, onToggleArchive }) {
                   <button className="edit-btn" type="button" onClick={() => onEdit(employee)}>
                     ערוך
                   </button>
-                  <button className="delete-btn" type="button" onClick={() => onDelete(employee)}>
-                    מחק
-                  </button>
+                  {advancedModeEnabled && (
+                    <button className="delete-btn" type="button" onClick={() => onDelete(employee)}>
+                      מחק
+                    </button>
+                  )}
                   <button
                     className="archive-btn"
                     type="button"
@@ -121,6 +153,34 @@ export default function Employees() {
       })
       .filter(({ list, nameMatches }) => !search || nameMatches || list.some((e) => matchesSearch(search, e.name)));
   }, [visibleSubcontractors, subcontractorEmployees, search]);
+
+  // Every employee currently rendered anywhere on the page (own card,
+  // under a contractor's card, or the unassigned bucket) — used to prune
+  // stale selection ids and as the target of the page-level "בחר הכל".
+  const allVisibleEmployees = useMemo(
+    () => [
+      ...filteredInternalEmployees,
+      ...contractorCards.flatMap((c) => c.filteredList),
+      ...unassignedSubEmployees,
+    ],
+    [filteredInternalEmployees, contractorCards, unassignedSubEmployees]
+  );
+
+  const {
+    selectedIds: selectedEmployeeIds,
+    toggle: toggleEmployeeSelection,
+    isFullySelected: isEmployeeGroupFullySelected,
+    toggleAll: toggleAllEmployees,
+    clear: clearEmployeeSelection,
+  } = useBulkSelection(allVisibleEmployees);
+
+  const isAllVisibleEmployeesSelected = isEmployeeGroupFullySelected(allVisibleEmployees);
+  const toggleSelectAllVisibleEmployees = () => toggleAllEmployees(allVisibleEmployees);
+
+  // Every delete button on this page (row/group/bulk) is hidden until this
+  // is checked — "ארכיון"/"ערוך" stay visible either way, since only delete
+  // is dangerous enough to need a second, explicit door.
+  const [advancedModeEnabled, setAdvancedModeEnabled] = useState(false);
 
   const employeeNameValid = name.trim().length > 0;
   const contractorSelectionRequired = type === "subcontractor";
@@ -250,6 +310,44 @@ export default function Employees() {
     const logState = new Map(workLogs.map((log) => [log.id, getEmployeeIds(log).map(String)]));
     await cascadeDeleteEmployeeDependents(employee, logState);
     await deleteItem("employees", employee.id);
+  };
+
+  const bulkArchiveSelectedEmployees = async () => {
+    if (
+      !confirm(
+        `להעביר את ${selectedEmployeeIds.length} העובדים שנבחרו לארכיון? העובדים לא יופיעו יותר לבחירה ברשומות חדשות, אבל הדוחות הקיימים לא ישתנו.`
+      )
+    ) {
+      return;
+    }
+    for (const id of selectedEmployeeIds) {
+      // eslint-disable-next-line no-await-in-loop
+      await updateItem("employees", id, { archived: true });
+    }
+    clearEmployeeSelection();
+  };
+
+  // Reuses the same cascade as a single-employee delete, just applied to
+  // every selected employee in turn with one shared logState so several
+  // selections that touch the same work log see each other's removals.
+  const bulkDeleteSelectedEmployees = async () => {
+    if (
+      !confirm(
+        `למחוק ${selectedEmployeeIds.length} עובדים שנבחרו לצמיתות? בשונה מהעברה לארכיון, מחיקה תשפיע גם על דוחות והיסטוריה שכבר נרשמו איתם.`
+      )
+    ) {
+      return;
+    }
+    const logState = new Map(workLogs.map((log) => [log.id, getEmployeeIds(log).map(String)]));
+    for (const id of selectedEmployeeIds) {
+      const employee = employees.find((e) => String(e.id) === String(id));
+      if (!employee) continue;
+      // eslint-disable-next-line no-await-in-loop
+      await cascadeDeleteEmployeeDependents(employee, logState);
+      // eslint-disable-next-line no-await-in-loop
+      await deleteItem("employees", id);
+    }
+    clearEmployeeSelection();
   };
 
   // Actions on a subcontractor cascade to its own employees (archive/
@@ -462,10 +560,58 @@ export default function Employees() {
             <span>הצג פריטים בארכיון</span>
           </label>
         </div>
+
+        {allVisibleEmployees.length > 0 && (
+          <div className="bulk-select-row">
+            <label className="checkbox-item">
+              <input
+                type="checkbox"
+                checked={isAllVisibleEmployeesSelected}
+                onChange={toggleSelectAllVisibleEmployees}
+              />
+              <span>בחר הכל</span>
+            </label>
+            <label className="checkbox-item">
+              <input
+                type="checkbox"
+                checked={advancedModeEnabled}
+                onChange={(e) => setAdvancedModeEnabled(e.target.checked)}
+              />
+              <span>מצב מתקדם</span>
+            </label>
+            {selectedEmployeeIds.length > 0 && (
+              <div className="report-row-actions bulk-actions-inline">
+                <button className="archive-btn" type="button" onClick={bulkArchiveSelectedEmployees}>
+                  ארכיון ({selectedEmployeeIds.length})
+                </button>
+                {advancedModeEnabled && (
+                  <button className="delete-btn" type="button" onClick={bulkDeleteSelectedEmployees}>
+                    מחק ({selectedEmployeeIds.length})
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="card" style={{ marginTop: 20 }}>
-        <GroupCard icon="badge" title="העובדים שלי" count={internalEmployees.length} countLabel="עובדים">
+        <GroupCard
+          icon="badge"
+          title="העובדים שלי"
+          count={internalEmployees.length}
+          countLabel="עובדים"
+          selectionControl={
+            filteredInternalEmployees.length > 0 && (
+              <input
+                type="checkbox"
+                checked={isEmployeeGroupFullySelected(filteredInternalEmployees)}
+                onChange={() => toggleAllEmployees(filteredInternalEmployees)}
+                aria-label="בחר הכל - העובדים שלי"
+              />
+            )
+          }
+        >
           {filteredInternalEmployees.length === 0 ? (
             <p className="empty-message">
               {search ? "לא נמצאו עובדים שלי התואמים לחיפוש." : "אין עדיין עובדים שלי."}
@@ -477,8 +623,10 @@ export default function Employees() {
                   key={employee.id}
                   name={employee.name}
                   archived={employee.archived}
+                  selected={selectedEmployeeIds.includes(employee.id)}
+                  onToggleSelect={() => toggleEmployeeSelection(employee.id)}
                   onEdit={() => setEditingEmployee(employee)}
-                  onDelete={() => deleteEmployee(employee)}
+                  onDelete={advancedModeEnabled ? () => deleteEmployee(employee) : undefined}
                   onToggleArchive={() => toggleEmployeeArchive(employee)}
                 />
               ))}
@@ -503,6 +651,16 @@ export default function Employees() {
                 count={list.length}
                 countLabel="עובדים"
                 isArchived={subcontractor.archived}
+                selectionControl={
+                  filteredList.length > 0 && (
+                    <input
+                      type="checkbox"
+                      checked={isEmployeeGroupFullySelected(filteredList)}
+                      onChange={() => toggleAllEmployees(filteredList)}
+                      aria-label={`בחר הכל - ${subcontractor.name}`}
+                    />
+                  )
+                }
                 groupActions={
                   <div className="report-row-actions">
                     <button
@@ -512,13 +670,15 @@ export default function Employees() {
                     >
                       ערוך קבלן
                     </button>
-                    <button
-                      className="delete-btn"
-                      type="button"
-                      onClick={() => deleteSubcontractor(subcontractor)}
-                    >
-                      מחק קבלן
-                    </button>
+                    {advancedModeEnabled && (
+                      <button
+                        className="delete-btn"
+                        type="button"
+                        onClick={() => deleteSubcontractor(subcontractor)}
+                      >
+                        מחק קבלן
+                      </button>
+                    )}
                     <button
                       className="archive-btn"
                       type="button"
@@ -542,8 +702,10 @@ export default function Employees() {
                         key={employee.id}
                         name={employee.name}
                         archived={employee.archived}
+                        selected={selectedEmployeeIds.includes(employee.id)}
+                        onToggleSelect={() => toggleEmployeeSelection(employee.id)}
                         onEdit={() => setEditingEmployee(employee)}
-                        onDelete={() => deleteEmployee(employee)}
+                        onDelete={advancedModeEnabled ? () => deleteEmployee(employee) : undefined}
                         onToggleArchive={() => toggleEmployeeArchive(employee)}
                       />
                     ))}
@@ -563,13 +725,20 @@ export default function Employees() {
             onEdit={setEditingEmployee}
             onDelete={deleteEmployee}
             onToggleArchive={toggleEmployeeArchive}
+            selectedIds={selectedEmployeeIds}
+            toggleSelect={toggleEmployeeSelection}
+            isFullySelected={isEmployeeGroupFullySelected}
+            toggleAll={toggleAllEmployees}
+            advancedModeEnabled={advancedModeEnabled}
           />
         </div>
       )}
 
       {editingEmployee && (
-        <EditEmployeeModal
-          employee={editingEmployee}
+        <EditSimpleItemModal
+          title="עריכת עובד"
+          initialName={editingEmployee.name}
+          onSave={(newName) => updateItem("employees", editingEmployee.id, { name: newName })}
           onClose={() => setEditingEmployee(null)}
         />
       )}

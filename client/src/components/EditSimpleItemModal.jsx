@@ -1,8 +1,11 @@
 import { useState } from "react";
 
 // Generic single-name-field edit modal, reused for subcontractors, sites,
-// and customers — collections whose only editable attribute is their name.
-export default function EditSimpleItemModal({ title, initialName, onSave, onClose }) {
+// customers, employees, and buildings — collections whose only editable
+// attribute (through this modal) is their name. `validate` is optional —
+// omitted everywhere except buildings, which reject renaming into the
+// reserved default-building name.
+export default function EditSimpleItemModal({ title, initialName, onSave, onClose, validate }) {
   const [name, setName] = useState(initialName);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -12,6 +15,13 @@ export default function EditSimpleItemModal({ title, initialName, onSave, onClos
     if (!trimmed) {
       alert("נא להזין שם");
       return;
+    }
+    if (validate) {
+      const error = validate(trimmed);
+      if (error) {
+        alert(error);
+        return;
+      }
     }
     if (!confirm("לשמור את השינויים?")) return;
 
