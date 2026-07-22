@@ -2923,6 +2923,18 @@ body.loading .menu-overlay {
     margin-bottom: 12px;
 }
 
+/* .checkbox-item's base margin-bottom is normally cancelled only via
+   :last-child (for stacked lists) — here the checkboxes sit in a flex ROW
+   where "last child" flips depending on whether the archive/delete buttons
+   are rendered after them, so relying on :last-child gave each checkbox an
+   inconsistent bottom margin (present/absent) as selection changed. That
+   asymmetric margin shifted its centered position by a few px — this
+   unconditional override keeps every checkbox's vertical center fixed
+   regardless of what else is in the row. */
+.rates-select-all-row .checkbox-item {
+    margin-bottom: 0;
+}
+
 /* Pushed to the opposite (inline-end) side of the row from the two
    checkboxes via auto margin, so it lines up under "הצג פריטים בארכיון"
    in the section-title-row above (also pushed to that side by
