@@ -30,12 +30,10 @@ export default function Reports() {
   const [contractorSearch, setContractorSearch] = useState("");
   const [pdfLoading, setPdfLoading] = useState(false);
 
-  // Empty means "unrestricted" (matches the field's original single-select
-  // "כל העובדים/כל קבלני המשנה" default) — only once something is actually
-  // checked does the report narrow to just those. Kept as arrays (rather
-  // than a single id) so the report can be scoped to several specific
-  // employees/contractors at once, same as the worklog/employee-reports
-  // selection panels.
+  // Starts empty on purpose — nothing is pre-checked; the user picks what
+  // they want. An empty employee selection means "match nothing" (no
+  // report yet) until something is checked, rather than silently
+  // defaulting to "everyone" — same contract as employee-reports.
   const [selectedSubcontractorIds, setSelectedSubcontractorIds] = useState([]);
   const [selectedEmployeeIds, setSelectedEmployeeIds] = useState([]);
 
@@ -102,8 +100,8 @@ export default function Reports() {
       from: dateRange.from,
       to: dateRange.to,
       group,
-      subcontractorId: selectedSubcontractorIds.length > 0 ? selectedSubcontractorIds : "",
-      employeeId: selectedEmployeeIds.length > 0 ? selectedEmployeeIds : "",
+      subcontractorId: group === "all-subcontractors" ? selectedSubcontractorIds : "",
+      employeeId: selectedEmployeeIds,
       siteId,
       customerId,
     }),
@@ -142,12 +140,14 @@ export default function Reports() {
   const handleEmployerExcel = () =>
     exportFinancialSummaryToExcel(data, filteredLogs, effectiveFilters);
 
-  // The only mandatory field on this page — every narrowing filter below is
-  // legitimately optional (empty = "everyone"/"everything"), but a custom
-  // period with a missing endpoint is a genuinely incomplete selection.
+  // Mandatory fields: a complete period, and at least one employee selected
+  // (selection starts empty by design, so "nothing checked" must block
+  // export rather than silently mean "everyone") — site/customer/archived
+  // stay optional (empty = unrestricted).
   const periodValid =
     dateRange.period !== "custom" || Boolean(dateRange.customFrom && dateRange.customTo);
-  const canExport = periodValid;
+  const employeesValid = selectedEmployeeIds.length > 0;
+  const canExport = periodValid && employeesValid;
 
   const employeeLabel = (employee) =>
     `${employee.name} - ${getEmployeeAffiliationName(data, employee)}${
@@ -253,7 +253,9 @@ export default function Reports() {
           }
           onClearAllEmployees={() => setSelectedEmployeeIds([])}
           selectedEmployeeItems={selectedEmployeeItems}
+          required
         />
+        {!employeesValid && <p className="field-error">יש לבחור לפחות עובד אחד</p>}
       </div>
 
       <hr className="form-divider" />
