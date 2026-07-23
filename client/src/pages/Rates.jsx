@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useData } from "../state/DataProvider.jsx";
 import { useConfirm } from "../state/ConfirmProvider.jsx";
+import { useToast } from "../state/ToastProvider.jsx";
 import { formatCurrency, normalizeDate, formatExcelDate } from "../lib/format.js";
 import { todayISO } from "../lib/calendar.js";
 import {
@@ -29,6 +30,7 @@ const EMPTY_LIST_FILTERS = {
 export default function Rates() {
   const { data, addItem, updateItem, deleteItem } = useData();
   const confirmDialog = useConfirm();
+  const { showToast } = useToast();
   const { sites, employees, subcontractors, customers, rates } = data;
 
   const [selectedCustomerIds, setSelectedCustomerIds] = useState([]);
@@ -618,7 +620,7 @@ export default function Rates() {
       if (addedCount > 0) parts.push(`נוספו ${addedCount} תעריפים`);
       if (extendedCount > 0) parts.push(`${extendedCount} תעריפים קיימים הורחבו לתאריך המוקדם יותר`);
       if (skippedCount > 0) parts.push(`${skippedCount} שילובים כבר היו קיימים באותה תקופה ולא נוספו שוב`);
-      alert(`${parts.join(". ")}.`);
+      showToast("success", `${parts.join(". ")}.`);
     } finally {
       setIsSubmitting(false);
     }

@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useData } from "../state/DataProvider.jsx";
 import { useConfirm } from "../state/ConfirmProvider.jsx";
+import { useToast } from "../state/ToastProvider.jsx";
 import { normalizeDate, formatExcelDate } from "../lib/format.js";
 import { isoRangeInclusive, todayISO } from "../lib/calendar.js";
 import {
@@ -31,6 +32,7 @@ function rangeLabel(range) {
 export default function WorkLog() {
   const { data, addItem, updateItem, deleteItem } = useData();
   const confirmDialog = useConfirm();
+  const { showToast } = useToast();
   const { subcontractors, sites, buildings, customers, workLogs } = data;
   // Pickers for a NEW entry must exclude archived records; the recent-
   // records list below still needs the full (unfiltered) lists so it can
@@ -488,7 +490,7 @@ export default function WorkLog() {
       setNotes("");
 
       if (createdIds.length > 1) {
-        alert(`נוצרו ${createdIds.length} רשומות עבודה (${datesToUse.length} ימי עבודה).`);
+        showToast("success", `נוצרו ${createdIds.length} רשומות עבודה (${datesToUse.length} ימי עבודה).`);
       }
     } finally {
       setIsSubmitting(false);
