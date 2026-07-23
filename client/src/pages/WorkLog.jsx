@@ -8,14 +8,16 @@ import {
   getEmployeeIds,
   getBuildingIds,
   getEmployeeAffiliationName,
-  getEmployeeNames,
   getBuildingNames,
   activeOnly,
   activeEmployees,
+  groupEmployeesByAffiliation,
 } from "../lib/entities.js";
+import { getReportEmployees } from "../lib/reports.js";
 import DatePicker from "../components/DatePicker.jsx";
 import DuplicateConflictModal from "../components/DuplicateConflictModal.jsx";
 import WorkforceSelectionFields from "../components/WorkforceSelectionFields.jsx";
+import WorkRecordCard from "../components/WorkRecordCard.jsx";
 
 const VALIDATION_MESSAGE = "נא לבחור תאריך, עובד, אתר, מבנה ומזמין";
 
@@ -788,91 +790,40 @@ export default function WorkLog() {
               </div>
             )}
 
-            <table className="worklog-recent-table">
-              <thead>
-                <tr>
-                  <th className="worklog-select-column">
-                    <input
-                      type="checkbox"
-                      checked={
-                        selectedRecentLogIds.length === recentWorkLogs.length &&
-                        recentWorkLogs.length > 0
-                      }
-                      onChange={toggleSelectAllRecentLogs}
-                      aria-label="בחר הכל / נקה הכל"
-                    />
-                  </th>
-                  <th>תאריך</th>
-                  <th>עובדים</th>
-                  <th>אתר</th>
-                  <th>מבנה</th>
-                  <th>מזמין</th>
-                  <th className="actions-column">פעולות</th>
-                </tr>
-              </thead>
-              <tbody>
-                {recentWorkLogs.map((log) => {
-                  const isSelected = selectedRecentLogIds.includes(log.id);
-                  const isIncompatible =
-                    selectedRecentLogIds.length > 0 &&
-                    !isSelected &&
-                    recordSignature(log) !== selectionSignature;
-                  return (
-                    <tr key={log.id} className={isIncompatible ? "worklog-row-incompatible" : ""}>
-                      <td>
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={() => toggleRecentLogSelection(log.id)}
-                          title={
-                            isIncompatible
-                              ? "לא זהה לרשומה שנבחרה - אתר/מבנה/מזמין/עובדים שונים"
-                              : undefined
-                          }
-                        />
-                      </td>
-                      <td dir="ltr">{formatExcelDate(log.date)}</td>
-                      <td>{getEmployeeNames(data, log)}</td>
-                      <td>{getName(sites, log.siteId)}</td>
-                      <td>{getBuildingNames(data, log)}</td>
-                      <td>{getName(customers, log.customerId)}</td>
-                      <td>
-                        <div className="report-row-actions">
-                          <button className="edit-btn" type="button" onClick={() => startEdit([log])}>
-                            עריכה
-                          </button>
-                          <button
-                            className="delete-btn"
-                            type="button"
-                            onClick={() => {
-                              if (confirm("למחוק את הרשומה?")) {
-                                deleteItem("workLogs", log.id);
-                              }
-                            }}
-                          >
-                            מחיקה
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+            <div className="bulk-select-row">
+              <label className="checkbox-item">
+                <input
+                  type="checkbox"
+                  checked={
+                    selectedRecentLogIds.length === recentWorkLogs.length &&
+                    recentWorkLogs.length > 0
+                  }
+                  onChange={toggleSelectAllRecentLogs}
+                />
+                <span>בחר הכל</span>
+              </label>
+            </div>
 
-            <div className="worklog-recent-cards">
+            <div className="workhistory-cards-list">
               {recentWorkLogs.map((log) => {
                 const isSelected = selectedRecentLogIds.includes(log.id);
                 const isIncompatible =
                   selectedRecentLogIds.length > 0 &&
                   !isSelected &&
                   recordSignature(log) !== selectionSignature;
+                const buildingNamesText = getBuildingNames(data, log);
+                const logEmployees = getReportEmployees(data, log, {});
                 return (
-                  <div
-                    className={`worklog-recent-card${isIncompatible ? " worklog-row-incompatible" : ""}`}
+                  <WorkRecordCard
                     key={log.id}
-                  >
-                    <div className="worklog-recent-card-row">
+                    date={formatExcelDate(log.date)}
+                    customerName={getName(customers, log.customerId)}
+                    siteName={getName(sites, log.siteId)}
+                    buildingNamesText={buildingNamesText}
+                    employeeCount={logEmployees.length}
+                    affiliationGroups={groupEmployeesByAffiliation(data, logEmployees)}
+                    className={isIncompatible ? "worklog-row-incompatible" : ""}
+                    selectionControl={
                       <input
                         type="checkbox"
                         checked={isSelected}
@@ -883,45 +834,26 @@ export default function WorkLog() {
                             : undefined
                         }
                       />
-                      <span className="worklog-summary-label">בחירה</span>
-                    </div>
-                    <div className="worklog-recent-card-row">
-                      <span className="worklog-summary-label">תאריך</span>
-                      <span dir="ltr">{formatExcelDate(log.date)}</span>
-                    </div>
-                    <div className="worklog-recent-card-row">
-                      <span className="worklog-summary-label">עובדים</span>
-                      <span>{getEmployeeNames(data, log)}</span>
-                    </div>
-                    <div className="worklog-recent-card-row">
-                      <span className="worklog-summary-label">אתר</span>
-                      <span>{getName(sites, log.siteId)}</span>
-                    </div>
-                    <div className="worklog-recent-card-row">
-                      <span className="worklog-summary-label">מבנה</span>
-                      <span>{getBuildingNames(data, log)}</span>
-                    </div>
-                    <div className="worklog-recent-card-row">
-                      <span className="worklog-summary-label">מזמין</span>
-                      <span>{getName(customers, log.customerId)}</span>
-                    </div>
-                    <div className="report-row-actions" style={{ marginTop: 10 }}>
-                      <button className="edit-btn" type="button" onClick={() => startEdit([log])}>
-                        עריכה
-                      </button>
-                      <button
-                        className="delete-btn"
-                        type="button"
-                        onClick={() => {
-                          if (confirm("למחוק את הרשומה?")) {
-                            deleteItem("workLogs", log.id);
-                          }
-                        }}
-                      >
-                        מחיקה
-                      </button>
-                    </div>
-                  </div>
+                    }
+                    actions={
+                      <>
+                        <button className="edit-btn" type="button" onClick={() => startEdit([log])}>
+                          עריכה
+                        </button>
+                        <button
+                          className="delete-btn"
+                          type="button"
+                          onClick={() => {
+                            if (confirm("למחוק את הרשומה?")) {
+                              deleteItem("workLogs", log.id);
+                            }
+                          }}
+                        >
+                          מחיקה
+                        </button>
+                      </>
+                    }
+                  />
                 );
               })}
             </div>

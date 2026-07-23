@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import PeriodFilter from "../components/PeriodFilter.jsx";
 import EditWorkLogModal from "../components/EditWorkLogModal.jsx";
 import PartialDeleteModal from "../components/PartialDeleteModal.jsx";
+import WorkRecordCard from "../components/WorkRecordCard.jsx";
 import { usePagedList, ListPagination } from "../components/Pagination.jsx";
 import { useData } from "../state/DataProvider.jsx";
 import {
@@ -11,6 +12,7 @@ import {
   getBuildingNames,
   activeOnly,
   getEmployeeAffiliationName,
+  groupEmployeesByAffiliation,
 } from "../lib/entities.js";
 import { filterReportLogs, getReportEmployees } from "../lib/reports.js";
 
@@ -74,32 +76,6 @@ function useWorkHistoryDateRangeFilter() {
   }, [period, customFrom, customTo]);
 
   return { period, setPeriod, customFrom, setCustomFrom, customTo, setCustomTo, from, to };
-}
-
-// Splits a log's employees into one group per affiliation (internal /
-// each subcontractor) so the card shows "who worked for whom" instead of
-// one flat name list — this is display grouping only, the underlying
-// registration is still the single log it always was.
-function groupEmployeesByAffiliation(data, reportEmployees) {
-  const groups = new Map();
-  reportEmployees.forEach((employee) => {
-    const isInternal = employee.type === "internal";
-    const key = isInternal ? "internal" : String(employee.subcontractorId || "");
-    if (!groups.has(key)) {
-      groups.set(key, {
-        label: getEmployeeAffiliationName(data, employee),
-        employees: [],
-        isInternal,
-      });
-    }
-    groups.get(key).employees.push(employee);
-  });
-  // "עובד שלי" always leads; contractor groups keep their original
-  // (stable) relative order after that.
-  return Array.from(groups.values()).sort((a, b) => {
-    if (a.isInternal === b.isInternal) return 0;
-    return a.isInternal ? -1 : 1;
-  });
 }
 
 export default function WorkHistory() {
@@ -484,30 +460,17 @@ export default function WorkHistory() {
               {pageRegistrations.map((registration) => {
                 const buildingNamesText = getBuildingNames(data, registration.log);
                 return (
-                  <div key={registration.log.id} className="workhistory-card">
-                    <div className="workhistory-card-header">
-                      <div className="workhistory-card-header-location">
-                        <span className="workhistory-card-date" dir="ltr">
-                          {formatCardDate(registration.log.date)}
-                        </span>
-                        <span className="workhistory-card-site">
-                          {getName(sites, registration.log.siteId) || "אתר לא ידוע"}
-                        </span>
-                        {buildingNamesText && (
-                          <span className="workhistory-card-building">מבנה: {buildingNamesText}</span>
-                        )}
-                      </div>
-
-                      <div className="workhistory-card-header-summary">
-                        <span className="workhistory-card-customer">
-                          מזמין: {getName(customers, registration.log.customerId) || "לא ידוע"}
-                        </span>
-                        <span className="workhistory-card-count">
-                          {registration.totalEmployeeCount} עובדים
-                        </span>
-                      </div>
-
-                      <div className="report-row-actions workhistory-card-actions">
+                  <WorkRecordCard
+                    key={registration.log.id}
+                    date={formatCardDate(registration.log.date)}
+                    customerName={getName(customers, registration.log.customerId) || "לא ידוע"}
+                    siteName={getName(sites, registration.log.siteId) || "אתר לא ידוע"}
+                    buildingNamesText={buildingNamesText}
+                    employeeCount={registration.totalEmployeeCount}
+                    affiliationGroups={registration.affiliationGroups}
+                    notes={registration.log.notes}
+                    actions={
+                      <>
                         <button
                           className="edit-btn"
                           type="button"
@@ -522,24 +485,9 @@ export default function WorkHistory() {
                         >
                           מחיקה
                         </button>
-                      </div>
-                    </div>
-
-                    <div className="workhistory-card-groups">
-                      {registration.affiliationGroups.map((group, index) => (
-                        <div className="workhistory-card-group" key={index}>
-                          <span className="workhistory-card-group-label">{group.label}:</span>
-                          <span className="workhistory-card-group-names">
-                            {group.employees.map((e) => e.name).join(", ")}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-
-                    {registration.log.notes && (
-                      <p className="workhistory-card-notes">הערות: {registration.log.notes}</p>
-                    )}
-                  </div>
+                      </>
+                    }
+                  />
                 );
               })}
             </div>

@@ -2347,47 +2347,6 @@ body.loading .menu-overlay {
     background: #fee2e2;
 }
 
-.worklog-recent-cards {
-    display: none;
-}
-
-@media (max-width: 760px) {
-    .worklog-recent-table {
-        display: none;
-    }
-
-    .worklog-recent-cards {
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-
-        margin-top: 16px;
-    }
-
-    .worklog-recent-card {
-        padding: 14px;
-
-        background: #f9fafb;
-        border: 1px solid var(--color-border);
-        border-radius: var(--radius-medium);
-    }
-
-    .worklog-recent-card-row {
-        display: flex;
-        align-items: baseline;
-        justify-content: space-between;
-        gap: 12px;
-
-        padding: 3px 0;
-
-        font-size: 14px;
-    }
-}
-
-.worklog-select-column {
-    width: 32px;
-}
-
 .worklog-bulk-actions {
     display: flex;
     align-items: center;
@@ -2442,15 +2401,41 @@ body.loading .menu-overlay {
     box-shadow: 0 1px 4px rgba(15, 23, 42, 0.06);
 }
 
-/* Three zones across the full card width: location details (date/site/
-   building) on the right, the registration summary (customer/count) in
-   the middle, actions on the left — instead of one flat row of tracks, so
-   related fields stay visually grouped and the customer gets a real area
-   of its own rather than being packed beside the count badge. */
+/* Optional leading selection checkbox (WorkLog.jsx's bulk-select — absent
+   on WorkHistory.jsx, which has none) sits beside the header grid rather
+   than inside it, so the grid itself doesn't need a conditional 4th
+   column/area depending on whether a caller passes one. */
+.workhistory-card-header-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+.workhistory-card-header-row .workhistory-card-header {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+/* Same width:100%-inherited-from-text-inputs fix already applied to bare
+   checkboxes elsewhere in the app. */
+.workhistory-card-select input[type="checkbox"] {
+    width: 18px;
+    min-width: 18px;
+    height: 18px;
+    margin: 0;
+
+    accent-color: var(--color-primary);
+    cursor: pointer;
+}
+
+/* Two zones across the full card width: date+customer on the right,
+   site/building/employee-count on the other side, actions on the left —
+   instead of one flat row of tracks, so related fields stay visually
+   grouped. */
 .workhistory-card-header {
     display: grid;
     grid-template-columns: minmax(230px, 1.3fr) minmax(190px, 1fr) auto;
-    grid-template-areas: "location summary actions";
+    grid-template-areas: "primary secondary actions";
     align-items: center;
     gap: 8px 18px;
 
@@ -2460,8 +2445,8 @@ body.loading .menu-overlay {
     border-bottom: 1px solid var(--color-border);
 }
 
-.workhistory-card-header-location {
-    grid-area: location;
+.workhistory-card-header-primary {
+    grid-area: primary;
     display: flex;
     flex-wrap: wrap;
     align-items: baseline;
@@ -2470,7 +2455,7 @@ body.loading .menu-overlay {
     min-width: 0;
 }
 
-.workhistory-card-header-location span:not(:last-child)::after {
+.workhistory-card-header-primary span:not(:last-child)::after {
     content: "|";
     margin-inline-start: 10px;
     color: var(--color-border);
@@ -2479,7 +2464,7 @@ body.loading .menu-overlay {
 
 .workhistory-card-date {
     color: var(--color-primary-hover);
-    font-size: 16px;
+    font-size: 17px;
     font-weight: 800;
     white-space: nowrap;
 }
@@ -2487,19 +2472,19 @@ body.loading .menu-overlay {
 .workhistory-card-site {
     font-weight: 700;
     color: var(--color-text);
-    font-size: 14px;
+    font-size: 15px;
     overflow-wrap: break-word;
 }
 
 .workhistory-card-building {
     color: var(--color-text);
-    font-size: 14px;
+    font-size: 15px;
     font-weight: 600;
     overflow-wrap: break-word;
 }
 
-.workhistory-card-header-summary {
-    grid-area: summary;
+.workhistory-card-header-secondary {
+    grid-area: secondary;
     display: flex;
     flex-wrap: wrap;
     align-items: baseline;
@@ -2509,7 +2494,7 @@ body.loading .menu-overlay {
     min-width: 0;
 }
 
-.workhistory-card-header-summary span:not(:last-child)::after {
+.workhistory-card-header-secondary span:not(:last-child)::after {
     content: "|";
     margin-inline-start: 10px;
     color: var(--color-border);
@@ -2517,17 +2502,17 @@ body.loading .menu-overlay {
 }
 
 /* No flex-grow: without it, the customer text would stretch across the
-   whole (often much wider) summary track, shoving the count away from it
-   — visually landing right next to the actions column instead of staying
-   grouped with the customer name. Same inline metadata style as the site
-   and building details (no badge/background) for a consistent look. */
+   whole (often much wider) primary track, shoving it away from the date
+   — visually landing far from the date instead of staying grouped with
+   it. Same inline metadata style as the site and building details (no
+   badge/background) for a consistent look. */
 .workhistory-card-customer {
     flex: 0 1 auto;
     max-width: 100%;
     min-width: 0;
 
     color: var(--color-text);
-    font-size: 14px;
+    font-size: 15px;
     font-weight: 600;
     overflow-wrap: break-word;
 }
@@ -2536,7 +2521,7 @@ body.loading .menu-overlay {
     flex: 0 0 auto;
 
     color: var(--color-text);
-    font-size: 14px;
+    font-size: 15px;
     font-weight: 600;
     white-space: nowrap;
 }
@@ -2550,8 +2535,8 @@ body.loading .menu-overlay {
     .workhistory-card-header {
         grid-template-columns: 1fr auto;
         grid-template-areas:
-            "location actions"
-            "summary summary";
+            "primary actions"
+            "secondary secondary";
         row-gap: 8px;
     }
 }

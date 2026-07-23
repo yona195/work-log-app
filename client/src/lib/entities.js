@@ -88,6 +88,33 @@ export function getEmployeeAffiliationName(data, employee) {
   return getName(data.subcontractors, employee.subcontractorId) || "ללא קבלן";
 }
 
+// Splits a set of employees into one group per affiliation (internal /
+// each subcontractor) so a work-log record's employee list can be shown
+// as "who worked for whom" (WorkHistory.jsx, WorkLog.jsx's recent-records
+// list) instead of one flat name list — display grouping only, the
+// underlying registration is still the single log it always was.
+export function groupEmployeesByAffiliation(data, employeeList) {
+  const groups = new Map();
+  employeeList.forEach((employee) => {
+    const isInternal = employee.type === "internal";
+    const key = isInternal ? "internal" : String(employee.subcontractorId || "");
+    if (!groups.has(key)) {
+      groups.set(key, {
+        label: getEmployeeAffiliationName(data, employee),
+        employees: [],
+        isInternal,
+      });
+    }
+    groups.get(key).employees.push(employee);
+  });
+  // "עובד שלי" always leads; contractor groups keep their original
+  // (stable) relative order after that.
+  return Array.from(groups.values()).sort((a, b) => {
+    if (a.isInternal === b.isInternal) return 0;
+    return a.isInternal ? -1 : 1;
+  });
+}
+
 export function getCurrentMonthRange() {
   const now = new Date();
   const year = now.getFullYear();
