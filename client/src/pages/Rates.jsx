@@ -17,6 +17,14 @@ import { usePagedList, ListPagination } from "../components/Pagination.jsx";
 import { useBulkSelection } from "../components/useBulkSelection.js";
 import { findRedundantAt } from "../lib/rateConsolidation.js";
 
+const EMPTY_LIST_FILTERS = {
+  group: "",
+  subcontractorId: "",
+  employeeId: "",
+  customerId: "",
+  siteId: "",
+};
+
 export default function Rates() {
   const { data, addItem, updateItem, deleteItem } = useData();
   const { sites, employees, subcontractors, customers, rates } = data;
@@ -32,6 +40,16 @@ export default function Rates() {
   const [effectiveFrom, setEffectiveFrom] = useState(todayISO());
   const [showArchived, setShowArchived] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Filters the "תעריפים קיימים" LIST only (display/search) — same
+  // mechanism as WorkHistory.jsx's filter card (free-text box + collapsible
+  // "סינון נוסף" advanced fields, one filters object + setFilter(key,
+  // value)), reusing the same shared filter-grid/chip CSS classes.
+  // Entirely separate from the add-rate form's own
+  // selectedCustomerIds/selectedSiteIds/etc above.
+  const [listSearchText, setListSearchText] = useState("");
+  const [listAdvancedOpen, setListAdvancedOpen] = useState(false);
+  const [listFilters, setListFilters] = useState(EMPTY_LIST_FILTERS);
 
   // "Employee source": every rate created here is a personal (per-employee)
   // rate — pick "העובדים שלי" or one or more contractors, then only that
@@ -114,6 +132,178 @@ export default function Rates() {
     });
   }, [rates, sites, showArchived]);
 
+  const setListFilter = (key, value) =>
+    setListFilters((prev) => {
+      const next = { ...prev, [key]: value };
+      // Mirror WorkHistory.jsx: picking "internal" clears/locks the
+      // subcontractor field, since it no longer applies.
+      if (key === "group" && value === "internal") next.subcontractorId = "";
+      if (key === "group" && value !== "all-subcontractors") next.subcontractorId = "";
+      return next;
+    });
+
+  // Narrows the site filter dropdown to sites this customer actually has
+  // rates at (mirrors WorkHistory.jsx's siteOptions, sourced from rates
+  // instead of workLogs) — falls back to every active site once no
+  // customer is picked yet.
+  const listFilterSiteOptions = useMemo(() => {
+    if (!listFilters.customerId) return activeOnly(sites);
+    const relatedSiteIds = new Set(
+      rates
+        .filter((r) => String(r.customerId || "") === String(listFilters.customerId))
+        .map((r) => String(r.siteId))
+    );
+    return activeOnly(sites).filter((s) => relatedSiteIds.has(String(s.id)));
+  }, [sites, rates, listFilters.customerId]);
+
+  const listFilterEmployeeOptions = useMemo(() => {
+    return employees.filter((employee) => {
+      const isInternal = employee.type === "internal";
+      const isSub = employee.type === "subcontractor" || employee.type === "external";
+      let matchesGroup = true;
+      if (listFilters.group === "internal") matchesGroup = isInternal;
+      if (listFilters.group === "all-subcontractors") matchesGroup = isSub;
+      const matchesSub =
+        !listFilters.subcontractorId ||
+        String(employee.subcontractorId || "") === String(listFilters.subcontractorId);
+      return matchesGroup && matchesSub;
+    });
+  }, [employees, listFilters.group, listFilters.subcontractorId]);
+
+  // Filters the individual rate ROWS (not whole groups) — a group made up
+  // of several employees still shows, but only the rows that match stay
+  // visible inside it, exactly like a search "filters the displayed
+  // rates" would. groupedRates below is built from this filtered list, so
+  // a group with zero matching rows simply doesn't appear at all.
+  const listFilteredRates = useMemo(() => {
+    let list = sortedRates;
+
+    if (listFilters.customerId) {
+      list = list.filter((r) => String(r.customerId || "") === String(listFilters.customerId));
+    }
+    if (listFilters.siteId) {
+      list = list.filter((r) => String(r.siteId || "") === String(listFilters.siteId));
+    }
+    if (listFilters.group === "internal" || listFilters.group === "all-subcontractors") {
+      list = list.filter((r) => {
+        const employee = employees.find((e) => String(e.id) === String(r.employeeId));
+        if (!employee) return false;
+        return listFilters.group === "internal"
+          ? employee.type === "internal"
+          : employee.type === "subcontractor" || employee.type === "external";
+      });
+    }
+    if (listFilters.subcontractorId) {
+      list = list.filter((r) => {
+        const employee = employees.find((e) => String(e.id) === String(r.employeeId));
+        return employee && String(employee.subcontractorId || "") === String(listFilters.subcontractorId);
+      });
+    }
+    if (listFilters.employeeId) {
+      list = list.filter((r) => String(r.employeeId || "") === String(listFilters.employeeId));
+    }
+
+    const text = listSearchText.trim().toLowerCase();
+    if (text) {
+      list = list.filter((rate) => {
+        const isEmployeeRate = rate.rateType === "employee";
+        const employee = isEmployeeRate
+          ? employees.find((e) => String(e.id) === String(rate.employeeId))
+          : null;
+        const targetName = isEmployeeRate
+          ? employee?.name || ""
+          : getName(subcontractors, rate.subcontractorId);
+        const affiliationName =
+          isEmployeeRate && employee ? getEmployeeAffiliationName(data, employee) : "";
+        const haystack = [
+          targetName,
+          affiliationName,
+          getName(customers, rate.customerId),
+          getName(sites, rate.siteId),
+        ]
+          .join(" ")
+          .toLowerCase();
+        return haystack.includes(text);
+      });
+    }
+
+    return list;
+  }, [
+    sortedRates,
+    listFilters.customerId,
+    listFilters.siteId,
+    listFilters.group,
+    listFilters.subcontractorId,
+    listFilters.employeeId,
+    listSearchText,
+    employees,
+    subcontractors,
+    customers,
+    sites,
+    data,
+  ]);
+
+  const listFilterChips = useMemo(() => {
+    const chips = [];
+    if (listFilters.group) {
+      chips.push({
+        key: "group",
+        label: `שיוך עובדים: ${
+          listFilters.group === "internal" ? "העובדים שלי" : "כל עובדי קבלני המשנה"
+        }`,
+        onRemove: () => setListFilter("group", ""),
+      });
+    }
+    if (listFilters.subcontractorId) {
+      const name = subcontractors.find((s) => String(s.id) === String(listFilters.subcontractorId))?.name;
+      chips.push({
+        key: "subcontractor",
+        label: `קבלן משנה: ${name || "לא נמצא"}`,
+        onRemove: () => setListFilter("subcontractorId", ""),
+      });
+    }
+    if (listFilters.employeeId) {
+      const name = employees.find((e) => String(e.id) === String(listFilters.employeeId))?.name;
+      chips.push({
+        key: "employee",
+        label: `עובד: ${name || "לא נמצא"}`,
+        onRemove: () => setListFilter("employeeId", ""),
+      });
+    }
+    if (listFilters.customerId) {
+      const name = customers.find((c) => String(c.id) === String(listFilters.customerId))?.name;
+      chips.push({
+        key: "customer",
+        label: `מזמין: ${name || "לא נמצא"}`,
+        onRemove: () => setListFilter("customerId", ""),
+      });
+    }
+    if (listFilters.siteId) {
+      const name = sites.find((s) => String(s.id) === String(listFilters.siteId))?.name;
+      chips.push({
+        key: "site",
+        label: `אתר: ${name || "לא נמצא"}`,
+        onRemove: () => setListFilter("siteId", ""),
+      });
+    }
+    return chips;
+  }, [
+    listFilters.group,
+    listFilters.subcontractorId,
+    listFilters.employeeId,
+    listFilters.customerId,
+    listFilters.siteId,
+    subcontractors,
+    employees,
+    customers,
+    sites,
+  ]);
+
+  const clearAllListFilters = () => {
+    setListFilters(EMPTY_LIST_FILTERS);
+    setListSearchText("");
+  };
+
   // Rates that share customer + site + revenue + cost are presented as one
   // card (same "group card with a compact child list" pattern as
   // contractors/employees) — a unique rate is just a group of one, rendered
@@ -126,7 +316,7 @@ export default function Rates() {
   // no extra bookkeeping.
   const groupedRates = useMemo(() => {
     const groups = new Map();
-    sortedRates.forEach((rate) => {
+    listFilteredRates.forEach((rate) => {
       const key = JSON.stringify({
         customerId: String(rate.customerId || ""),
         siteId: String(rate.siteId || ""),
@@ -146,7 +336,7 @@ export default function Rates() {
       groups.get(key).rates.push(rate);
     });
     return Array.from(groups.values());
-  }, [sortedRates]);
+  }, [listFilteredRates]);
 
   const [ratesPageSize, setRatesPageSize] = useState(5);
 
@@ -162,10 +352,12 @@ export default function Rates() {
 
   const pagedRates = useMemo(() => pagedGroups.flatMap((g) => g.rates), [pagedGroups]);
 
+  // Any filter (or page-size) change invalidates the current page index —
+  // same as WorkHistory.jsx.
   useEffect(() => {
     setRatesPage(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ratesPageSize]);
+  }, [ratesPageSize, listFilters, listSearchText]);
 
   const {
     selectedIds: selectedRateIds,
@@ -173,7 +365,7 @@ export default function Rates() {
     isFullySelected: isRateGroupFullySelected,
     toggleAll: toggleAllRates,
     clear: clearRateSelection,
-  } = useBulkSelection(sortedRates);
+  } = useBulkSelection(listFilteredRates);
 
   // "Select all" is scoped to the current page only — simplest behavior
   // for a paginated table, and selection isn't cleared on page change, so
@@ -649,6 +841,123 @@ export default function Rates() {
       </div>
 
       <div className="card" style={{ marginTop: 20 }}>
+        <h3>סינון תעריפים</h3>
+
+        <label>חיפוש חופשי</label>
+        <input
+          type="text"
+          placeholder="🔍 חפש לפי עובד, קבלן, מזמין או אתר..."
+          value={listSearchText}
+          onChange={(e) => setListSearchText(e.target.value)}
+        />
+
+        <button
+          type="button"
+          className="secondary-btn advanced-filters-toggle"
+          onClick={() => setListAdvancedOpen((open) => !open)}
+        >
+          {listAdvancedOpen ? "הסתר סינון נוסף ▲" : "סינון נוסף ▼"}
+        </button>
+
+        {listAdvancedOpen && (
+          <div className="filter-grid filter-grid-3" style={{ marginTop: 14 }}>
+            <div className="filter-grid-item">
+              <label>שיוך עובדים</label>
+              <select value={listFilters.group} onChange={(e) => setListFilter("group", e.target.value)}>
+                <option value="">כל העובדים</option>
+                <option value="internal">העובדים שלי</option>
+                <option value="all-subcontractors">כל עובדי קבלני המשנה</option>
+              </select>
+            </div>
+
+            {listFilters.group === "all-subcontractors" && (
+              <div className="filter-grid-item">
+                <label>קבלן משנה</label>
+                <select
+                  value={listFilters.subcontractorId}
+                  onChange={(e) => setListFilter("subcontractorId", e.target.value)}
+                >
+                  <option value="">כל קבלני המשנה</option>
+                  {subcontractors.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                      {s.archived ? " (בארכיון)" : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <div className="filter-grid-item">
+              <label>עובד</label>
+              <select
+                value={listFilters.employeeId}
+                onChange={(e) => setListFilter("employeeId", e.target.value)}
+              >
+                <option value="">כל העובדים</option>
+                {listFilterEmployeeOptions.map((employee) => (
+                  <option key={employee.id} value={employee.id}>
+                    {employee.name} - {getEmployeeAffiliationName(data, employee)}
+                    {employee.archived ? " (בארכיון)" : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="filter-grid-item">
+              <label>מזמין עבודה</label>
+              <select
+                value={listFilters.customerId}
+                onChange={(e) => setListFilter("customerId", e.target.value)}
+              >
+                <option value="">כל המזמינים</option>
+                {customers.map((customer) => (
+                  <option key={customer.id} value={customer.id}>
+                    {customer.name}
+                    {customer.archived ? " (בארכיון)" : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="filter-grid-item">
+              <label>אתר עבודה</label>
+              <select value={listFilters.siteId} onChange={(e) => setListFilter("siteId", e.target.value)}>
+                <option value="">כל האתרים</option>
+                {listFilterSiteOptions.map((site) => (
+                  <option key={site.id} value={site.id}>
+                    {site.name}
+                    {site.archived ? " (בארכיון)" : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        )}
+
+        {listFilterChips.length > 0 && (
+          <div className="filter-chips" style={{ marginTop: 14 }}>
+            {listFilterChips.map((chip) => (
+              <span className="filter-chip" key={chip.key}>
+                {chip.label}
+                <button
+                  type="button"
+                  className="filter-chip-remove"
+                  onClick={chip.onRemove}
+                  aria-label="הסר סינון"
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+            <button type="button" className="secondary-btn" onClick={clearAllListFilters}>
+              נקה את כל הסינונים
+            </button>
+          </div>
+        )}
+      </div>
+
+      <div className="card" style={{ marginTop: 20 }}>
         <div className="section-title-row">
           <h3>תעריפים קיימים - סה״כ {activeOnly(rates).length}</h3>
           <label className="checkbox-item" style={{ display: "inline-flex" }}>
@@ -662,6 +971,8 @@ export default function Rates() {
         </div>
         {sortedRates.length === 0 ? (
           <p>עדיין לא הוגדרו תעריפים.</p>
+        ) : groupedRates.length === 0 ? (
+          <p>לא נמצאו תעריפים התואמים לסינון.</p>
         ) : (
           <>
           <div className="bulk-select-row">
