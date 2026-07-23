@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useData } from "../state/DataProvider.jsx";
+import { useConfirm } from "../state/ConfirmProvider.jsx";
 import {
   activeOnly,
   getBuildingIds,
@@ -13,6 +14,7 @@ import { useBulkSelection } from "../components/useBulkSelection.js";
 
 export default function Sites() {
   const { data, addItem, updateItem, deleteItem, refresh } = useData();
+  const confirmDialog = useConfirm();
   const { sites, buildings, workLogs, rates } = data;
 
   const [siteName, setSiteName] = useState("");
@@ -108,9 +110,9 @@ export default function Sites() {
       return;
     }
     if (
-      !confirm(
+      !(await confirmDialog(
         `להעביר את ${building.name} לארכיון? המבנה לא יופיע יותר לבחירה ברשומות חדשות, אבל הדוחות הקיימים לא ישתנו.`
-      )
+      ))
     ) {
       return;
     }
@@ -158,7 +160,7 @@ export default function Sites() {
       affectedLogs.length > 0
         ? `למחוק את ${building.name} לצמיתות? ${affectedLogs.length} רשומות עבודה שמצביעות על המבנה הזה יעברו אוטומטית למבנה "${GENERAL_BUILDING_NAME}" של האתר - שאר נתוני הרשומות (תאריך, עובדים, אתר, מזמין) יישארו ללא שינוי.`
         : `למחוק את ${building.name} לצמיתות?`;
-    if (!confirm(confirmMessage)) return;
+    if (!(await confirmDialog(confirmMessage, { danger: true }))) return;
 
     const logState = new Map(workLogs.map((log) => [log.id, getBuildingIds(log).map(String)]));
     await deleteBuildingsCascade([building], logState);
@@ -166,9 +168,9 @@ export default function Sites() {
 
   const bulkArchiveSelectedBuildings = async () => {
     if (
-      !confirm(
+      !(await confirmDialog(
         `להעביר את ${selectedBuildingIds.length} המבנים שנבחרו לארכיון? המבנים לא יופיעו יותר לבחירה ברשומות חדשות, אבל הדוחות הקיימים לא ישתנו.`
-      )
+      ))
     ) {
       return;
     }
@@ -182,9 +184,10 @@ export default function Sites() {
   const bulkDeleteSelectedBuildings = async () => {
     const selected = buildings.filter((b) => selectedBuildingIds.includes(b.id));
     if (
-      !confirm(
-        `למחוק ${selected.length} מבנים שנבחרו לצמיתות? רשומות עבודה שמצביעות עליהם יעברו אוטומטית למבנה "${GENERAL_BUILDING_NAME}" של האתר המתאים - שאר נתוני הרשומות יישארו ללא שינוי.`
-      )
+      !(await confirmDialog(
+        `למחוק ${selected.length} מבנים שנבחרו לצמיתות? רשומות עבודה שמצביעות עליהם יעברו אוטומטית למבנה "${GENERAL_BUILDING_NAME}" של האתר המתאים - שאר נתוני הרשומות יישארו ללא שינוי.`,
+        { danger: true }
+      ))
     ) {
       return;
     }
@@ -213,9 +216,9 @@ export default function Sites() {
     const buildingNote =
       siteBuildings.length > 0 ? ` וכל ${siteBuildings.length} המבנים שלו` : "";
     if (
-      !confirm(
+      !(await confirmDialog(
         `להעביר את ${site.name}${buildingNote} לארכיון? לא יופיעו יותר לבחירה ברשומות חדשות, אבל הדוחות הקיימים לא ישתנו.`
-      )
+      ))
     ) {
       return;
     }
@@ -244,9 +247,10 @@ export default function Sites() {
     const cascadeNote = cascadeParts.length > 0 ? ` וכל ${cascadeParts.join(", ")}` : "";
 
     if (
-      !confirm(
-        `למחוק את ${site.name}${cascadeNote} לצמיתות? בשונה מהעברה לארכיון, מחיקה תשפיע גם על דוחות והיסטוריה שכבר נרשמו.`
-      )
+      !(await confirmDialog(
+        `למחוק את ${site.name}${cascadeNote} לצמיתות? בשונה מהעברה לארכיון, מחיקה תשפיע גם על דוחות והיסטוריה שכבר נרשמו.`,
+        { danger: true }
+      ))
     ) {
       return;
     }

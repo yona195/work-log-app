@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useData } from "../state/DataProvider.jsx";
+import { useConfirm } from "../state/ConfirmProvider.jsx";
 import { normalizeDate, formatExcelDate } from "../lib/format.js";
 import { isoRangeInclusive, todayISO } from "../lib/calendar.js";
 import {
@@ -29,6 +30,7 @@ function rangeLabel(range) {
 
 export default function WorkLog() {
   const { data, addItem, updateItem, deleteItem } = useData();
+  const confirmDialog = useConfirm();
   const { subcontractors, sites, buildings, customers, workLogs } = data;
   // Pickers for a NEW entry must exclude archived records; the recent-
   // records list below still needs the full (unfiltered) lists so it can
@@ -247,7 +249,7 @@ export default function WorkLog() {
     );
 
   const bulkDeleteSelected = async () => {
-    if (!confirm(`למחוק ${selectedRecentLogIds.length} רשומות שנבחרו?`)) return;
+    if (!(await confirmDialog(`למחוק ${selectedRecentLogIds.length} רשומות שנבחרו?`, { danger: true }))) return;
     for (const id of selectedRecentLogIds) {
       // eslint-disable-next-line no-await-in-loop
       await deleteItem("workLogs", id).catch(() => {});
@@ -354,8 +356,11 @@ export default function WorkLog() {
             siteName: getName(sites, c.siteId) || "אתר לא ידוע",
           });
         });
+        // Sort on the raw ISO date (chronologically correct) BEFORE
+        // reformatting for display — formatExcelDate's DD-MM-YYYY string
+        // wouldn't sort correctly with localeCompare.
         rows.sort((a, b) => a.date.localeCompare(b.date) || a.employeeName.localeCompare(b.employeeName));
-        setDuplicateConflict(rows);
+        setDuplicateConflict(rows.map((row) => ({ ...row, date: formatExcelDate(row.date) })));
         return;
       }
 
@@ -423,8 +428,11 @@ export default function WorkLog() {
           siteName: getName(sites, c.siteId) || "אתר לא ידוע",
         });
       });
+      // Sort on the raw ISO date (chronologically correct) BEFORE
+      // reformatting for display — formatExcelDate's DD-MM-YYYY string
+      // wouldn't sort correctly with localeCompare.
       rows.sort((a, b) => a.date.localeCompare(b.date) || a.employeeName.localeCompare(b.employeeName));
-      setDuplicateConflict(rows);
+      setDuplicateConflict(rows.map((row) => ({ ...row, date: formatExcelDate(row.date) })));
       return;
     }
 
@@ -843,8 +851,8 @@ export default function WorkLog() {
                         <button
                           className="delete-btn"
                           type="button"
-                          onClick={() => {
-                            if (confirm("למחוק את הרשומה?")) {
+                          onClick={async () => {
+                            if (await confirmDialog("למחוק את הרשומה?", { danger: true })) {
                               deleteItem("workLogs", log.id);
                             }
                           }}

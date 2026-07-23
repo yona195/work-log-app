@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useData } from "../state/DataProvider.jsx";
+import { useConfirm } from "../state/ConfirmProvider.jsx";
 import { activeOnly } from "../lib/entities.js";
 import EditSimpleItemModal from "../components/EditSimpleItemModal.jsx";
 import StatusBadge from "../components/StatusBadge.jsx";
@@ -8,6 +9,7 @@ import { useBulkSelection } from "../components/useBulkSelection.js";
 
 export default function Customers() {
   const { data, addItem, updateItem, deleteItem } = useData();
+  const confirmDialog = useConfirm();
   const { customers, rates, workLogs } = data;
   const [name, setName] = useState("");
   const [showArchived, setShowArchived] = useState(false);
@@ -61,9 +63,9 @@ export default function Customers() {
       return;
     }
     if (
-      !confirm(
+      !(await confirmDialog(
         `להעביר את ${item.name} לארכיון? הפריט לא יופיע יותר לבחירה ברשומות חדשות, אבל הדוחות הקיימים לא ישתנו.`
-      )
+      ))
     ) {
       return;
     }
@@ -103,9 +105,10 @@ export default function Customers() {
     const cascadeNote = cascadeParts.length > 0 ? ` וכל ${cascadeParts.join(", ")}` : "";
 
     if (
-      !confirm(
-        `למחוק את ${item.name}${cascadeNote} לצמיתות? בשונה מהעברה לארכיון, מחיקה תשפיע גם על דוחות והיסטוריה שכבר נרשמו עם הפריט הזה.`
-      )
+      !(await confirmDialog(
+        `למחוק את ${item.name}${cascadeNote} לצמיתות? בשונה מהעברה לארכיון, מחיקה תשפיע גם על דוחות והיסטוריה שכבר נרשמו עם הפריט הזה.`,
+        { danger: true }
+      ))
     ) {
       return;
     }
@@ -114,9 +117,9 @@ export default function Customers() {
 
   const bulkArchiveSelectedCustomers = async () => {
     if (
-      !confirm(
+      !(await confirmDialog(
         `להעביר את ${selectedCustomerIds.length} המזמינים שנבחרו לארכיון? המזמינים לא יופיעו יותר לבחירה ברשומות חדשות, אבל הדוחות הקיימים לא ישתנו.`
-      )
+      ))
     ) {
       return;
     }
@@ -130,9 +133,10 @@ export default function Customers() {
   const bulkDeleteSelectedCustomers = async () => {
     const selected = customers.filter((c) => selectedCustomerIds.includes(c.id));
     if (
-      !confirm(
-        `למחוק ${selected.length} מזמינים שנבחרו לצמיתות? בשונה מהעברה לארכיון, מחיקה תשפיע גם על דוחות והיסטוריה שכבר נרשמו איתם (תעריפים ורישומי עבודה).`
-      )
+      !(await confirmDialog(
+        `למחוק ${selected.length} מזמינים שנבחרו לצמיתות? בשונה מהעברה לארכיון, מחיקה תשפיע גם על דוחות והיסטוריה שכבר נרשמו איתם (תעריפים ורישומי עבודה).`,
+        { danger: true }
+      ))
     ) {
       return;
     }

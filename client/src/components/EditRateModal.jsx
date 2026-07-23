@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useData } from "../state/DataProvider.jsx";
+import { useConfirm } from "../state/ConfirmProvider.jsx";
 import { activeOnly } from "../lib/entities.js";
 
 // rates: every rate in one group (customer+site+revenue+cost) — a group of
@@ -12,6 +13,7 @@ import { activeOnly } from "../lib/entities.js";
 // patch — a group can contain rates with different dates, each kept as-is.
 export default function EditRateModal({ rates, onClose }) {
   const { data, updateItem } = useData();
+  const confirmDialog = useConfirm();
   const customers = activeOnly(data.customers);
   const sites = activeOnly(data.sites);
 
@@ -97,7 +99,7 @@ export default function EditRateModal({ rates, onClose }) {
       return;
     }
 
-    if (!confirm(`לשמור את השינויים עבור כל ${rates.length} התעריפים בקבוצה?`)) return;
+    if (!(await confirmDialog(`לשמור את השינויים עבור כל ${rates.length} התעריפים בקבוצה?`))) return;
 
     setIsSubmitting(true);
     try {

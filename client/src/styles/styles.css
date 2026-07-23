@@ -1794,6 +1794,34 @@ body.loading .menu-overlay {
     margin-top: 20px;
 }
 
+/* .delete-btn's red styling is normally scoped under .report-row-actions
+   (row-level action buttons) — ConfirmModal's "danger" confirm button
+   lives in .modal-actions instead, so it needs the same color treatment
+   here too, sized like the other modal-actions buttons (.primary-btn/
+   .secondary-btn) rather than the smaller row-action pill size. */
+.modal-actions .delete-btn {
+    min-height: 42px;
+    padding: 10px 18px;
+
+    border-radius: var(--radius-small);
+
+    font-size: 14px;
+    font-weight: 600;
+
+    color: var(--color-danger);
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+
+    transition:
+        background-color 0.2s ease,
+        border-color 0.2s ease,
+        color 0.2s ease;
+}
+
+.modal-actions .delete-btn:hover {
+    background: #fee2e2;
+}
+
 /* Shrinks the actions column to fit its buttons instead of stretching to
    fill the table's leftover width, which otherwise strands the buttons
    against one edge with a large empty gap next to them. */

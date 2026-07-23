@@ -5,6 +5,7 @@ import PartialDeleteModal from "../components/PartialDeleteModal.jsx";
 import WorkRecordCard from "../components/WorkRecordCard.jsx";
 import { usePagedList, ListPagination } from "../components/Pagination.jsx";
 import { useData } from "../state/DataProvider.jsx";
+import { useConfirm } from "../state/ConfirmProvider.jsx";
 import {
   getName,
   getEmployeeIds,
@@ -84,6 +85,7 @@ function useWorkHistoryDateRangeFilter() {
 
 export default function WorkHistory() {
   const { data, deleteItem, updateItem } = useData();
+  const confirmDialog = useConfirm();
   const { subcontractors, sites, customers, buildings, employees } = data;
 
   const dateRange = useWorkHistoryDateRangeFilter();
@@ -294,7 +296,7 @@ export default function WorkHistory() {
   // comparing that against the log's full employee list detects any
   // filter-driven narrowing, regardless of which employee-related filter
   // caused it.
-  const deleteRegistration = (registration) => {
+  const deleteRegistration = async (registration) => {
     const allEmployeeIds = getEmployeeIds(registration.log).map(String);
     const filteredEmployees = getReportEmployees(data, registration.log, effectiveFilters);
     const isPartial =
@@ -302,8 +304,9 @@ export default function WorkHistory() {
 
     if (!isPartial) {
       if (
-        confirm(
-          `למחוק את הרשומה כולה (${registration.totalEmployeeCount} עובדים מכל הקבלנים)?`
+        await confirmDialog(
+          `למחוק את הרשומה כולה (${registration.totalEmployeeCount} עובדים מכל הקבלנים)?`,
+          { danger: true }
         )
       ) {
         deleteItem("workLogs", registration.log.id);

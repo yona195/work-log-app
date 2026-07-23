@@ -5,6 +5,7 @@ import Login from "./pages/Login.jsx";
 import { useAuth } from "./state/AuthProvider.jsx";
 import { DataProvider, useData } from "./state/DataProvider.jsx";
 import { ToastProvider } from "./state/ToastProvider.jsx";
+import { ConfirmProvider } from "./state/ConfirmProvider.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 import WorkLog from "./pages/WorkLog.jsx";
 import WorkHistory from "./pages/WorkHistory.jsx";
@@ -61,9 +62,11 @@ export default function App() {
 
   return (
     <ToastProvider>
-      <DataProvider>
-        <AuthenticatedApp />
-      </DataProvider>
+      <ConfirmProvider>
+        <DataProvider>
+          <AuthenticatedApp />
+        </DataProvider>
+      </ConfirmProvider>
     </ToastProvider>
   );
 }

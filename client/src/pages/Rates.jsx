@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useData } from "../state/DataProvider.jsx";
+import { useConfirm } from "../state/ConfirmProvider.jsx";
 import { formatCurrency, normalizeDate, formatExcelDate } from "../lib/format.js";
 import { todayISO } from "../lib/calendar.js";
 import {
@@ -27,6 +28,7 @@ const EMPTY_LIST_FILTERS = {
 
 export default function Rates() {
   const { data, addItem, updateItem, deleteItem } = useData();
+  const confirmDialog = useConfirm();
   const { sites, employees, subcontractors, customers, rates } = data;
 
   const [selectedCustomerIds, setSelectedCustomerIds] = useState([]);
@@ -382,9 +384,10 @@ export default function Rates() {
 
   const bulkDeleteSelectedRates = async () => {
     if (
-      !confirm(
-        `למחוק ${selectedRateIds.length} תעריפים שנבחרו לצמיתות? בשונה מהעברה לארכיון, מחיקה תשפיע גם על חישובים כספיים היסטוריים שכבר השתמשו בתעריפים האלה.`
-      )
+      !(await confirmDialog(
+        `למחוק ${selectedRateIds.length} תעריפים שנבחרו לצמיתות? בשונה מהעברה לארכיון, מחיקה תשפיע גם על חישובים כספיים היסטוריים שכבר השתמשו בתעריפים האלה.`,
+        { danger: true }
+      ))
     ) {
       return;
     }
@@ -397,9 +400,9 @@ export default function Rates() {
 
   const bulkArchiveSelectedRates = async () => {
     if (
-      !confirm(
+      !(await confirmDialog(
         `להעביר את ${selectedRateIds.length} התעריפים שנבחרו לארכיון? התעריפים לא יופיעו יותר לבחירה, אבל הדוחות הקיימים לא ישתנו.`
-      )
+      ))
     ) {
       return;
     }
@@ -421,9 +424,9 @@ export default function Rates() {
       return;
     }
     if (
-      !confirm(
+      !(await confirmDialog(
         "להעביר את התעריף לארכיון? התעריף לא יופיע יותר לבחירה, אבל הדוחות הקיימים לא ישתנו."
-      )
+      ))
     ) {
       return;
     }
@@ -432,9 +435,10 @@ export default function Rates() {
 
   const deleteRate = async (rate) => {
     if (
-      !confirm(
-        "למחוק את התעריף לצמיתות? בשונה מהעברה לארכיון, מחיקה תשפיע גם על חישובים כספיים היסטוריים שכבר השתמשו בתעריף הזה."
-      )
+      !(await confirmDialog(
+        "למחוק את התעריף לצמיתות? בשונה מהעברה לארכיון, מחיקה תשפיע גם על חישובים כספיים היסטוריים שכבר השתמשו בתעריף הזה.",
+        { danger: true }
+      ))
     ) {
       return;
     }
@@ -456,9 +460,9 @@ export default function Rates() {
       return;
     }
     if (
-      !confirm(
+      !(await confirmDialog(
         `להעביר את כל ${group.rates.length} התעריפים בקבוצה לארכיון? התעריפים לא יופיעו יותר לבחירה, אבל הדוחות הקיימים לא ישתנו.`
-      )
+      ))
     ) {
       return;
     }
@@ -470,9 +474,10 @@ export default function Rates() {
 
   const deleteRateGroup = async (group) => {
     if (
-      !confirm(
-        `למחוק את כל ${group.rates.length} התעריפים בקבוצה לצמיתות? בשונה מהעברה לארכיון, מחיקה תשפיע גם על חישובים כספיים היסטוריים שכבר השתמשו בתעריפים האלה.`
-      )
+      !(await confirmDialog(
+        `למחוק את כל ${group.rates.length} התעריפים בקבוצה לצמיתות? בשונה מהעברה לארכיון, מחיקה תשפיע גם על חישובים כספיים היסטוריים שכבר השתמשו בתעריפים האלה.`,
+        { danger: true }
+      ))
     ) {
       return;
     }

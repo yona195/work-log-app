@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useData } from "../state/DataProvider.jsx";
+import { useConfirm } from "../state/ConfirmProvider.jsx";
 import { activeOnly, getEmployeeIds } from "../lib/entities.js";
 import EditSimpleItemModal from "../components/EditSimpleItemModal.jsx";
 import StatusBadge from "../components/StatusBadge.jsx";
@@ -95,6 +96,7 @@ function EmployeeTable({
 
 export default function Employees() {
   const { data, addItem, updateItem, deleteItem } = useData();
+  const confirmDialog = useConfirm();
   const { employees, subcontractors, rates, workLogs } = data;
 
   const [name, setName] = useState("");
@@ -236,9 +238,9 @@ export default function Employees() {
       return;
     }
     if (
-      !confirm(
+      !(await confirmDialog(
         `להעביר את ${employee.name} לארכיון? העובד לא יופיע יותר לבחירה ברשומות חדשות, אבל הדוחות הקיימים לא ישתנו.`
-      )
+      ))
     ) {
       return;
     }
@@ -301,9 +303,10 @@ export default function Employees() {
         : "";
 
     if (
-      !confirm(
-        `למחוק את ${employee.name} לצמיתות?${cascadeNote} בשונה מהעברה לארכיון, מחיקה תשפיע גם על דוחות והיסטוריה שכבר נרשמו עם העובד הזה.`
-      )
+      !(await confirmDialog(
+        `למחוק את ${employee.name} לצמיתות?${cascadeNote} בשונה מהעברה לארכיון, מחיקה תשפיע גם על דוחות והיסטוריה שכבר נרשמו עם העובד הזה.`,
+        { danger: true }
+      ))
     ) {
       return;
     }
@@ -314,9 +317,9 @@ export default function Employees() {
 
   const bulkArchiveSelectedEmployees = async () => {
     if (
-      !confirm(
+      !(await confirmDialog(
         `להעביר את ${selectedEmployeeIds.length} העובדים שנבחרו לארכיון? העובדים לא יופיעו יותר לבחירה ברשומות חדשות, אבל הדוחות הקיימים לא ישתנו.`
-      )
+      ))
     ) {
       return;
     }
@@ -332,9 +335,10 @@ export default function Employees() {
   // selections that touch the same work log see each other's removals.
   const bulkDeleteSelectedEmployees = async () => {
     if (
-      !confirm(
-        `למחוק ${selectedEmployeeIds.length} עובדים שנבחרו לצמיתות? בשונה מהעברה לארכיון, מחיקה תשפיע גם על דוחות והיסטוריה שכבר נרשמו איתם.`
-      )
+      !(await confirmDialog(
+        `למחוק ${selectedEmployeeIds.length} עובדים שנבחרו לצמיתות? בשונה מהעברה לארכיון, מחיקה תשפיע גם על דוחות והיסטוריה שכבר נרשמו איתם.`,
+        { danger: true }
+      ))
     ) {
       return;
     }
@@ -372,9 +376,9 @@ export default function Employees() {
     const employeeNote =
       subEmployees.length > 0 ? ` וכל ${subEmployees.length} העובדים שלו` : "";
     if (
-      !confirm(
+      !(await confirmDialog(
         `להעביר את ${subcontractor.name}${employeeNote} לארכיון? לא יופיעו יותר לבחירה ברשומות חדשות, אבל הדוחות הקיימים לא ישתנו.`
-      )
+      ))
     ) {
       return;
     }
@@ -400,9 +404,10 @@ export default function Employees() {
     const employeeNote =
       subEmployees.length > 0 ? ` וכל ${subEmployees.length} העובדים שלו` : "";
     if (
-      !confirm(
-        `למחוק את ${subcontractor.name}${employeeNote} לצמיתות? בשונה מהעברה לארכיון, מחיקה תשפיע גם על דוחות והיסטוריה שכבר נרשמו (תעריפים, רישום עבודה והיסטוריה של כל עובדיו).`
-      )
+      !(await confirmDialog(
+        `למחוק את ${subcontractor.name}${employeeNote} לצמיתות? בשונה מהעברה לארכיון, מחיקה תשפיע גם על דוחות והיסטוריה שכבר נרשמו (תעריפים, רישום עבודה והיסטוריה של כל עובדיו).`,
+        { danger: true }
+      ))
     ) {
       return;
     }

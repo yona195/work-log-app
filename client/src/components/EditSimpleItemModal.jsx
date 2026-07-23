@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useConfirm } from "../state/ConfirmProvider.jsx";
 
 // Generic single-name-field edit modal, reused for subcontractors, sites,
 // customers, employees, and buildings — collections whose only editable
@@ -6,6 +7,7 @@ import { useState } from "react";
 // omitted everywhere except buildings, which reject renaming into the
 // reserved default-building name.
 export default function EditSimpleItemModal({ title, initialName, onSave, onClose, validate }) {
+  const confirmDialog = useConfirm();
   const [name, setName] = useState(initialName);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -23,7 +25,7 @@ export default function EditSimpleItemModal({ title, initialName, onSave, onClos
         return;
       }
     }
-    if (!confirm("לשמור את השינויים?")) return;
+    if (!(await confirmDialog("לשמור את השינויים?"))) return;
 
     setIsSubmitting(true);
     try {

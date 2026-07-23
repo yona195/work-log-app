@@ -1,11 +1,13 @@
 import { useMemo, useState } from "react";
 import { useData } from "../state/DataProvider.jsx";
+import { useConfirm } from "../state/ConfirmProvider.jsx";
 import { activeOnly, activeEmployees, isEmployeeArchived } from "../lib/entities.js";
 import { normalizeDate } from "../lib/format.js";
 import DatePicker from "./DatePicker.jsx";
 
 export default function EditWorkLogModal({ log, onClose }) {
   const { data, updateItem } = useData();
+  const confirmDialog = useConfirm();
   const employees = activeEmployees(data);
   const sites = activeOnly(data.sites);
   const buildings = activeOnly(data.buildings);
@@ -79,7 +81,7 @@ export default function EditWorkLogModal({ log, onClose }) {
       alert("נא למלא תאריך, עובד, אתר, מבנה ומזמין");
       return;
     }
-    if (!confirm("לשמור את השינויים?")) return;
+    if (!(await confirmDialog("לשמור את השינויים?"))) return;
 
     setIsSubmitting(true);
     try {
