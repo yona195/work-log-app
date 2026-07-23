@@ -63,27 +63,31 @@ export function DataProvider({ children }) {
   // add/update/delete across the app funnels through here, so this is the
   // one place that needs to know how to word the notification.
   const runMutation = useCallback(
-    async (fn, meta) => {
+    async (fn, meta, options = {}) => {
       setSync("saving");
       setError("");
       try {
         const result = await fn();
         setSync("idle");
-        if (meta) showToast("success", getSuccessMessage(meta.collection, meta.kind));
+        if (meta && !options.silent) showToast("success", getSuccessMessage(meta.collection, meta.kind));
         return result;
       } catch (err) {
         console.error("Mutation failed:", err);
         setSync("error");
         setError(err.message);
-        if (meta) showToast("error", getErrorMessage(meta.collection, meta.kind, err));
+        if (meta && !options.silent) showToast("error", getErrorMessage(meta.collection, meta.kind, err));
         throw err;
       }
     },
     [showToast]
   );
 
+  // `options.silent` skips the automatic added/error toast for this one
+  // call — for callers (e.g. a batch-create flow with its own loading
+  // overlay and single summary toast at the end) that need to fully own
+  // notifying the user instead of getting one toast per item.
   const addItem = useCallback(
-    (collection, item) =>
+    (collection, item, options = {}) =>
       runMutation(
         async () => {
           const created = await api.create(collection, item);
@@ -93,7 +97,8 @@ export function DataProvider({ children }) {
           }));
           return created;
         },
-        { collection, kind: "added" }
+        { collection, kind: "added" },
+        options
       ),
     [runMutation]
   );

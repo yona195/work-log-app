@@ -20,8 +20,13 @@ import DatePicker from "../components/DatePicker.jsx";
 import DuplicateConflictModal from "../components/DuplicateConflictModal.jsx";
 import WorkforceSelectionFields from "../components/WorkforceSelectionFields.jsx";
 import WorkRecordCard from "../components/WorkRecordCard.jsx";
+import ActionLoadingOverlay from "../components/ActionLoadingOverlay.jsx";
 
 const VALIDATION_MESSAGE = "נא לבחור תאריך, עובד, אתר, מבנה ומזמין";
+
+// Keeps the batch-create loading overlay up for at least this long, so it
+// doesn't flash on/off instantly when a single record is created quickly.
+const MIN_CREATE_OVERLAY_MS = 450;
 
 function rangeLabel(range) {
   return range.start === range.end
@@ -65,6 +70,7 @@ export default function WorkLog() {
   const [notes, setNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [duplicateConflict, setDuplicateConflict] = useState(null);
+  const [isCreatingRecords, setIsCreatingRecords] = useState(false);
   // Single edit is just the length-1 case of this — startEdit/add() branch
   // on .length rather than having a separate single-record code path.
   const [editingLogIds, setEditingLogIds] = useState([]);
@@ -459,28 +465,60 @@ export default function WorkLog() {
       // instead of multiplying it into one record per building (which used
       // to double-count revenue/cost for that day).
       const createdIds = [];
+      let creationFailed = false;
+
+      setIsCreatingRecords(true);
+      const creationStartedAt = Date.now();
+      // Warns on tab close/refresh while a batch is mid-flight — removed in
+      // the finally block below the instant the overlay comes down.
+      const warnBeforeUnload = (event) => {
+        event.preventDefault();
+        event.returnValue = "";
+      };
+      window.addEventListener("beforeunload", warnBeforeUnload);
+
       try {
-        for (const logDate of datesToUse) {
-          // eslint-disable-next-line no-await-in-loop
-          const created = await addItem("workLogs", {
-            date: logDate,
-            employeeIds: selectedEmployees,
-            buildingIds: selectedBuildings,
-            siteId,
-            customerId,
-            notes: notes.trim(),
-          });
-          createdIds.push(created.id);
+        try {
+          for (const logDate of datesToUse) {
+            // eslint-disable-next-line no-await-in-loop
+            const created = await addItem(
+              "workLogs",
+              {
+                date: logDate,
+                employeeIds: selectedEmployees,
+                buildingIds: selectedBuildings,
+                siteId,
+                customerId,
+                notes: notes.trim(),
+              },
+              // The loading overlay owns user feedback for this whole
+              // batch — a single summary toast/alert fires once it closes
+              // below, instead of one automatic toast per created record.
+              { silent: true }
+            );
+            createdIds.push(created.id);
+          }
+        } catch (err) {
+          // A failure partway through must not leave a partial batch behind —
+          // there's no server-side transaction spanning these calls, so roll
+          // back everything this batch already created.
+          creationFailed = true;
+          for (const id of createdIds) {
+            // eslint-disable-next-line no-await-in-loop
+            await deleteItem("workLogs", id).catch(() => {});
+          }
+          console.error("Batch work-log creation failed, rolled back:", err);
         }
-      } catch (err) {
-        // A failure partway through must not leave a partial batch behind —
-        // there's no server-side transaction spanning these calls, so roll
-        // back everything this batch already created.
-        for (const id of createdIds) {
-          // eslint-disable-next-line no-await-in-loop
-          await deleteItem("workLogs", id).catch(() => {});
+      } finally {
+        const elapsed = Date.now() - creationStartedAt;
+        if (elapsed < MIN_CREATE_OVERLAY_MS) {
+          await new Promise((resolve) => setTimeout(resolve, MIN_CREATE_OVERLAY_MS - elapsed));
         }
-        console.error("Batch work-log creation failed, rolled back:", err);
+        window.removeEventListener("beforeunload", warnBeforeUnload);
+        setIsCreatingRecords(false);
+      }
+
+      if (creationFailed) {
         alert("אירעה שגיאה בהוספת הרשומות. הפעולה בוטלה ולא נוצרו רשומות חלקיות.");
         return;
       }
@@ -489,9 +527,12 @@ export default function WorkLog() {
       setSelectedBuildings([]);
       setNotes("");
 
-      if (createdIds.length > 1) {
-        showToast("success", `נוצרו ${createdIds.length} רשומות עבודה (${datesToUse.length} ימי עבודה).`);
-      }
+      showToast(
+        "success",
+        createdIds.length > 1
+          ? `נוצרו ${createdIds.length} רשומות עבודה (${datesToUse.length} ימי עבודה).`
+          : "נוצרה רשומת עבודה בהצלחה"
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -877,6 +918,8 @@ export default function WorkLog() {
           onClose={() => setDuplicateConflict(null)}
         />
       )}
+
+      {isCreatingRecords && <ActionLoadingOverlay message="יוצר רשומות עבודה..." />}
     </>
   );
 }
