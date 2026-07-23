@@ -42,9 +42,24 @@ app.use("/api", requireAuth, pdfRouter);
 // Serve the built React app (single-service production deployment).
 const clientDist = resolve(__dirname, "..", "..", "client", "dist");
 if (existsSync(clientDist)) {
-  app.use(express.static(clientDist));
-  // SPA fallback for any non-API route.
+  app.use(
+    express.static(clientDist, {
+      index: false,
+      setHeaders: (res) => {
+        // Everything served here (hashed /assets/* bundles + unhashed public/
+        // files like logo.png) is safe to cache for a long time — hashed
+        // filenames change automatically on content change, and unhashed
+        // ones (the logo) rarely change and are worth the tradeoff. Only
+        // index.html (below) must stay revalidate-on-every-load, since it's
+        // what points browsers at the current asset hashes after a deploy.
+        res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+      },
+    })
+  );
+  // SPA fallback for any non-API route (also serves "/" itself, since
+  // index:false above stops express.static from handling index.html).
   app.get(/^(?!\/api\/).*/, (req, res) => {
+    res.set("Cache-Control", "public, max-age=0");
     res.sendFile(join(clientDist, "index.html"));
   });
 }

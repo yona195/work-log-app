@@ -22,6 +22,13 @@
     --color-warning: #f59e0b;
     --color-success: #16a34a;
 
+    /* MITCO brand orange, sampled from logo.png — used on the loading
+       screen only, where the logo itself is already the orange focal
+       point; the rest of the app keeps --color-primary (blue) as its
+       accent. */
+    --color-brand-orange: #e75e28;
+    --color-brand-orange-soft: #fdf1ea;
+
     --radius-small: 8px;
     --radius-medium: 12px;
     --radius-large: 16px;
@@ -1322,7 +1329,12 @@ body.loading .menu-overlay {
     max-width: 420px;
     padding: 38px 30px;
 
-    background: #ffffff;
+    background:
+        linear-gradient(
+            180deg,
+            var(--color-brand-orange-soft) 0%,
+            #ffffff 45%
+        );
     border: 1px solid #e5e7eb;
     border-radius: 22px;
 
@@ -1340,6 +1352,24 @@ body.loading .menu-overlay {
     height: auto;
 
     margin: 0 auto 20px;
+
+    border-radius: 22px;
+    box-shadow: 0 14px 30px rgba(231, 94, 40, 0.25);
+
+    animation: loadingLogoPulse 2.4s ease-in-out infinite;
+}
+
+@keyframes loadingLogoPulse {
+    0%,
+    100% {
+        box-shadow: 0 14px 30px rgba(231, 94, 40, 0.25);
+        transform: scale(1);
+    }
+
+    50% {
+        box-shadow: 0 18px 36px rgba(231, 94, 40, 0.35);
+        transform: scale(1.035);
+    }
 }
 
 .loading-box h2 {
@@ -1381,8 +1411,8 @@ body.loading .menu-overlay {
     background:
         linear-gradient(
             90deg,
-            #2563eb,
-            #60a5fa
+            var(--color-brand-orange),
+            #f4a37a
         );
 
     border-radius: 999px;
