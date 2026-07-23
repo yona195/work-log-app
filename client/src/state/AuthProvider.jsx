@@ -25,6 +25,19 @@ export function AuthProvider({ children }) {
     };
   }, []);
 
+  // A fresh password login already records the "previous login" rolling
+  // timestamp server-side (see POST /login) — but resuming a session from
+  // a token already in storage (returning user, no password re-entered)
+  // never hit that code path, so the timestamp stayed stuck at whatever it
+  // was the last time someone actually typed a password. Runs once per app
+  // load, using whichever token was already present at mount — a token set
+  // moments later by login() is intentionally not re-triggered here.
+  useEffect(() => {
+    if (!token) return;
+    authApi.resumeSession().catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const logout = useCallback(() => {
     localStorage.removeItem(TOKEN_KEY);
     setToken(null);

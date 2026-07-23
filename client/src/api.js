@@ -92,4 +92,12 @@ export const authApi = {
   logout() {
     return request("/logout", { method: "POST" }, { auth: false });
   },
+  // Called once per app load when resuming a session from a token already
+  // in storage (not a fresh login) — records the rolling "previous login"
+  // timestamp server-side the same way a fresh login does. Uses the
+  // default auth:true behavior: a 401 here (expired/invalid token) should
+  // force the same global logout as any other authenticated request.
+  resumeSession() {
+    return request("/auth/resume", { method: "POST" });
+  },
 };

@@ -13,7 +13,7 @@ import cors from "cors";
 import express from "express";
 import { authRequired, requireAuth, secretFromEnv } from "./auth.js";
 import { initDb } from "./db.js";
-import authRouter from "./routes/auth.js";
+import authRouter, { protectedAuthRouter } from "./routes/auth.js";
 import cronRouter from "./routes/cron.js";
 import dataRouter from "./routes/data.js";
 import pdfRouter from "./routes/pdf.js";
@@ -35,6 +35,7 @@ app.use("/api", authRouter);
 app.use("/api", cronRouter);
 
 // Everything else under /api requires a valid token (when auth is enabled).
+app.use("/api", requireAuth, protectedAuthRouter);
 app.use("/api", requireAuth, dataRouter);
 app.use("/api", requireAuth, pdfRouter);
 
