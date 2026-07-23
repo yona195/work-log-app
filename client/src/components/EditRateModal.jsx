@@ -1,47 +1,31 @@
 import { useMemo, useState } from "react";
 import { useData } from "../state/DataProvider.jsx";
-import {
-  activeOnly,
-  activeEmployees,
-  isEmployeeArchived,
-  getEmployeeAffiliationName,
-} from "../lib/entities.js";
-import { normalizeDate } from "../lib/format.js";
-import DatePicker from "./DatePicker.jsx";
+import { activeOnly } from "../lib/entities.js";
 
-// rates: one or more rates being edited together. A single rate behaves
-// exactly as before (target/employee picker included, since that's the one
-// field a single rate actually has to itself). 2+ rates are already
-// guaranteed identical in customer/site/revenue/cost by the caller (they're
-// a group precisely because of that) — the target picker is hidden (each
-// rate keeps its own employee/subcontractor) and saving applies the shared
-// fields to every rate in the group. Effective-from is NOT one of those
-// shared fields (a group can contain rates with different dates), so it's
-// hidden in group edit too and never included in the group patch — each
-// rate keeps its own date.
+// rates: every rate in one group (customer+site+revenue+cost) — a group of
+// one is edited with the exact same form as a group of many. There is no
+// per-employee field here on purpose: a previous version let this modal
+// reassign a single rate's employee, which could silently create a second,
+// duplicate rate for that employee at the same customer/site (an employee
+// can only be reassigned by adding a new rate from scratch, not by editing
+// an existing one). Effective-from is likewise excluded from the shared
+// patch — a group can contain rates with different dates, each kept as-is.
 export default function EditRateModal({ rates, onClose }) {
   const { data, updateItem } = useData();
   const customers = activeOnly(data.customers);
   const sites = activeOnly(data.sites);
-  const employees = activeEmployees(data);
 
-  const isGroupEdit = rates.length > 1;
   const firstRate = rates[0];
 
   const [customerId, setCustomerId] = useState(firstRate.customerId || "");
   const [siteId, setSiteId] = useState(firstRate.siteId || "");
-  // Every rate is employee-specific now. A legacy general (subcontractor-type)
-  // rate has no employeeId, so it starts unselected and picking one converts
-  // it to a personal rate on save. Not applicable in group edit (hidden).
-  const [targetId, setTargetId] = useState(isGroupEdit ? "" : firstRate.employeeId || "");
   const [revenue, setRevenue] = useState(String(firstRate.revenuePerWorker ?? ""));
   const [cost, setCost] = useState(String(firstRate.costPerWorker ?? ""));
-  const [effectiveFrom, setEffectiveFrom] = useState(normalizeDate(firstRate.effectiveFrom));
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Editing a rate whose customer/site/target was archived since it was
-  // recorded — keep it selectable here too, so saving doesn't silently
-  // drop it, even though it no longer appears for NEW rates.
+  // Editing a rate whose customer/site was archived since it was recorded
+  // — keep it selectable here too, so saving doesn't silently drop it,
+  // even though it no longer appears for NEW rates.
   const customerOptions = useMemo(() => {
     if (customers.some((c) => String(c.id) === String(firstRate.customerId))) return customers;
     const archived = (data.customers || []).find(
@@ -56,26 +40,14 @@ export default function EditRateModal({ rates, onClose }) {
     return archived ? [...sites, archived] : sites;
   }, [sites, data.sites, firstRate.siteId]);
 
-  const targetOptions = useMemo(() => {
-    const ids = new Set(employees.map((e) => e.id));
-    const missing = (data.employees || []).filter(
-      (e) => String(e.id) === String(firstRate.employeeId) && !ids.has(e.id)
-    );
-    return [...employees, ...missing].map((e) => ({
-      id: e.id,
-      label: `${e.name} — ${getEmployeeAffiliationName(data, e)}`,
-      archived: isEmployeeArchived(e, data.subcontractors),
-    }));
-  }, [employees, data, firstRate.employeeId]);
-
   const save = async () => {
     if (isSubmitting) return;
 
     const revenuePerWorker = Number(revenue);
     const costPerWorker = Number(cost);
 
-    if (!customerId || !siteId || (!isGroupEdit && !targetId)) {
-      alert(isGroupEdit ? "נא למלא מזמין ואתר" : "נא למלא מזמין, אתר ועובד/קבלן");
+    if (!customerId || !siteId) {
+      alert("נא למלא מזמין ואתר");
       return;
     }
     if (revenue === "" || !Number.isFinite(revenuePerWorker) || revenuePerWorker < 0) {
@@ -86,39 +58,53 @@ export default function EditRateModal({ rates, onClose }) {
       alert("נא להזין עלות תקינה");
       return;
     }
-    if (!isGroupEdit && !effectiveFrom) {
-      alert("נא לבחור תאריך תחילת תעריף");
+
+    // If these changes make the group identical (customer+site+revenue+
+    // cost) to some OTHER existing group, that's only safe when the two
+    // groups have no employee in common — otherwise an employee would end
+    // up with two rates at the same customer/site/pay, and there's no
+    // single obviously-correct way to resolve that automatically (unlike
+    // the run-length consolidation used for a single employee's own
+    // history), so it's blocked here rather than silently merged.
+    const currentRateIds = new Set(rates.map((r) => r.id));
+    const employeeIdsInThisGroup = new Set(
+      rates.filter((r) => r.rateType === "employee" && r.employeeId).map((r) => String(r.employeeId))
+    );
+    const targetGroupRates = (data.rates || []).filter(
+      (r) =>
+        !currentRateIds.has(r.id) &&
+        r.rateType === "employee" &&
+        String(r.customerId || "") === String(customerId) &&
+        String(r.siteId || "") === String(siteId) &&
+        Number(r.revenuePerWorker) === revenuePerWorker &&
+        Number(r.costPerWorker) === costPerWorker
+    );
+    const overlappingEmployeeIds = [
+      ...new Set(
+        targetGroupRates
+          .map((r) => String(r.employeeId))
+          .filter((id) => employeeIdsInThisGroup.has(id))
+      ),
+    ];
+    if (overlappingEmployeeIds.length > 0) {
+      const names = overlappingEmployeeIds.map((id) => {
+        const employee = (data.employees || []).find((e) => String(e.id) === id);
+        return employee ? employee.name : id;
+      });
+      alert(
+        `לא ניתן לשמור - העובד/ים ${names.join(", ")} כבר קיימים בקבוצה אחרת עם אותו מזמין/אתר/שכר. יש להשאיר את אחת הקבוצות עם ערך שונה.`
+      );
       return;
     }
-    if (
-      !confirm(
-        isGroupEdit ? `לשמור את השינויים עבור כל ${rates.length} התעריפים בקבוצה?` : "לשמור את השינויים?"
-      )
-    )
-      return;
+
+    if (!confirm(`לשמור את השינויים עבור כל ${rates.length} התעריפים בקבוצה?`)) return;
 
     setIsSubmitting(true);
     try {
-      if (isGroupEdit) {
-        // effectiveFrom is deliberately excluded — a group can contain rates
-        // with different dates, so a group edit must not collapse them all
-        // to whichever date happened to seed the (hidden) form field.
-        const patch = { customerId, siteId, revenuePerWorker, costPerWorker };
-        for (const rate of rates) {
-          // eslint-disable-next-line no-await-in-loop
-          await updateItem("rates", rate.id, patch);
-        }
-      } else {
-        await updateItem("rates", firstRate.id, {
-          customerId,
-          siteId,
-          rateType: "employee",
-          subcontractorId: "",
-          employeeId: targetId,
-          revenuePerWorker,
-          costPerWorker,
-          effectiveFrom,
-        });
+      const patch = { customerId, siteId, revenuePerWorker, costPerWorker };
+      for (const rate of rates) {
+        // eslint-disable-next-line no-await-in-loop
+        await updateItem("rates", rate.id, patch);
       }
       onClose();
     } finally {
@@ -129,7 +115,7 @@ export default function EditRateModal({ rates, onClose }) {
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <h3>{isGroupEdit ? `עריכת קבוצת תעריפים (${rates.length})` : "עריכת תעריף"}</h3>
+        <h3>{rates.length > 1 ? `עריכת קבוצת תעריפים (${rates.length})` : "עריכת תעריף"}</h3>
 
         <label>מזמין עבודה</label>
         <select value={customerId} onChange={(e) => setCustomerId(e.target.value)}>
@@ -153,21 +139,6 @@ export default function EditRateModal({ rates, onClose }) {
           ))}
         </select>
 
-        {!isGroupEdit && (
-          <>
-            <label>עובד</label>
-            <select value={targetId} onChange={(e) => setTargetId(e.target.value)}>
-              <option value="">בחר עובד</option>
-              {targetOptions.map((target) => (
-                <option key={target.id} value={target.id}>
-                  {target.label}
-                  {target.archived ? " (בארכיון)" : ""}
-                </option>
-              ))}
-            </select>
-          </>
-        )}
-
         <label>הכנסה לעובד ליום</label>
         <input
           type="number"
@@ -187,13 +158,6 @@ export default function EditRateModal({ rates, onClose }) {
           value={cost}
           onChange={(e) => setCost(e.target.value)}
         />
-
-        {!isGroupEdit && (
-          <>
-            <label>תאריך תחילת תעריף</label>
-            <DatePicker mode="single" value={effectiveFrom} onChange={setEffectiveFrom} />
-          </>
-        )}
 
         <div className="modal-actions">
           <button

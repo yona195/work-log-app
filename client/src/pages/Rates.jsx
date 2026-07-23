@@ -15,6 +15,7 @@ import GroupCard from "../components/GroupCard.jsx";
 import CompactRow from "../components/CompactRow.jsx";
 import { usePagedList, ListPagination } from "../components/Pagination.jsx";
 import { useBulkSelection } from "../components/useBulkSelection.js";
+import { findRedundantAt } from "../lib/rateConsolidation.js";
 
 export default function Rates() {
   const { data, addItem, updateItem, deleteItem } = useData();
@@ -324,6 +325,7 @@ export default function Rates() {
     try {
       let addedCount = 0;
       let skippedCount = 0;
+      let extendedCount = 0;
 
       // Archived rates are old history, not something a new rate should be
       // treated as a duplicate of — otherwise a rate that happens to share
@@ -334,34 +336,68 @@ export default function Rates() {
       for (const customerId of selectedCustomerIds) {
         for (const siteId of selectedSiteIds) {
           for (const targetId of selectedTargetIds) {
-            const duplicate = activeRates.some((rate) => {
-              const sameBase =
+            // An outright conflict — something already claims this exact
+            // date for this employee+customer+site, regardless of pay —
+            // is always a duplicate; two records can't both be "in effect"
+            // on the same day.
+            const sameDateConflict = activeRates.some(
+              (rate) =>
                 String(rate.customerId || "") === String(customerId) &&
                 String(rate.siteId) === String(siteId) &&
                 String(rate.rateType) === "employee" &&
-                normalizeDate(rate.effectiveFrom) === effectiveFrom;
-              if (!sameBase) return false;
-              return String(rate.employeeId || "") === String(targetId);
-            });
+                String(rate.employeeId || "") === String(targetId) &&
+                normalizeDate(rate.effectiveFrom) === effectiveFrom
+            );
 
-            if (duplicate) {
+            if (sameDateConflict) {
+              skippedCount += 1;
+              continue;
+            }
+
+            // Beyond that, check whether this employee's own rate history
+            // at this customer+site already covers `effectiveFrom` with
+            // the exact same pay (a redundant continuation of an existing
+            // run), or whether it should instead pull an existing record's
+            // start date backward rather than add a second record for the
+            // same run — see lib/rateConsolidation.js.
+            const employeeSiteRates = activeRates.filter(
+              (rate) =>
+                rate.rateType === "employee" &&
+                String(rate.employeeId || "") === String(targetId) &&
+                String(rate.customerId || "") === String(customerId) &&
+                String(rate.siteId) === String(siteId)
+            );
+            const redundancy = findRedundantAt(
+              employeeSiteRates,
+              effectiveFrom,
+              revenuePerWorker,
+              costPerWorker
+            );
+
+            if (redundancy.action === "skip") {
               skippedCount += 1;
               continue;
             }
 
             try {
-              // eslint-disable-next-line no-await-in-loop
-              await addItem("rates", {
-                customerId,
-                siteId,
-                rateType: "employee",
-                subcontractorId: "",
-                employeeId: targetId,
-                revenuePerWorker,
-                costPerWorker,
-                effectiveFrom,
-              });
-              addedCount += 1;
+              if (redundancy.action === "extend") {
+                // eslint-disable-next-line no-await-in-loop
+                await updateItem("rates", redundancy.anchor.id, { effectiveFrom });
+                extendedCount += 1;
+              } else {
+                // eslint-disable-next-line no-await-in-loop
+                await addItem("rates", {
+                  customerId,
+                  siteId,
+                  rateType: "employee",
+                  subcontractorId: "",
+                  employeeId: targetId,
+                  revenuePerWorker,
+                  costPerWorker,
+                  effectiveFrom,
+                });
+                addedCount += 1;
+              }
             } catch (err) {
               alert(`שגיאה בהוספת תעריף: ${err.message || "שגיאה לא ידועה"}`);
               return;
@@ -370,8 +406,8 @@ export default function Rates() {
         }
       }
 
-      if (addedCount === 0) {
-        alert("לא נוספו תעריפים. כל השילובים שנבחרו כבר קיימים כתעריפים פעילים.");
+      if (addedCount === 0 && extendedCount === 0) {
+        alert("לא נוספו תעריפים. כל השילובים שנבחרו כבר קיימים כתעריפים פעילים באותה תקופה.");
         return;
       }
 
@@ -381,13 +417,11 @@ export default function Rates() {
       setRevenue("");
       setCost("");
 
-      if (skippedCount > 0) {
-        alert(
-          `נוספו ${addedCount} תעריפים. ${skippedCount} שילובים כבר היו קיימים ולא נוספו שוב.`
-        );
-      } else {
-        alert(`נוספו בהצלחה ${addedCount} תעריפים.`);
-      }
+      const parts = [];
+      if (addedCount > 0) parts.push(`נוספו ${addedCount} תעריפים`);
+      if (extendedCount > 0) parts.push(`${extendedCount} תעריפים קיימים הורחבו לתאריך המוקדם יותר`);
+      if (skippedCount > 0) parts.push(`${skippedCount} שילובים כבר היו קיימים באותה תקופה ולא נוספו שוב`);
+      alert(`${parts.join(". ")}.`);
     } finally {
       setIsSubmitting(false);
     }
@@ -748,7 +782,6 @@ export default function Rates() {
                           archived={rate.archived}
                           selected={selectedRateIds.includes(rate.id)}
                           onToggleSelect={() => toggleRateSelection(rate.id)}
-                          onEdit={() => setEditingRates([rate])}
                           onDelete={advancedModeEnabled ? () => deleteRate(rate) : undefined}
                           onToggleArchive={() => toggleRateArchive(rate)}
                         />

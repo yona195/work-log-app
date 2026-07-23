@@ -8,7 +8,8 @@
   "scripts": {
     "dev": "node --watch src/index.js",
     "start": "node src/index.js",
-    "import:sheets": "node src/import-sheets.js"
+    "import:sheets": "node src/import-sheets.js",
+    "consolidate:rates": "node src/consolidate-rates.js"
   },
   "dependencies": {
     "@libsql/client": "^0.14.0",
