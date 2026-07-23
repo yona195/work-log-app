@@ -116,7 +116,12 @@ export default function Customers() {
     ) {
       return;
     }
-    await deleteCustomerCascade(item);
+    const total = customerRates.length + customerWorkLogs.length + 1;
+    await runBulkOperation("מוחק מזמין", total, async (setProgress) => {
+      await deleteCustomerCascade(item, { silent: true });
+      setProgress(total);
+    });
+    showToast("success", `${item.name} נמחק לצמיתות בהצלחה`);
   };
 
   const bulkArchiveSelectedCustomers = async () => {

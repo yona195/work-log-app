@@ -170,7 +170,10 @@ export default function Sites() {
     if (!(await confirmDialog(confirmMessage, { danger: true }))) return;
 
     const logState = new Map(workLogs.map((log) => [log.id, getBuildingIds(log).map(String)]));
-    await deleteBuildingsCascade([building], logState);
+    await runBulkOperation("מוחק מבנה", 1, async (setProgress) => {
+      await deleteBuildingsCascade([building], logState, { silent: true }, setProgress);
+    });
+    showToast("success", `${building.name} נמחק לצמיתות בהצלחה`);
   };
 
   const bulkArchiveSelectedBuildings = async () => {

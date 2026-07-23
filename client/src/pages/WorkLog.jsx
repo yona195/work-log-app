@@ -67,10 +67,12 @@ export default function WorkLog() {
   const [notes, setNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [duplicateConflict, setDuplicateConflict] = useState(null);
-  // Single edit is just the length-1 case of this — startEdit/add() branch
-  // on .length rather than having a separate single-record code path.
-  const [editingLogIds, setEditingLogIds] = useState([]);
+  const [editingLogId, setEditingLogId] = useState(null);
   const [selectedRecentLogIds, setSelectedRecentLogIds] = useState([]);
+  // Every delete button in "רשומות אחרונות" (row/bulk) is hidden until
+  // this is checked — matches the same convention already used on
+  // Customers/Employees/Sites/Rates.
+  const [advancedModeEnabled, setAdvancedModeEnabled] = useState(false);
 
   // Every interactive way the contractor set can change (a single toggle or
   // the panel's own בחר הכל/נקה הכל) clears the employee selection, since
@@ -192,10 +194,8 @@ export default function WorkLog() {
   // date — matches on date only, regardless of site: an employee can't
   // really work two different sites on the same day either, so a match at
   // *any* site on that date is still a real conflict. `excludeLogIds` skips
-  // the record(s) currently being edited, so re-saving them without changes
-  // doesn't flag them as duplicates of themselves (a single edit passes a
-  // 1-element array; a multi-edit passes all the records being edited
-  // together).
+  // the record currently being edited, so re-saving it without changes
+  // doesn't flag it as a duplicate of itself.
   const findDuplicateConflicts = (employeeIds, targetDates, excludeLogIds = []) => {
     const excludeSet = new Set(excludeLogIds.map(String));
     const dateSet = new Set(targetDates);
@@ -222,26 +222,6 @@ export default function WorkLog() {
     [workLogs]
   );
 
-  // Two records are "compatible" for multi-edit when everything except the
-  // date matches — same site, same buildings, same customer, same exact
-  // employee set. Order doesn't matter, hence the sort.
-  const recordSignature = (log) =>
-    JSON.stringify({
-      site: String(log.siteId || ""),
-      buildings: getBuildingIds(log).map(String).sort(),
-      customer: String(log.customerId || ""),
-      employees: getEmployeeIds(log).map(String).sort(),
-    });
-
-  const selectedRecentLogs = recentWorkLogs.filter((log) =>
-    selectedRecentLogIds.includes(log.id)
-  );
-  const selectionSignature =
-    selectedRecentLogs.length > 0 ? recordSignature(selectedRecentLogs[0]) : null;
-  const isSelectionUniform =
-    selectedRecentLogs.length > 0 &&
-    selectedRecentLogs.every((log) => recordSignature(log) === selectionSignature);
-
   const toggleRecentLogSelection = (id) =>
     setSelectedRecentLogIds((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
@@ -253,18 +233,19 @@ export default function WorkLog() {
     );
 
   const bulkDeleteSelected = async () => {
-    if (!(await confirmDialog(`למחוק ${selectedRecentLogIds.length} רשומות שנבחרו?`, { danger: true }))) return;
-    for (const id of selectedRecentLogIds) {
-      // eslint-disable-next-line no-await-in-loop
-      await deleteItem("workLogs", id).catch(() => {});
-    }
+    const total = selectedRecentLogIds.length;
+    if (!(await confirmDialog(`למחוק ${total} רשומות שנבחרו לצמיתות?`, { danger: true }))) return;
+    await runBulkOperation("מוחק רשומות עבודה", total, async (setProgress) => {
+      let done = 0;
+      for (const id of selectedRecentLogIds) {
+        // eslint-disable-next-line no-await-in-loop
+        await deleteItem("workLogs", id, { silent: true }).catch(() => {});
+        done += 1;
+        setProgress(done);
+      }
+    });
     setSelectedRecentLogIds([]);
-  };
-
-  const bulkEditSelected = () => {
-    if (!isSelectionUniform || selectedRecentLogs.length < 2) return;
-    startEdit(selectedRecentLogs);
-    setSelectedRecentLogIds([]);
+    showToast("success", `${total} רשומות עבודה נמחקו בהצלחה`);
   };
 
   const uniqueDates = useMemo(() => {
@@ -279,7 +260,7 @@ export default function WorkLog() {
     setSelectedRanges((prev) => prev.filter((_, i) => i !== index));
 
   const cancelEdit = () => {
-    setEditingLogIds([]);
+    setEditingLogId(null);
     setSelectedRecentLogIds([]);
     setSelectedRanges([{ start: todayISO(), end: todayISO() }]);
     setGroup("");
@@ -294,32 +275,21 @@ export default function WorkLog() {
     setNotes("");
   };
 
-  // logs: one or more records to edit together. A single record behaves
-  // exactly as before (date picker pre-filled with its date, notes carried
-  // over); 2+ records are already guaranteed compatible by the caller, so
-  // the shared fields are seeded from the first one, the date picker stays
-  // empty (each record keeps its own date — never sent in the update), and
-  // notes start blank (notes aren't part of the compatibility check, so
-  // different records may already have different notes — see add()).
-  const startEdit = (logs) => {
-    setEditingLogIds(logs.map((log) => log.id));
+  const startEdit = (log) => {
+    setEditingLogId(log.id);
     // Reset the workforce filter to "כל העובדים" so the loaded employees are
     // guaranteed to be visible in the panel regardless of their affiliation.
     setGroup("");
     setSelectedContractorIds([]);
     setContractorSearch("");
     setEmployeeSearch("");
-    setSelectedEmployees(getEmployeeIds(logs[0]));
-    setSiteId(logs[0].siteId || "");
+    setSelectedEmployees(getEmployeeIds(log));
+    setSiteId(log.siteId || "");
     setBuildingSearch("");
-    setSelectedBuildings(getBuildingIds(logs[0]));
-    setCustomerId(logs[0].customerId || "");
-    setNotes(logs.length === 1 ? logs[0].notes || "" : "");
-    setSelectedRanges(
-      logs.length === 1
-        ? [{ start: normalizeDate(logs[0].date), end: normalizeDate(logs[0].date) }]
-        : []
-    );
+    setSelectedBuildings(getBuildingIds(log));
+    setCustomerId(log.customerId || "");
+    setNotes(log.notes || "");
+    setSelectedRanges([{ start: normalizeDate(log.date), end: normalizeDate(log.date) }]);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -327,73 +297,6 @@ export default function WorkLog() {
     // Guards against a double-click (or a slow request plus a second
     // click before it lands) submitting the same entry/range twice.
     if (isSubmitting) return;
-
-    // Multi-edit (2+ compatible records): no date picker involved at all —
-    // each record keeps its own existing date, so this branch validates and
-    // saves independently of selectedRanges/uniqueDates, then returns.
-    if (editingLogIds.length > 1) {
-      if (
-        selectedEmployees.length === 0 ||
-        !siteId ||
-        selectedBuildings.length === 0 ||
-        !customerId
-      ) {
-        alert(VALIDATION_MESSAGE);
-        return;
-      }
-      const editingLogs = editingLogIds
-        .map((id) => workLogs.find((log) => String(log.id) === String(id)))
-        .filter(Boolean);
-      const perRecordDates = editingLogs.map((log) => normalizeDate(log.date));
-
-      const conflicts = findDuplicateConflicts(selectedEmployees, perRecordDates, editingLogIds);
-      if (conflicts.length > 0) {
-        const seen = new Set();
-        const rows = [];
-        conflicts.forEach((c) => {
-          const key = `${c.employeeId}-${c.date}-${c.siteId}`;
-          if (seen.has(key)) return;
-          seen.add(key);
-          rows.push({
-            employeeName: getName(data.employees, c.employeeId) || "עובד",
-            date: c.date,
-            siteName: getName(sites, c.siteId) || "אתר לא ידוע",
-          });
-        });
-        // Sort on the raw ISO date (chronologically correct) BEFORE
-        // reformatting for display — formatExcelDate's DD-MM-YYYY string
-        // wouldn't sort correctly with localeCompare.
-        rows.sort((a, b) => a.date.localeCompare(b.date) || a.employeeName.localeCompare(b.employeeName));
-        setDuplicateConflict(rows.map((row) => ({ ...row, date: formatExcelDate(row.date) })));
-        return;
-      }
-
-      setIsSubmitting(true);
-      try {
-        // Buildings are just a location tag on the record, never a billing
-        // unit — the whole selected set is stored on each record as-is, not
-        // split into one record per building.
-        const patch = {
-          employeeIds: selectedEmployees,
-          buildingIds: selectedBuildings,
-          siteId,
-          customerId,
-        };
-        // Empty notes means "don't touch existing notes" — different
-        // records may already have different notes (notes aren't part of
-        // the compatibility check), so only overwrite them if the user
-        // actually typed something shared.
-        if (notes.trim()) patch.notes = notes.trim();
-        for (const id of editingLogIds) {
-          // eslint-disable-next-line no-await-in-loop
-          await updateItem("workLogs", id, patch);
-        }
-        cancelEdit();
-      } finally {
-        setIsSubmitting(false);
-      }
-      return;
-    }
 
     if (
       selectedRanges.length === 0 ||
@@ -409,16 +312,20 @@ export default function WorkLog() {
     // Editing represents exactly one existing daily record — restricting to
     // exactly one date keeps "שמור שינויים" from silently turning into a
     // multi-record creation. Multiple buildings are fine (just a tag set).
-    if (editingLogIds.length === 1) {
+    if (editingLogId) {
       if (uniqueDates.length > 1) {
         alert("בעריכת רשומה ניתן לבחור תאריך אחד בלבד.");
         return;
       }
     }
 
-    const datesToUse = editingLogIds.length === 1 ? uniqueDates.slice(0, 1) : uniqueDates;
+    const datesToUse = editingLogId ? uniqueDates.slice(0, 1) : uniqueDates;
 
-    const conflicts = findDuplicateConflicts(selectedEmployees, datesToUse, editingLogIds);
+    const conflicts = findDuplicateConflicts(
+      selectedEmployees,
+      datesToUse,
+      editingLogId ? [editingLogId] : []
+    );
     if (conflicts.length > 0) {
       const seen = new Set();
       const rows = [];
@@ -442,8 +349,8 @@ export default function WorkLog() {
 
     setIsSubmitting(true);
     try {
-      if (editingLogIds.length === 1) {
-        await updateItem("workLogs", editingLogIds[0], {
+      if (editingLogId) {
+        await updateItem("workLogs", editingLogId, {
           date: datesToUse[0],
           employeeIds: selectedEmployees,
           buildingIds: selectedBuildings,
@@ -538,29 +445,16 @@ export default function WorkLog() {
 
   // One record per date, regardless of how many buildings are tagged —
   // buildings never multiply the record (or financial) count.
-  const recordsCount = editingLogIds.length === 1
-    ? Math.min(uniqueDates.length, 1)
-    : editingLogIds.length > 1
-      ? editingLogIds.length
-      : uniqueDates.length;
-
-  const isMultiEdit = editingLogIds.length > 1;
+  const recordsCount = editingLogId ? Math.min(uniqueDates.length, 1) : uniqueDates.length;
 
   return (
     <>
       <div className="card">
-        <h3>
-          {isMultiEdit
-            ? `עריכת ${editingLogIds.length} רשומות עבודה`
-            : editingLogIds.length === 1
-              ? "עריכת רשומת עבודה"
-              : "רישום עבודה"}
-        </h3>
+        <h3>{editingLogId ? "עריכת רשומת עבודה" : "רישום עבודה"}</h3>
 
         <div className="form-section">
           <h4 className="form-section-title">מיקום העבודה</h4>
           <div className="filter-grid filter-grid-2 worklog-location-grid">
-            {!isMultiEdit && (
             <div className="filter-grid-item">
               <label>תאריכי העבודה</label>
               <DatePicker mode="multi-range" value={selectedRanges} onChange={setSelectedRanges} />
@@ -589,7 +483,6 @@ export default function WorkLog() {
                 </>
               )}
             </div>
-            )}
 
             <div className="filter-grid-item">
               <label>מזמין עבודה</label>
@@ -756,9 +649,7 @@ export default function WorkLog() {
               <span>{buildingNamesText || "לא נבחר"}</span>
             </div>
             <p className="worklog-summary-highlight">
-              {editingLogIds.length > 0
-                ? `יעודכנו ${recordsCount} רשומות`
-                : `ייווצרו ${recordsCount} רשומות`}
+              {editingLogId ? `יעודכנו ${recordsCount} רשומות` : `ייווצרו ${recordsCount} רשומות`}
             </p>
 
             <label>הערות</label>
@@ -776,9 +667,9 @@ export default function WorkLog() {
                 onClick={add}
                 disabled={isSubmitting}
               >
-                {isSubmitting ? "שומר..." : editingLogIds.length > 0 ? "שמור שינויים" : "הוסף ליומן"}
+                {isSubmitting ? "שומר..." : editingLogId ? "שמור שינויים" : "הוסף ליומן"}
               </button>
-              {editingLogIds.length > 0 && (
+              {editingLogId && (
                 <button
                   className="secondary-btn"
                   type="button"
@@ -805,43 +696,39 @@ export default function WorkLog() {
           <p style={{ marginTop: 16 }}>אין עדיין רשומות</p>
         ) : (
           <>
-            {selectedRecentLogIds.length >= 2 && (
-              <div className="worklog-bulk-actions">
-                <span>{selectedRecentLogIds.length} רשומות נבחרו</span>
-                <div className="report-row-actions">
-                  <button className="delete-btn" type="button" onClick={bulkDeleteSelected}>
-                    מחק את הנבחרים
-                  </button>
-                  {isSelectionUniform && (
-                    <button className="edit-btn" type="button" onClick={bulkEditSelected}>
-                      ערוך את הנבחרים
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
-
             <div className="bulk-select-row">
+              {advancedModeEnabled && (
+                <label className="checkbox-item">
+                  <input
+                    type="checkbox"
+                    checked={
+                      selectedRecentLogIds.length === recentWorkLogs.length &&
+                      recentWorkLogs.length > 0
+                    }
+                    onChange={toggleSelectAllRecentLogs}
+                  />
+                  <span>בחר הכל</span>
+                </label>
+              )}
               <label className="checkbox-item">
                 <input
                   type="checkbox"
-                  checked={
-                    selectedRecentLogIds.length === recentWorkLogs.length &&
-                    recentWorkLogs.length > 0
-                  }
-                  onChange={toggleSelectAllRecentLogs}
+                  checked={advancedModeEnabled}
+                  onChange={(e) => setAdvancedModeEnabled(e.target.checked)}
                 />
-                <span>בחר הכל</span>
+                <span>מצב מתקדם</span>
               </label>
+              {advancedModeEnabled && selectedRecentLogIds.length > 0 && (
+                <div className="report-row-actions bulk-actions-inline">
+                  <button className="delete-btn" type="button" onClick={bulkDeleteSelected}>
+                    מחק ({selectedRecentLogIds.length})
+                  </button>
+                </div>
+              )}
             </div>
 
             <div className="workhistory-cards-list">
               {recentWorkLogs.map((log) => {
-                const isSelected = selectedRecentLogIds.includes(log.id);
-                const isIncompatible =
-                  selectedRecentLogIds.length > 0 &&
-                  !isSelected &&
-                  recordSignature(log) !== selectionSignature;
                 const buildingNamesText = getBuildingNames(data, log);
                 const logEmployees = getReportEmployees(data, log, {});
                 return (
@@ -853,35 +740,33 @@ export default function WorkLog() {
                     buildingNamesText={buildingNamesText}
                     employeeCount={logEmployees.length}
                     affiliationGroups={groupEmployeesByAffiliation(data, logEmployees)}
-                    className={isIncompatible ? "worklog-row-incompatible" : ""}
                     selectionControl={
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        onChange={() => toggleRecentLogSelection(log.id)}
-                        title={
-                          isIncompatible
-                            ? "לא זהה לרשומה שנבחרה - אתר/מבנה/מזמין/עובדים שונים"
-                            : undefined
-                        }
-                      />
+                      advancedModeEnabled && (
+                        <input
+                          type="checkbox"
+                          checked={selectedRecentLogIds.includes(log.id)}
+                          onChange={() => toggleRecentLogSelection(log.id)}
+                        />
+                      )
                     }
                     actions={
                       <>
-                        <button className="edit-btn" type="button" onClick={() => startEdit([log])}>
+                        <button className="edit-btn" type="button" onClick={() => startEdit(log)}>
                           עריכה
                         </button>
-                        <button
-                          className="delete-btn"
-                          type="button"
-                          onClick={async () => {
-                            if (await confirmDialog("למחוק את הרשומה?", { danger: true })) {
-                              deleteItem("workLogs", log.id);
-                            }
-                          }}
-                        >
-                          מחיקה
-                        </button>
+                        {advancedModeEnabled && (
+                          <button
+                            className="delete-btn"
+                            type="button"
+                            onClick={async () => {
+                              if (await confirmDialog("למחוק את הרשומה?", { danger: true })) {
+                                deleteItem("workLogs", log.id);
+                              }
+                            }}
+                          >
+                            מחיקה
+                          </button>
+                        )}
                       </>
                     }
                   />

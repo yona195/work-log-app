@@ -4,8 +4,11 @@ import EditWorkLogModal from "../components/EditWorkLogModal.jsx";
 import PartialDeleteModal from "../components/PartialDeleteModal.jsx";
 import WorkRecordCard from "../components/WorkRecordCard.jsx";
 import { usePagedList, ListPagination } from "../components/Pagination.jsx";
+import { useBulkSelection } from "../components/useBulkSelection.js";
+import { useBulkOperation } from "../components/useBulkOperation.jsx";
 import { useData } from "../state/DataProvider.jsx";
 import { useConfirm } from "../state/ConfirmProvider.jsx";
+import { useToast } from "../state/ToastProvider.jsx";
 import {
   getName,
   getEmployeeIds,
@@ -86,6 +89,8 @@ function useWorkHistoryDateRangeFilter() {
 export default function WorkHistory() {
   const { data, deleteItem, updateItem } = useData();
   const confirmDialog = useConfirm();
+  const { showToast } = useToast();
+  const { overlay: bulkOverlay, run: runBulkOperation } = useBulkOperation();
   const { subcontractors, sites, customers, buildings, employees } = data;
 
   const dateRange = useWorkHistoryDateRangeFilter();
@@ -95,6 +100,11 @@ export default function WorkHistory() {
   const [pageSize, setPageSize] = useState(5);
   const [editingLog, setEditingLog] = useState(null);
   const [partialDeleteTarget, setPartialDeleteTarget] = useState(null);
+  // Every delete button here (row/bulk) is hidden until this is checked —
+  // matches the same convention already used on Customers/Employees/
+  // Sites/Rates/WorkLog. Named distinctly from advancedOpen above, which
+  // is the unrelated "סינון נוסף" filter-panel toggle.
+  const [advancedModeEnabled, setAdvancedModeEnabled] = useState(false);
 
   const setFilter = (key, value) =>
     setFilters((prev) => {
@@ -221,6 +231,21 @@ export default function WorkHistory() {
     startIndex,
   } = usePagedList(allRegistrations, pageSize);
 
+  const {
+    selectedIds: selectedRegistrationIds,
+    toggle: toggleRegistrationSelection,
+    isFullySelected: isRegistrationGroupFullySelected,
+    toggleAll: toggleAllRegistrations,
+    clear: clearRegistrationSelection,
+  } = useBulkSelection(allRegistrations.map((r) => r.log));
+
+  // "Select all" is scoped to the current page only, matching Rates.jsx.
+  const isAllCurrentPageSelected = isRegistrationGroupFullySelected(
+    pageRegistrations.map((r) => r.log)
+  );
+  const toggleSelectAllCurrentPage = () =>
+    toggleAllRegistrations(pageRegistrations.map((r) => r.log));
+
   // Any filter (or page-size) change invalidates the current page index.
   useEffect(() => {
     setPage(1);
@@ -327,6 +352,26 @@ export default function WorkHistory() {
   const deleteEntireRegistration = async () => {
     await deleteItem("workLogs", partialDeleteTarget.registration.log.id);
     setPartialDeleteTarget(null);
+  };
+
+  // A plain full delete per selected record — unlike the single-row
+  // deleteRegistration above, this never checks for filter-driven partial
+  // narrowing (matches the same simple bulk-delete behavior already used
+  // for WorkLog.jsx's "רשומות אחרונות").
+  const bulkDeleteSelectedRegistrations = async () => {
+    const total = selectedRegistrationIds.length;
+    if (!(await confirmDialog(`למחוק ${total} רשומות שנבחרו לצמיתות?`, { danger: true }))) return;
+    await runBulkOperation("מוחק רשומות עבודה", total, async (setProgress) => {
+      let done = 0;
+      for (const id of selectedRegistrationIds) {
+        // eslint-disable-next-line no-await-in-loop
+        await deleteItem("workLogs", id, { silent: true }).catch(() => {});
+        done += 1;
+        setProgress(done);
+      }
+    });
+    clearRegistrationSelection();
+    showToast("success", `${total} רשומות עבודה נמחקו בהצלחה`);
   };
 
   return (
@@ -485,6 +530,38 @@ export default function WorkHistory() {
           <p>אין רשומות מתאימות.</p>
         ) : (
           <>
+            <div className="bulk-select-row">
+              {advancedModeEnabled && (
+                <label className="checkbox-item">
+                  <input
+                    type="checkbox"
+                    checked={isAllCurrentPageSelected}
+                    onChange={toggleSelectAllCurrentPage}
+                  />
+                  <span>בחר הכל</span>
+                </label>
+              )}
+              <label className="checkbox-item">
+                <input
+                  type="checkbox"
+                  checked={advancedModeEnabled}
+                  onChange={(e) => setAdvancedModeEnabled(e.target.checked)}
+                />
+                <span>מצב מתקדם</span>
+              </label>
+              {advancedModeEnabled && selectedRegistrationIds.length > 0 && (
+                <div className="report-row-actions bulk-actions-inline">
+                  <button
+                    className="delete-btn"
+                    type="button"
+                    onClick={bulkDeleteSelectedRegistrations}
+                  >
+                    מחק ({selectedRegistrationIds.length})
+                  </button>
+                </div>
+              )}
+            </div>
+
             <div className="workhistory-cards-list">
               {pageRegistrations.map((registration) => {
                 const buildingNamesText = getBuildingNames(data, registration.log);
@@ -498,6 +575,15 @@ export default function WorkHistory() {
                     employeeCount={registration.totalEmployeeCount}
                     affiliationGroups={registration.affiliationGroups}
                     notes={registration.log.notes}
+                    selectionControl={
+                      advancedModeEnabled && (
+                        <input
+                          type="checkbox"
+                          checked={selectedRegistrationIds.includes(registration.log.id)}
+                          onChange={() => toggleRegistrationSelection(registration.log.id)}
+                        />
+                      )
+                    }
                     actions={
                       <>
                         <button
@@ -546,6 +632,8 @@ export default function WorkHistory() {
           onClose={() => setPartialDeleteTarget(null)}
         />
       )}
+
+      {bulkOverlay}
     </>
   );
 }

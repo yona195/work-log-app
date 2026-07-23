@@ -315,8 +315,14 @@ export default function Employees() {
       return;
     }
     const logState = new Map(workLogs.map((log) => [log.id, getEmployeeIds(log).map(String)]));
-    await cascadeDeleteEmployeeDependents(employee, logState);
-    await deleteItem("employees", employee.id);
+    const total = employeeRates.length + employeeLogs.length + 1;
+    await runBulkOperation("מוחק עובד", total, async (setProgress) => {
+      await cascadeDeleteEmployeeDependents(employee, logState, { silent: true });
+      setProgress(total - 1);
+      await deleteItem("employees", employee.id, { silent: true });
+      setProgress(total);
+    });
+    showToast("success", `${employee.name} נמחק לצמיתות בהצלחה`);
   };
 
   const bulkArchiveSelectedEmployees = async () => {
