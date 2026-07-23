@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useData } from "../state/DataProvider.jsx";
 import { useConfirm } from "../state/ConfirmProvider.jsx";
+import { useToast } from "../state/ToastProvider.jsx";
 import { activeOnly, getEmployeeIds } from "../lib/entities.js";
 import EditSimpleItemModal from "../components/EditSimpleItemModal.jsx";
 import StatusBadge from "../components/StatusBadge.jsx";
@@ -8,6 +9,7 @@ import GroupCard from "../components/GroupCard.jsx";
 import CompactRow from "../components/CompactRow.jsx";
 import Pagination, { usePagedList } from "../components/Pagination.jsx";
 import { useBulkSelection } from "../components/useBulkSelection.js";
+import { useBulkOperation } from "../components/useBulkOperation.jsx";
 
 const matchesSearch = (text, value) => {
   if (!text) return true;
@@ -97,6 +99,8 @@ function EmployeeTable({
 export default function Employees() {
   const { data, addItem, updateItem, deleteItem } = useData();
   const confirmDialog = useConfirm();
+  const { showToast } = useToast();
+  const { overlay: bulkOverlay, run: runBulkOperation } = useBulkOperation();
   const { employees, subcontractors, rates, workLogs } = data;
 
   const [name, setName] = useState("");
@@ -270,11 +274,11 @@ export default function Employees() {
   // several of the same subcontractor's employees are deleted together in
   // one pass, each one sees the previous ones' already-applied removals
   // instead of working off a now-stale snapshot.
-  const cascadeDeleteEmployeeDependents = async (employee, logState) => {
+  const cascadeDeleteEmployeeDependents = async (employee, logState, options = {}) => {
     const { employeeRates } = employeeDependents(employee);
     for (const rate of employeeRates) {
       // eslint-disable-next-line no-await-in-loop
-      await deleteItem("rates", rate.id);
+      await deleteItem("rates", rate.id, options);
     }
 
     for (const [logId, currentIds] of logState.entries()) {
@@ -282,11 +286,11 @@ export default function Employees() {
       const remainingIds = currentIds.filter((id) => id !== String(employee.id));
       if (remainingIds.length === 0) {
         // eslint-disable-next-line no-await-in-loop
-        await deleteItem("workLogs", logId);
+        await deleteItem("workLogs", logId, options);
         logState.delete(logId);
       } else {
         // eslint-disable-next-line no-await-in-loop
-        await updateItem("workLogs", logId, { employeeIds: remainingIds });
+        await updateItem("workLogs", logId, { employeeIds: remainingIds }, options);
         logState.set(logId, remainingIds);
       }
     }
@@ -323,11 +327,18 @@ export default function Employees() {
     ) {
       return;
     }
-    for (const id of selectedEmployeeIds) {
-      // eslint-disable-next-line no-await-in-loop
-      await updateItem("employees", id, { archived: true });
-    }
+    const total = selectedEmployeeIds.length;
+    await runBulkOperation("מעביר עובדים לארכיון", total, async (setProgress) => {
+      let done = 0;
+      for (const id of selectedEmployeeIds) {
+        // eslint-disable-next-line no-await-in-loop
+        await updateItem("employees", id, { archived: true }, { silent: true });
+        done += 1;
+        setProgress(done);
+      }
+    });
     clearEmployeeSelection();
+    showToast("success", `${total} עובדים הועברו לארכיון בהצלחה`);
   };
 
   // Reuses the same cascade as a single-employee delete, just applied to
@@ -342,16 +353,23 @@ export default function Employees() {
     ) {
       return;
     }
-    const logState = new Map(workLogs.map((log) => [log.id, getEmployeeIds(log).map(String)]));
-    for (const id of selectedEmployeeIds) {
-      const employee = employees.find((e) => String(e.id) === String(id));
-      if (!employee) continue;
-      // eslint-disable-next-line no-await-in-loop
-      await cascadeDeleteEmployeeDependents(employee, logState);
-      // eslint-disable-next-line no-await-in-loop
-      await deleteItem("employees", id);
-    }
+    const total = selectedEmployeeIds.length;
+    await runBulkOperation("מוחק עובדים", total, async (setProgress) => {
+      const logState = new Map(workLogs.map((log) => [log.id, getEmployeeIds(log).map(String)]));
+      let done = 0;
+      for (const id of selectedEmployeeIds) {
+        const employee = employees.find((e) => String(e.id) === String(id));
+        if (!employee) continue;
+        // eslint-disable-next-line no-await-in-loop
+        await cascadeDeleteEmployeeDependents(employee, logState, { silent: true });
+        // eslint-disable-next-line no-await-in-loop
+        await deleteItem("employees", id, { silent: true });
+        done += 1;
+        setProgress(done);
+      }
+    });
     clearEmployeeSelection();
+    showToast("success", `${total} עובדים נמחקו בהצלחה`);
   };
 
   // Actions on a subcontractor cascade to its own employees (archive/
@@ -365,28 +383,43 @@ export default function Employees() {
 
   const toggleSubcontractorArchive = async (subcontractor) => {
     const subEmployees = subcontractorEmployeesOf(subcontractor);
+    const cascadeSuffix = subEmployees.length > 0 ? ` וכל ${subEmployees.length} עובדיו` : "";
+    const total = subEmployees.length + 1;
+
     if (subcontractor.archived) {
-      await updateItem("subcontractors", subcontractor.id, { archived: false });
-      for (const employee of subEmployees) {
-        // eslint-disable-next-line no-await-in-loop
-        await updateItem("employees", employee.id, { archived: false });
-      }
+      await runBulkOperation("משחזר קבלן משנה מהארכיון", total, async (setProgress) => {
+        await updateItem("subcontractors", subcontractor.id, { archived: false }, { silent: true });
+        setProgress(1);
+        let done = 1;
+        for (const employee of subEmployees) {
+          // eslint-disable-next-line no-await-in-loop
+          await updateItem("employees", employee.id, { archived: false }, { silent: true });
+          done += 1;
+          setProgress(done);
+        }
+      });
+      showToast("success", `${subcontractor.name}${cascadeSuffix} שוחזר מהארכיון בהצלחה`);
       return;
     }
-    const employeeNote =
-      subEmployees.length > 0 ? ` וכל ${subEmployees.length} העובדים שלו` : "";
     if (
       !(await confirmDialog(
-        `להעביר את ${subcontractor.name}${employeeNote} לארכיון? לא יופיעו יותר לבחירה ברשומות חדשות, אבל הדוחות הקיימים לא ישתנו.`
+        `להעביר את ${subcontractor.name}${cascadeSuffix} לארכיון? לא יופיעו יותר לבחירה ברשומות חדשות, אבל הדוחות הקיימים לא ישתנו.`
       ))
     ) {
       return;
     }
-    await updateItem("subcontractors", subcontractor.id, { archived: true });
-    for (const employee of subEmployees) {
-      // eslint-disable-next-line no-await-in-loop
-      await updateItem("employees", employee.id, { archived: true });
-    }
+    await runBulkOperation("מעביר קבלן משנה לארכיון", total, async (setProgress) => {
+      await updateItem("subcontractors", subcontractor.id, { archived: true }, { silent: true });
+      setProgress(1);
+      let done = 1;
+      for (const employee of subEmployees) {
+        // eslint-disable-next-line no-await-in-loop
+        await updateItem("employees", employee.id, { archived: true }, { silent: true });
+        done += 1;
+        setProgress(done);
+      }
+    });
+    showToast("success", `${subcontractor.name}${cascadeSuffix} הועבר לארכיון בהצלחה`);
   };
 
   // A subcontractor-level "general" rate (legacy rateType, points at the
@@ -411,18 +444,29 @@ export default function Employees() {
     ) {
       return;
     }
-    for (const rate of generalRates) {
-      // eslint-disable-next-line no-await-in-loop
-      await deleteItem("rates", rate.id);
-    }
-    const logState = new Map(workLogs.map((log) => [log.id, getEmployeeIds(log).map(String)]));
-    for (const employee of subEmployees) {
-      // eslint-disable-next-line no-await-in-loop
-      await cascadeDeleteEmployeeDependents(employee, logState);
-      // eslint-disable-next-line no-await-in-loop
-      await deleteItem("employees", employee.id);
-    }
-    await deleteItem("subcontractors", subcontractor.id);
+    const total = generalRates.length + subEmployees.length + 1;
+    await runBulkOperation("מוחק קבלן משנה", total, async (setProgress) => {
+      let done = 0;
+      for (const rate of generalRates) {
+        // eslint-disable-next-line no-await-in-loop
+        await deleteItem("rates", rate.id, { silent: true });
+        done += 1;
+        setProgress(done);
+      }
+      const logState = new Map(workLogs.map((log) => [log.id, getEmployeeIds(log).map(String)]));
+      for (const employee of subEmployees) {
+        // eslint-disable-next-line no-await-in-loop
+        await cascadeDeleteEmployeeDependents(employee, logState, { silent: true });
+        // eslint-disable-next-line no-await-in-loop
+        await deleteItem("employees", employee.id, { silent: true });
+        done += 1;
+        setProgress(done);
+      }
+      await deleteItem("subcontractors", subcontractor.id, { silent: true });
+      done += 1;
+      setProgress(done);
+    });
+    showToast("success", `${subcontractor.name}${employeeNote} נמחק לצמיתות בהצלחה`);
   };
 
   return (
@@ -760,6 +804,8 @@ export default function Employees() {
           onClose={() => setEditingSubcontractor(null)}
         />
       )}
+
+      {bulkOverlay}
     </>
   );
 }

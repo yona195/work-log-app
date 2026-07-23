@@ -17,6 +17,7 @@ import GroupCard from "../components/GroupCard.jsx";
 import CompactRow from "../components/CompactRow.jsx";
 import { usePagedList, ListPagination } from "../components/Pagination.jsx";
 import { useBulkSelection } from "../components/useBulkSelection.js";
+import { useBulkOperation } from "../components/useBulkOperation.jsx";
 import { findRedundantAt } from "../lib/rateConsolidation.js";
 
 const EMPTY_LIST_FILTERS = {
@@ -31,6 +32,7 @@ export default function Rates() {
   const { data, addItem, updateItem, deleteItem } = useData();
   const confirmDialog = useConfirm();
   const { showToast } = useToast();
+  const { overlay: bulkOverlay, run: runBulkOperation } = useBulkOperation();
   const { sites, employees, subcontractors, customers, rates } = data;
 
   const [selectedCustomerIds, setSelectedCustomerIds] = useState([]);
@@ -393,11 +395,18 @@ export default function Rates() {
     ) {
       return;
     }
-    for (const id of selectedRateIds) {
-      // eslint-disable-next-line no-await-in-loop
-      await deleteItem("rates", id).catch(() => {});
-    }
+    const total = selectedRateIds.length;
+    await runBulkOperation("מוחק תעריפים", total, async (setProgress) => {
+      let done = 0;
+      for (const id of selectedRateIds) {
+        // eslint-disable-next-line no-await-in-loop
+        await deleteItem("rates", id, { silent: true }).catch(() => {});
+        done += 1;
+        setProgress(done);
+      }
+    });
     clearRateSelection();
+    showToast("success", `${total} תעריפים נמחקו בהצלחה`);
   };
 
   const bulkArchiveSelectedRates = async () => {
@@ -408,11 +417,18 @@ export default function Rates() {
     ) {
       return;
     }
-    for (const id of selectedRateIds) {
-      // eslint-disable-next-line no-await-in-loop
-      await updateItem("rates", id, { archived: true });
-    }
+    const total = selectedRateIds.length;
+    await runBulkOperation("מעביר תעריפים לארכיון", total, async (setProgress) => {
+      let done = 0;
+      for (const id of selectedRateIds) {
+        // eslint-disable-next-line no-await-in-loop
+        await updateItem("rates", id, { archived: true }, { silent: true });
+        done += 1;
+        setProgress(done);
+      }
+    });
     clearRateSelection();
+    showToast("success", `${total} תעריפים הועברו לארכיון בהצלחה`);
   };
 
   // Every delete button on this page (row/group/bulk) is hidden until this
@@ -454,39 +470,59 @@ export default function Rates() {
   const isGroupArchived = (group) => group.rates.every((r) => r.archived);
 
   const toggleRateGroupArchive = async (group) => {
+    const total = group.rates.length;
     if (isGroupArchived(group)) {
-      for (const rate of group.rates) {
-        // eslint-disable-next-line no-await-in-loop
-        await updateItem("rates", rate.id, { archived: false });
-      }
+      await runBulkOperation("משחזר תעריפים מהארכיון", total, async (setProgress) => {
+        let done = 0;
+        for (const rate of group.rates) {
+          // eslint-disable-next-line no-await-in-loop
+          await updateItem("rates", rate.id, { archived: false }, { silent: true });
+          done += 1;
+          setProgress(done);
+        }
+      });
+      showToast("success", `${total} תעריפים שוחזרו מהארכיון בהצלחה`);
       return;
     }
     if (
       !(await confirmDialog(
-        `להעביר את כל ${group.rates.length} התעריפים בקבוצה לארכיון? התעריפים לא יופיעו יותר לבחירה, אבל הדוחות הקיימים לא ישתנו.`
+        `להעביר את כל ${total} התעריפים בקבוצה לארכיון? התעריפים לא יופיעו יותר לבחירה, אבל הדוחות הקיימים לא ישתנו.`
       ))
     ) {
       return;
     }
-    for (const rate of group.rates) {
-      // eslint-disable-next-line no-await-in-loop
-      await updateItem("rates", rate.id, { archived: true });
-    }
+    await runBulkOperation("מעביר תעריפים לארכיון", total, async (setProgress) => {
+      let done = 0;
+      for (const rate of group.rates) {
+        // eslint-disable-next-line no-await-in-loop
+        await updateItem("rates", rate.id, { archived: true }, { silent: true });
+        done += 1;
+        setProgress(done);
+      }
+    });
+    showToast("success", `${total} תעריפים הועברו לארכיון בהצלחה`);
   };
 
   const deleteRateGroup = async (group) => {
+    const total = group.rates.length;
     if (
       !(await confirmDialog(
-        `למחוק את כל ${group.rates.length} התעריפים בקבוצה לצמיתות? בשונה מהעברה לארכיון, מחיקה תשפיע גם על חישובים כספיים היסטוריים שכבר השתמשו בתעריפים האלה.`,
+        `למחוק את כל ${total} התעריפים בקבוצה לצמיתות? בשונה מהעברה לארכיון, מחיקה תשפיע גם על חישובים כספיים היסטוריים שכבר השתמשו בתעריפים האלה.`,
         { danger: true }
       ))
     ) {
       return;
     }
-    for (const rate of group.rates) {
-      // eslint-disable-next-line no-await-in-loop
-      await deleteItem("rates", rate.id);
-    }
+    await runBulkOperation("מוחק תעריפים", total, async (setProgress) => {
+      let done = 0;
+      for (const rate of group.rates) {
+        // eslint-disable-next-line no-await-in-loop
+        await deleteItem("rates", rate.id, { silent: true });
+        done += 1;
+        setProgress(done);
+      }
+    });
+    showToast("success", `${total} תעריפים נמחקו בהצלחה`);
   };
 
   const addRates = async () => {
@@ -525,84 +561,112 @@ export default function Rates() {
       let addedCount = 0;
       let skippedCount = 0;
       let extendedCount = 0;
+      let addFailed = false;
+      let failureMessage = "";
 
       // Archived rates are old history, not something a new rate should be
       // treated as a duplicate of — otherwise a rate that happens to share
       // a date/site/customer with something archived gets silently skipped
       // and the user sees nothing added, with no error.
       const activeRates = activeOnly(rates);
+      const totalCombos =
+        selectedCustomerIds.length * selectedSiteIds.length * selectedTargetIds.length;
 
-      for (const customerId of selectedCustomerIds) {
-        for (const siteId of selectedSiteIds) {
-          for (const targetId of selectedTargetIds) {
-            // An outright conflict — something already claims this exact
-            // date for this employee+customer+site, regardless of pay —
-            // is always a duplicate; two records can't both be "in effect"
-            // on the same day.
-            const sameDateConflict = activeRates.some(
-              (rate) =>
-                String(rate.customerId || "") === String(customerId) &&
-                String(rate.siteId) === String(siteId) &&
-                String(rate.rateType) === "employee" &&
-                String(rate.employeeId || "") === String(targetId) &&
-                normalizeDate(rate.effectiveFrom) === effectiveFrom
-            );
+      await runBulkOperation("מוסיף תעריפים", totalCombos, async (setProgress) => {
+        let processed = 0;
+        for (const customerId of selectedCustomerIds) {
+          for (const siteId of selectedSiteIds) {
+            for (const targetId of selectedTargetIds) {
+              // An outright conflict — something already claims this exact
+              // date for this employee+customer+site, regardless of pay —
+              // is always a duplicate; two records can't both be "in effect"
+              // on the same day.
+              const sameDateConflict = activeRates.some(
+                (rate) =>
+                  String(rate.customerId || "") === String(customerId) &&
+                  String(rate.siteId) === String(siteId) &&
+                  String(rate.rateType) === "employee" &&
+                  String(rate.employeeId || "") === String(targetId) &&
+                  normalizeDate(rate.effectiveFrom) === effectiveFrom
+              );
 
-            if (sameDateConflict) {
-              skippedCount += 1;
-              continue;
-            }
-
-            // Beyond that, check whether this employee's own rate history
-            // at this customer+site already covers `effectiveFrom` with
-            // the exact same pay (a redundant continuation of an existing
-            // run), or whether it should instead pull an existing record's
-            // start date backward rather than add a second record for the
-            // same run — see lib/rateConsolidation.js.
-            const employeeSiteRates = activeRates.filter(
-              (rate) =>
-                rate.rateType === "employee" &&
-                String(rate.employeeId || "") === String(targetId) &&
-                String(rate.customerId || "") === String(customerId) &&
-                String(rate.siteId) === String(siteId)
-            );
-            const redundancy = findRedundantAt(
-              employeeSiteRates,
-              effectiveFrom,
-              revenuePerWorker,
-              costPerWorker
-            );
-
-            if (redundancy.action === "skip") {
-              skippedCount += 1;
-              continue;
-            }
-
-            try {
-              if (redundancy.action === "extend") {
-                // eslint-disable-next-line no-await-in-loop
-                await updateItem("rates", redundancy.anchor.id, { effectiveFrom });
-                extendedCount += 1;
-              } else {
-                // eslint-disable-next-line no-await-in-loop
-                await addItem("rates", {
-                  customerId,
-                  siteId,
-                  rateType: "employee",
-                  subcontractorId: "",
-                  employeeId: targetId,
-                  revenuePerWorker,
-                  costPerWorker,
-                  effectiveFrom,
-                });
-                addedCount += 1;
+              if (sameDateConflict) {
+                skippedCount += 1;
+                processed += 1;
+                setProgress(processed);
+                continue;
               }
-            } catch (err) {
-              alert(`שגיאה בהוספת תעריף: ${err.message || "שגיאה לא ידועה"}`);
-              return;
+
+              // Beyond that, check whether this employee's own rate history
+              // at this customer+site already covers `effectiveFrom` with
+              // the exact same pay (a redundant continuation of an existing
+              // run), or whether it should instead pull an existing record's
+              // start date backward rather than add a second record for the
+              // same run — see lib/rateConsolidation.js.
+              const employeeSiteRates = activeRates.filter(
+                (rate) =>
+                  rate.rateType === "employee" &&
+                  String(rate.employeeId || "") === String(targetId) &&
+                  String(rate.customerId || "") === String(customerId) &&
+                  String(rate.siteId) === String(siteId)
+              );
+              const redundancy = findRedundantAt(
+                employeeSiteRates,
+                effectiveFrom,
+                revenuePerWorker,
+                costPerWorker
+              );
+
+              if (redundancy.action === "skip") {
+                skippedCount += 1;
+                processed += 1;
+                setProgress(processed);
+                continue;
+              }
+
+              try {
+                if (redundancy.action === "extend") {
+                  // eslint-disable-next-line no-await-in-loop
+                  await updateItem(
+                    "rates",
+                    redundancy.anchor.id,
+                    { effectiveFrom },
+                    { silent: true }
+                  );
+                  extendedCount += 1;
+                } else {
+                  // eslint-disable-next-line no-await-in-loop
+                  await addItem(
+                    "rates",
+                    {
+                      customerId,
+                      siteId,
+                      rateType: "employee",
+                      subcontractorId: "",
+                      employeeId: targetId,
+                      revenuePerWorker,
+                      costPerWorker,
+                      effectiveFrom,
+                    },
+                    { silent: true }
+                  );
+                  addedCount += 1;
+                }
+              } catch (err) {
+                addFailed = true;
+                failureMessage = `שגיאה בהוספת תעריף: ${err.message || "שגיאה לא ידועה"}`;
+                return;
+              }
+              processed += 1;
+              setProgress(processed);
             }
           }
         }
+      });
+
+      if (addFailed) {
+        alert(failureMessage);
+        return;
       }
 
       if (addedCount === 0 && extendedCount === 0) {
@@ -1127,6 +1191,8 @@ export default function Rates() {
       {editingRates && (
         <EditRateModal rates={editingRates} onClose={() => setEditingRates(null)} />
       )}
+
+      {bulkOverlay}
     </>
   );
 }

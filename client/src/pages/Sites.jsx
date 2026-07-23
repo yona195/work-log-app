@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useData } from "../state/DataProvider.jsx";
 import { useConfirm } from "../state/ConfirmProvider.jsx";
+import { useToast } from "../state/ToastProvider.jsx";
 import {
   activeOnly,
   getBuildingIds,
@@ -11,10 +12,13 @@ import EditSimpleItemModal from "../components/EditSimpleItemModal.jsx";
 import GroupCard from "../components/GroupCard.jsx";
 import CompactRow from "../components/CompactRow.jsx";
 import { useBulkSelection } from "../components/useBulkSelection.js";
+import { useBulkOperation } from "../components/useBulkOperation.jsx";
 
 export default function Sites() {
   const { data, addItem, updateItem, deleteItem, refresh } = useData();
   const confirmDialog = useConfirm();
+  const { showToast } = useToast();
+  const { overlay: bulkOverlay, run: runBulkOperation } = useBulkOperation();
   const { sites, buildings, workLogs, rates } = data;
 
   const [siteName, setSiteName] = useState("");
@@ -128,7 +132,8 @@ export default function Sites() {
   // is a shared, mutable {logId -> current buildingIds} map so that when
   // several buildings are deleted together in one bulk pass, each one sees
   // the previous ones' already-applied repoints instead of a stale snapshot.
-  const deleteBuildingsCascade = async (buildingsToDelete, logState) => {
+  const deleteBuildingsCascade = async (buildingsToDelete, logState, options = {}, onProgress) => {
+    let done = 0;
     for (const building of buildingsToDelete) {
       if (isGeneralBuilding(building)) continue; // never reaches here anyway
       const generalBuilding = buildings.find(
@@ -142,11 +147,13 @@ export default function Sites() {
             ? [...remainingIds, generalBuilding.id]
             : remainingIds;
         // eslint-disable-next-line no-await-in-loop
-        await updateItem("workLogs", logId, { buildingIds: nextIds });
+        await updateItem("workLogs", logId, { buildingIds: nextIds }, options);
         logState.set(logId, nextIds);
       }
       // eslint-disable-next-line no-await-in-loop
-      await deleteItem("buildings", building.id);
+      await deleteItem("buildings", building.id, options);
+      done += 1;
+      if (onProgress) onProgress(done);
     }
   };
 
@@ -174,11 +181,18 @@ export default function Sites() {
     ) {
       return;
     }
-    for (const id of selectedBuildingIds) {
-      // eslint-disable-next-line no-await-in-loop
-      await updateItem("buildings", id, { archived: true });
-    }
+    const total = selectedBuildingIds.length;
+    await runBulkOperation("מעביר מבנים לארכיון", total, async (setProgress) => {
+      let done = 0;
+      for (const id of selectedBuildingIds) {
+        // eslint-disable-next-line no-await-in-loop
+        await updateItem("buildings", id, { archived: true }, { silent: true });
+        done += 1;
+        setProgress(done);
+      }
+    });
     clearBuildingSelection();
+    showToast("success", `${total} מבנים הועברו לארכיון בהצלחה`);
   };
 
   const bulkDeleteSelectedBuildings = async () => {
@@ -191,9 +205,13 @@ export default function Sites() {
     ) {
       return;
     }
-    const logState = new Map(workLogs.map((log) => [log.id, getBuildingIds(log).map(String)]));
-    await deleteBuildingsCascade(selected, logState);
+    const total = selected.length;
+    await runBulkOperation("מוחק מבנים", total, async (setProgress) => {
+      const logState = new Map(workLogs.map((log) => [log.id, getBuildingIds(log).map(String)]));
+      await deleteBuildingsCascade(selected, logState, { silent: true }, setProgress);
+    });
     clearBuildingSelection();
+    showToast("success", `${total} מבנים נמחקו בהצלחה`);
   };
 
   // Actions on a site cascade to its own buildings (archive/restore/
@@ -205,16 +223,25 @@ export default function Sites() {
 
   const toggleSiteArchive = async (site) => {
     const siteBuildings = buildingsOfSite(site);
-    if (site.archived) {
-      await updateItem("sites", site.id, { archived: false });
-      for (const building of siteBuildings) {
-        // eslint-disable-next-line no-await-in-loop
-        await updateItem("buildings", building.id, { archived: false });
-      }
-      return;
-    }
     const buildingNote =
       siteBuildings.length > 0 ? ` וכל ${siteBuildings.length} המבנים שלו` : "";
+    const total = siteBuildings.length + 1;
+
+    if (site.archived) {
+      await runBulkOperation("משחזר אתר מהארכיון", total, async (setProgress) => {
+        await updateItem("sites", site.id, { archived: false }, { silent: true });
+        setProgress(1);
+        let done = 1;
+        for (const building of siteBuildings) {
+          // eslint-disable-next-line no-await-in-loop
+          await updateItem("buildings", building.id, { archived: false }, { silent: true });
+          done += 1;
+          setProgress(done);
+        }
+      });
+      showToast("success", `${site.name}${buildingNote} שוחזר מהארכיון בהצלחה`);
+      return;
+    }
     if (
       !(await confirmDialog(
         `להעביר את ${site.name}${buildingNote} לארכיון? לא יופיעו יותר לבחירה ברשומות חדשות, אבל הדוחות הקיימים לא ישתנו.`
@@ -222,11 +249,18 @@ export default function Sites() {
     ) {
       return;
     }
-    await updateItem("sites", site.id, { archived: true });
-    for (const building of siteBuildings) {
-      // eslint-disable-next-line no-await-in-loop
-      await updateItem("buildings", building.id, { archived: true });
-    }
+    await runBulkOperation("מעביר אתר לארכיון", total, async (setProgress) => {
+      await updateItem("sites", site.id, { archived: true }, { silent: true });
+      setProgress(1);
+      let done = 1;
+      for (const building of siteBuildings) {
+        // eslint-disable-next-line no-await-in-loop
+        await updateItem("buildings", building.id, { archived: true }, { silent: true });
+        done += 1;
+        setProgress(done);
+      }
+    });
+    showToast("success", `${site.name}${buildingNote} הועבר לארכיון בהצלחה`);
   };
 
   // Unlike deleteBuilding above, a site IS the billing unit — deleting one
@@ -254,19 +288,32 @@ export default function Sites() {
     ) {
       return;
     }
-    for (const log of siteWorkLogs) {
-      // eslint-disable-next-line no-await-in-loop
-      await deleteItem("workLogs", log.id);
-    }
-    for (const rate of siteRates) {
-      // eslint-disable-next-line no-await-in-loop
-      await deleteItem("rates", rate.id);
-    }
-    for (const building of siteBuildings) {
-      // eslint-disable-next-line no-await-in-loop
-      await deleteItem("buildings", building.id);
-    }
-    await deleteItem("sites", site.id);
+    const total = siteWorkLogs.length + siteRates.length + siteBuildings.length + 1;
+    await runBulkOperation("מוחק אתר", total, async (setProgress) => {
+      let done = 0;
+      for (const log of siteWorkLogs) {
+        // eslint-disable-next-line no-await-in-loop
+        await deleteItem("workLogs", log.id, { silent: true });
+        done += 1;
+        setProgress(done);
+      }
+      for (const rate of siteRates) {
+        // eslint-disable-next-line no-await-in-loop
+        await deleteItem("rates", rate.id, { silent: true });
+        done += 1;
+        setProgress(done);
+      }
+      for (const building of siteBuildings) {
+        // eslint-disable-next-line no-await-in-loop
+        await deleteItem("buildings", building.id, { silent: true });
+        done += 1;
+        setProgress(done);
+      }
+      await deleteItem("sites", site.id, { silent: true });
+      done += 1;
+      setProgress(done);
+    });
+    showToast("success", `${site.name}${cascadeNote} נמחק לצמיתות בהצלחה`);
   };
 
   // Every building requires a site, so unlike "העובדים שלי" there's no
@@ -526,6 +573,8 @@ export default function Sites() {
           onClose={() => setEditingBuilding(null)}
         />
       )}
+
+      {bulkOverlay}
     </>
   );
 }

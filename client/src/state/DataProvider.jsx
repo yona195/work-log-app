@@ -104,7 +104,7 @@ export function DataProvider({ children }) {
   );
 
   const updateItem = useCallback(
-    (collection, id, patch) =>
+    (collection, id, patch, options = {}) =>
       runMutation(
         async () => {
           const updated = await api.update(collection, id, patch);
@@ -124,13 +124,14 @@ export function DataProvider({ children }) {
                 ? "archived"
                 : "restored"
               : "updated",
-        }
+        },
+        options
       ),
     [runMutation]
   );
 
   const deleteItem = useCallback(
-    (collection, id) =>
+    (collection, id, options = {}) =>
       runMutation(
         async () => {
           await api.remove(collection, id);
@@ -141,7 +142,8 @@ export function DataProvider({ children }) {
             ),
           }));
         },
-        { collection, kind: "deleted" }
+        { collection, kind: "deleted" },
+        options
       ),
     [runMutation]
   );

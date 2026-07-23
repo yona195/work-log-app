@@ -20,13 +20,9 @@ import DatePicker from "../components/DatePicker.jsx";
 import DuplicateConflictModal from "../components/DuplicateConflictModal.jsx";
 import WorkforceSelectionFields from "../components/WorkforceSelectionFields.jsx";
 import WorkRecordCard from "../components/WorkRecordCard.jsx";
-import ActionLoadingOverlay from "../components/ActionLoadingOverlay.jsx";
+import { useBulkOperation } from "../components/useBulkOperation.jsx";
 
 const VALIDATION_MESSAGE = "נא לבחור תאריך, עובד, אתר, מבנה ומזמין";
-
-// Keeps the batch-create loading overlay up for at least this long, so it
-// doesn't flash on/off instantly when a single record is created quickly.
-const MIN_CREATE_OVERLAY_MS = 450;
 
 function rangeLabel(range) {
   return range.start === range.end
@@ -38,6 +34,7 @@ export default function WorkLog() {
   const { data, addItem, updateItem, deleteItem } = useData();
   const confirmDialog = useConfirm();
   const { showToast } = useToast();
+  const { overlay: bulkOverlay, run: runBulkOperation } = useBulkOperation();
   const { subcontractors, sites, buildings, customers, workLogs } = data;
   // Pickers for a NEW entry must exclude archived records; the recent-
   // records list below still needs the full (unfiltered) lists so it can
@@ -70,7 +67,6 @@ export default function WorkLog() {
   const [notes, setNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [duplicateConflict, setDuplicateConflict] = useState(null);
-  const [isCreatingRecords, setIsCreatingRecords] = useState(false);
   // Single edit is just the length-1 case of this — startEdit/add() branch
   // on .length rather than having a separate single-record code path.
   const [editingLogIds, setEditingLogIds] = useState([]);
@@ -467,17 +463,7 @@ export default function WorkLog() {
       const createdIds = [];
       let creationFailed = false;
 
-      setIsCreatingRecords(true);
-      const creationStartedAt = Date.now();
-      // Warns on tab close/refresh while a batch is mid-flight — removed in
-      // the finally block below the instant the overlay comes down.
-      const warnBeforeUnload = (event) => {
-        event.preventDefault();
-        event.returnValue = "";
-      };
-      window.addEventListener("beforeunload", warnBeforeUnload);
-
-      try {
+      await runBulkOperation("יוצר רשומות עבודה", datesToUse.length, async (setProgress) => {
         try {
           for (const logDate of datesToUse) {
             // eslint-disable-next-line no-await-in-loop
@@ -491,12 +477,13 @@ export default function WorkLog() {
                 customerId,
                 notes: notes.trim(),
               },
-              // The loading overlay owns user feedback for this whole
-              // batch — a single summary toast/alert fires once it closes
-              // below, instead of one automatic toast per created record.
+              // The overlay owns user feedback for this whole batch — a
+              // single summary toast/alert fires once it closes below,
+              // instead of one automatic toast per created record.
               { silent: true }
             );
             createdIds.push(created.id);
+            setProgress(createdIds.length);
           }
         } catch (err) {
           // A failure partway through must not leave a partial batch behind —
@@ -505,18 +492,11 @@ export default function WorkLog() {
           creationFailed = true;
           for (const id of createdIds) {
             // eslint-disable-next-line no-await-in-loop
-            await deleteItem("workLogs", id).catch(() => {});
+            await deleteItem("workLogs", id, { silent: true }).catch(() => {});
           }
           console.error("Batch work-log creation failed, rolled back:", err);
         }
-      } finally {
-        const elapsed = Date.now() - creationStartedAt;
-        if (elapsed < MIN_CREATE_OVERLAY_MS) {
-          await new Promise((resolve) => setTimeout(resolve, MIN_CREATE_OVERLAY_MS - elapsed));
-        }
-        window.removeEventListener("beforeunload", warnBeforeUnload);
-        setIsCreatingRecords(false);
-      }
+      });
 
       if (creationFailed) {
         alert("אירעה שגיאה בהוספת הרשומות. הפעולה בוטלה ולא נוצרו רשומות חלקיות.");
@@ -919,7 +899,7 @@ export default function WorkLog() {
         />
       )}
 
-      {isCreatingRecords && <ActionLoadingOverlay message="יוצר רשומות עבודה..." />}
+      {bulkOverlay}
     </>
   );
 }

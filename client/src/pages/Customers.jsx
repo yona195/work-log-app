@@ -1,15 +1,19 @@
 import { useState } from "react";
 import { useData } from "../state/DataProvider.jsx";
 import { useConfirm } from "../state/ConfirmProvider.jsx";
+import { useToast } from "../state/ToastProvider.jsx";
 import { activeOnly } from "../lib/entities.js";
 import EditSimpleItemModal from "../components/EditSimpleItemModal.jsx";
 import StatusBadge from "../components/StatusBadge.jsx";
 import Pagination, { usePagedList } from "../components/Pagination.jsx";
 import { useBulkSelection } from "../components/useBulkSelection.js";
+import { useBulkOperation } from "../components/useBulkOperation.jsx";
 
 export default function Customers() {
   const { data, addItem, updateItem, deleteItem } = useData();
   const confirmDialog = useConfirm();
+  const { showToast } = useToast();
+  const { overlay: bulkOverlay, run: runBulkOperation } = useBulkOperation();
   const { customers, rates, workLogs } = data;
   const [name, setName] = useState("");
   const [showArchived, setShowArchived] = useState(false);
@@ -77,20 +81,20 @@ export default function Customers() {
   // it never falls back to something else. This only fires from the
   // explicit delete action below; archiving a customer never touches
   // rates or work logs, same as archiving anywhere else in the app.
-  const deleteCustomerCascade = async (item) => {
+  const deleteCustomerCascade = async (item, options = {}) => {
     const customerRates = rates.filter((r) => String(r.customerId || "") === String(item.id));
     const customerWorkLogs = workLogs.filter(
       (log) => String(log.customerId || "") === String(item.id)
     );
     for (const log of customerWorkLogs) {
       // eslint-disable-next-line no-await-in-loop
-      await deleteItem("workLogs", log.id);
+      await deleteItem("workLogs", log.id, options);
     }
     for (const rate of customerRates) {
       // eslint-disable-next-line no-await-in-loop
-      await deleteItem("rates", rate.id);
+      await deleteItem("rates", rate.id, options);
     }
-    await deleteItem("customers", item.id);
+    await deleteItem("customers", item.id, options);
   };
 
   const deleteItemConfirmed = async (item) => {
@@ -123,11 +127,18 @@ export default function Customers() {
     ) {
       return;
     }
-    for (const id of selectedCustomerIds) {
-      // eslint-disable-next-line no-await-in-loop
-      await updateItem("customers", id, { archived: true });
-    }
+    const total = selectedCustomerIds.length;
+    await runBulkOperation("מעביר מזמינים לארכיון", total, async (setProgress) => {
+      let done = 0;
+      for (const id of selectedCustomerIds) {
+        // eslint-disable-next-line no-await-in-loop
+        await updateItem("customers", id, { archived: true }, { silent: true });
+        done += 1;
+        setProgress(done);
+      }
+    });
     clearCustomerSelection();
+    showToast("success", `${total} מזמינים הועברו לארכיון בהצלחה`);
   };
 
   const bulkDeleteSelectedCustomers = async () => {
@@ -140,11 +151,18 @@ export default function Customers() {
     ) {
       return;
     }
-    for (const item of selected) {
-      // eslint-disable-next-line no-await-in-loop
-      await deleteCustomerCascade(item);
-    }
+    const total = selected.length;
+    await runBulkOperation("מוחק מזמינים", total, async (setProgress) => {
+      let done = 0;
+      for (const item of selected) {
+        // eslint-disable-next-line no-await-in-loop
+        await deleteCustomerCascade(item, { silent: true });
+        done += 1;
+        setProgress(done);
+      }
+    });
     clearCustomerSelection();
+    showToast("success", `${total} מזמינים נמחקו בהצלחה`);
   };
 
   return (
@@ -283,6 +301,8 @@ export default function Customers() {
           onClose={() => setEditingItem(null)}
         />
       )}
+
+      {bulkOverlay}
     </>
   );
 }
