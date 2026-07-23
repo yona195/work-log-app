@@ -543,178 +543,180 @@ export default function Employees() {
       </div>
 
       <div className="card" style={{ marginTop: 20 }}>
-        <div className="employees-toolbar">
-          <input
-            type="text"
-            className="employees-search-input"
-            placeholder="חפש עובד או קבלן..."
-            value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
-          />
-          <label className="checkbox-item" style={{ display: "inline-flex" }}>
+        <div className="employees-page-section">
+          <div className="employees-toolbar">
             <input
-              type="checkbox"
-              checked={showArchived}
-              onChange={(e) => setShowArchived(e.target.checked)}
+              type="text"
+              className="employees-search-input"
+              placeholder="חפש עובד או קבלן..."
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
             />
-            <span>הצג פריטים בארכיון</span>
-          </label>
+            <label className="checkbox-item" style={{ display: "inline-flex" }}>
+              <input
+                type="checkbox"
+                checked={showArchived}
+                onChange={(e) => setShowArchived(e.target.checked)}
+              />
+              <span>הצג פריטים בארכיון</span>
+            </label>
+          </div>
+
+          {allVisibleEmployees.length > 0 && (
+            <div className="bulk-select-row">
+              <label className="checkbox-item">
+                <input
+                  type="checkbox"
+                  checked={isAllVisibleEmployeesSelected}
+                  onChange={toggleSelectAllVisibleEmployees}
+                />
+                <span>בחר הכל</span>
+              </label>
+              <label className="checkbox-item">
+                <input
+                  type="checkbox"
+                  checked={advancedModeEnabled}
+                  onChange={(e) => setAdvancedModeEnabled(e.target.checked)}
+                />
+                <span>מצב מתקדם</span>
+              </label>
+              {selectedEmployeeIds.length > 0 && (
+                <div className="report-row-actions bulk-actions-inline">
+                  <button className="archive-btn" type="button" onClick={bulkArchiveSelectedEmployees}>
+                    ארכיון ({selectedEmployeeIds.length})
+                  </button>
+                  {advancedModeEnabled && (
+                    <button className="delete-btn" type="button" onClick={bulkDeleteSelectedEmployees}>
+                      מחק ({selectedEmployeeIds.length})
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
-        {allVisibleEmployees.length > 0 && (
-          <div className="bulk-select-row">
-            <label className="checkbox-item">
-              <input
-                type="checkbox"
-                checked={isAllVisibleEmployeesSelected}
-                onChange={toggleSelectAllVisibleEmployees}
-              />
-              <span>בחר הכל</span>
-            </label>
-            <label className="checkbox-item">
-              <input
-                type="checkbox"
-                checked={advancedModeEnabled}
-                onChange={(e) => setAdvancedModeEnabled(e.target.checked)}
-              />
-              <span>מצב מתקדם</span>
-            </label>
-            {selectedEmployeeIds.length > 0 && (
-              <div className="report-row-actions bulk-actions-inline">
-                <button className="archive-btn" type="button" onClick={bulkArchiveSelectedEmployees}>
-                  ארכיון ({selectedEmployeeIds.length})
-                </button>
-                {advancedModeEnabled && (
-                  <button className="delete-btn" type="button" onClick={bulkDeleteSelectedEmployees}>
-                    מחק ({selectedEmployeeIds.length})
-                  </button>
-                )}
+        <div className="employees-page-section">
+          <GroupCard
+            icon="badge"
+            title="העובדים שלי"
+            count={internalEmployees.length}
+            countLabel="עובדים"
+            selectionControl={
+              filteredInternalEmployees.length > 0 && (
+                <input
+                  type="checkbox"
+                  checked={isEmployeeGroupFullySelected(filteredInternalEmployees)}
+                  onChange={() => toggleAllEmployees(filteredInternalEmployees)}
+                  aria-label="בחר הכל - העובדים שלי"
+                />
+              )
+            }
+          >
+            {filteredInternalEmployees.length === 0 ? (
+              <p className="empty-message">
+                {search ? "לא נמצאו עובדים שלי התואמים לחיפוש." : "אין עדיין עובדים שלי."}
+              </p>
+            ) : (
+              <div className="employees-compact-list">
+                {filteredInternalEmployees.map((employee) => (
+                  <CompactRow
+                    key={employee.id}
+                    name={employee.name}
+                    archived={employee.archived}
+                    selected={selectedEmployeeIds.includes(employee.id)}
+                    onToggleSelect={() => toggleEmployeeSelection(employee.id)}
+                    onEdit={() => setEditingEmployee(employee)}
+                    onDelete={advancedModeEnabled ? () => deleteEmployee(employee) : undefined}
+                    onToggleArchive={() => toggleEmployeeArchive(employee)}
+                  />
+                ))}
               </div>
             )}
-          </div>
-        )}
-      </div>
+          </GroupCard>
+        </div>
 
-      <div className="card" style={{ marginTop: 20 }}>
-        <GroupCard
-          icon="badge"
-          title="העובדים שלי"
-          count={internalEmployees.length}
-          countLabel="עובדים"
-          selectionControl={
-            filteredInternalEmployees.length > 0 && (
-              <input
-                type="checkbox"
-                checked={isEmployeeGroupFullySelected(filteredInternalEmployees)}
-                onChange={() => toggleAllEmployees(filteredInternalEmployees)}
-                aria-label="בחר הכל - העובדים שלי"
-              />
-            )
-          }
-        >
-          {filteredInternalEmployees.length === 0 ? (
+        <div className="employees-page-section">
+          <h3>קבלני משנה</h3>
+          {contractorCards.length === 0 ? (
             <p className="empty-message">
-              {search ? "לא נמצאו עובדים שלי התואמים לחיפוש." : "אין עדיין עובדים שלי."}
+              {search ? "לא נמצאו קבלני משנה התואמים לחיפוש." : "אין עדיין קבלני משנה."}
             </p>
           ) : (
-            <div className="employees-compact-list">
-              {filteredInternalEmployees.map((employee) => (
-                <CompactRow
-                  key={employee.id}
-                  name={employee.name}
-                  archived={employee.archived}
-                  selected={selectedEmployeeIds.includes(employee.id)}
-                  onToggleSelect={() => toggleEmployeeSelection(employee.id)}
-                  onEdit={() => setEditingEmployee(employee)}
-                  onDelete={advancedModeEnabled ? () => deleteEmployee(employee) : undefined}
-                  onToggleArchive={() => toggleEmployeeArchive(employee)}
-                />
+            <div className="employees-contractor-list">
+              {contractorCards.map(({ subcontractor, list, filteredList }) => (
+                <GroupCard
+                  key={subcontractor.id}
+                  icon="badge"
+                  title={subcontractor.name}
+                  count={list.length}
+                  countLabel="עובדים"
+                  isArchived={subcontractor.archived}
+                  selectionControl={
+                    filteredList.length > 0 && (
+                      <input
+                        type="checkbox"
+                        checked={isEmployeeGroupFullySelected(filteredList)}
+                        onChange={() => toggleAllEmployees(filteredList)}
+                        aria-label={`בחר הכל - ${subcontractor.name}`}
+                      />
+                    )
+                  }
+                  groupActions={
+                    <div className="report-row-actions">
+                      <button
+                        className="edit-btn"
+                        type="button"
+                        onClick={() => setEditingSubcontractor(subcontractor)}
+                      >
+                        ערוך קבלן
+                      </button>
+                      {advancedModeEnabled && (
+                        <button
+                          className="delete-btn"
+                          type="button"
+                          onClick={() => deleteSubcontractor(subcontractor)}
+                        >
+                          מחק קבלן
+                        </button>
+                      )}
+                      <button
+                        className="archive-btn"
+                        type="button"
+                        onClick={() => toggleSubcontractorArchive(subcontractor)}
+                      >
+                        {subcontractor.archived ? "שחזר" : "ארכיון"}
+                      </button>
+                    </div>
+                  }
+                >
+                  {filteredList.length === 0 ? (
+                    <p className="empty-message">
+                      {list.length === 0
+                        ? "אין עובדים המשויכים לקבלן הזה."
+                        : "לא נמצאו עובדים התואמים לחיפוש."}
+                    </p>
+                  ) : (
+                    <div className="employees-compact-list">
+                      {filteredList.map((employee) => (
+                        <CompactRow
+                          key={employee.id}
+                          name={employee.name}
+                          archived={employee.archived}
+                          selected={selectedEmployeeIds.includes(employee.id)}
+                          onToggleSelect={() => toggleEmployeeSelection(employee.id)}
+                          onEdit={() => setEditingEmployee(employee)}
+                          onDelete={advancedModeEnabled ? () => deleteEmployee(employee) : undefined}
+                          onToggleArchive={() => toggleEmployeeArchive(employee)}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </GroupCard>
               ))}
             </div>
           )}
-        </GroupCard>
-      </div>
-
-      <div className="card" style={{ marginTop: 20 }}>
-        <h3>קבלני משנה</h3>
-        {contractorCards.length === 0 ? (
-          <p className="empty-message">
-            {search ? "לא נמצאו קבלני משנה התואמים לחיפוש." : "אין עדיין קבלני משנה."}
-          </p>
-        ) : (
-          <div className="employees-contractor-list">
-            {contractorCards.map(({ subcontractor, list, filteredList }) => (
-              <GroupCard
-                key={subcontractor.id}
-                icon="badge"
-                title={subcontractor.name}
-                count={list.length}
-                countLabel="עובדים"
-                isArchived={subcontractor.archived}
-                selectionControl={
-                  filteredList.length > 0 && (
-                    <input
-                      type="checkbox"
-                      checked={isEmployeeGroupFullySelected(filteredList)}
-                      onChange={() => toggleAllEmployees(filteredList)}
-                      aria-label={`בחר הכל - ${subcontractor.name}`}
-                    />
-                  )
-                }
-                groupActions={
-                  <div className="report-row-actions">
-                    <button
-                      className="edit-btn"
-                      type="button"
-                      onClick={() => setEditingSubcontractor(subcontractor)}
-                    >
-                      ערוך קבלן
-                    </button>
-                    {advancedModeEnabled && (
-                      <button
-                        className="delete-btn"
-                        type="button"
-                        onClick={() => deleteSubcontractor(subcontractor)}
-                      >
-                        מחק קבלן
-                      </button>
-                    )}
-                    <button
-                      className="archive-btn"
-                      type="button"
-                      onClick={() => toggleSubcontractorArchive(subcontractor)}
-                    >
-                      {subcontractor.archived ? "שחזר" : "ארכיון"}
-                    </button>
-                  </div>
-                }
-              >
-                {filteredList.length === 0 ? (
-                  <p className="empty-message">
-                    {list.length === 0
-                      ? "אין עובדים המשויכים לקבלן הזה."
-                      : "לא נמצאו עובדים התואמים לחיפוש."}
-                  </p>
-                ) : (
-                  <div className="employees-compact-list">
-                    {filteredList.map((employee) => (
-                      <CompactRow
-                        key={employee.id}
-                        name={employee.name}
-                        archived={employee.archived}
-                        selected={selectedEmployeeIds.includes(employee.id)}
-                        onToggleSelect={() => toggleEmployeeSelection(employee.id)}
-                        onEdit={() => setEditingEmployee(employee)}
-                        onDelete={advancedModeEnabled ? () => deleteEmployee(employee) : undefined}
-                        onToggleArchive={() => toggleEmployeeArchive(employee)}
-                      />
-                    ))}
-                  </div>
-                )}
-              </GroupCard>
-            ))}
-          </div>
-        )}
+        </div>
       </div>
 
       {unassignedSubEmployees.length > 0 && (

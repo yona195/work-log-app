@@ -2736,6 +2736,23 @@ body.loading .menu-overlay {
     border-color: #15803d;
 }
 
+/* Employees.jsx: the filter/select row, "העובדים שלי", and "קבלני משנה"
+   sit inside ONE shared outer .card (a single border/shadow) instead of
+   three separate cards stacked with white gaps between them — this thin
+   top border is the only seam between them, the same treatment
+   .employees-row already uses between individual rows inside a card. */
+.employees-page-section {
+    padding-top: 20px;
+    margin-top: 20px;
+    border-top: 1px solid var(--color-border);
+}
+
+.employees-page-section:first-child {
+    padding-top: 0;
+    margin-top: 0;
+    border-top: none;
+}
+
 .employees-toolbar {
     display: flex;
     flex-wrap: wrap;
