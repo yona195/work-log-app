@@ -1,17 +1,15 @@
 import { useMemo, useState } from "react";
 import { useData } from "../state/DataProvider.jsx";
-import { activeOnly, getBuildingIds } from "../lib/entities.js";
+import {
+  activeOnly,
+  getBuildingIds,
+  GENERAL_BUILDING_NAME,
+  isGeneralBuilding,
+} from "../lib/entities.js";
 import EditSimpleItemModal from "../components/EditSimpleItemModal.jsx";
 import GroupCard from "../components/GroupCard.jsx";
 import CompactRow from "../components/CompactRow.jsx";
 import { useBulkSelection } from "../components/useBulkSelection.js";
-
-// The default building auto-created for every site (see server/src/db.js) —
-// a fixed, protected name: no edit/delete/archive, and never assignable to
-// a second, manually-created building (that would make "which building is
-// actually the fallback?" ambiguous).
-const GENERAL_BUILDING_NAME = "כללי";
-const isGeneralBuilding = (building) => building.name === GENERAL_BUILDING_NAME;
 
 export default function Sites() {
   const { data, addItem, updateItem, deleteItem, refresh } = useData();

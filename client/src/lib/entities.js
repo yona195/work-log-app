@@ -1,5 +1,29 @@
 import { normalizeDate } from "./format.js";
 
+// The default building auto-created for every site (see server/src/db.js)
+// — a fixed, protected name: no edit/delete/archive, and never assignable
+// to a second, manually-created building.
+export const GENERAL_BUILDING_NAME = "כללי";
+
+// Sentinel value for the ONE merged "כללי" option in a building filter/
+// dropdown that lists buildings across every site combined — every site
+// has its own real "כללי" building (a distinct id), which would otherwise
+// show up as several visually-identical, indistinguishable options. Only
+// meaningful in that cross-site context; a dropdown already scoped to one
+// site keeps using that site's real building id, same as any other
+// building.
+export const GENERAL_BUILDING_FILTER_VALUE = "__general__";
+
+export function isGeneralBuilding(building) {
+  return building.name === GENERAL_BUILDING_NAME;
+}
+
+// Every site's own "כללי" building id — resolves the merged filter option
+// back into the real ids it should match against.
+export function getGeneralBuildingIds(buildings) {
+  return (buildings || []).filter(isGeneralBuilding).map((b) => String(b.id));
+}
+
 export function getName(list, id) {
   const item = (list || []).find((x) => String(x.id) === String(id));
   return item ? item.name : "";

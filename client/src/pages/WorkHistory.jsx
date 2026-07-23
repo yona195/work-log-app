@@ -13,6 +13,10 @@ import {
   activeOnly,
   getEmployeeAffiliationName,
   groupEmployeesByAffiliation,
+  isGeneralBuilding,
+  getGeneralBuildingIds,
+  GENERAL_BUILDING_NAME,
+  GENERAL_BUILDING_FILTER_VALUE,
 } from "../lib/entities.js";
 import { filterReportLogs, getReportEmployees } from "../lib/reports.js";
 
@@ -132,9 +136,22 @@ export default function WorkHistory() {
     return activeOnly(sites).filter((s) => relatedSiteIds.has(String(s.id)));
   }, [sites, data.workLogs, filters.customerId]);
 
+  // With a site chosen, buildings are already scoped to it — at most one
+  // real "כללי" can appear, same as any other building, no special-casing
+  // needed. Without one, every site's own "כללי" would otherwise show up
+  // as several visually-identical options — collapsed here into a single
+  // merged option (see GENERAL_BUILDING_FILTER_VALUE) that the filtering
+  // below resolves back into all of them.
   const buildingOptions = useMemo(() => {
-    if (!filters.siteId) return activeOnly(buildings);
-    return activeOnly(buildings).filter((b) => String(b.siteId) === String(filters.siteId));
+    const active = activeOnly(buildings);
+    if (filters.siteId) {
+      return active.filter((b) => String(b.siteId) === String(filters.siteId));
+    }
+    const nonGeneral = active.filter((b) => !isGeneralBuilding(b));
+    const hasGeneral = active.some(isGeneralBuilding);
+    return hasGeneral
+      ? [...nonGeneral, { id: GENERAL_BUILDING_FILTER_VALUE, name: GENERAL_BUILDING_NAME }]
+      : nonGeneral;
   }, [buildings, filters.siteId]);
 
   const effectiveFilters = useMemo(
@@ -149,8 +166,14 @@ export default function WorkHistory() {
   const filteredLogs = useMemo(() => {
     let logs = filterReportLogs(data, effectiveFilters);
     if (filters.buildingId) {
+      // The merged "כללי" option matches every site's own "כללי" building,
+      // not just one — anywhere else, buildingId is a real single id.
+      const matchIds =
+        filters.buildingId === GENERAL_BUILDING_FILTER_VALUE
+          ? getGeneralBuildingIds(buildings)
+          : [String(filters.buildingId)];
       logs = logs.filter((log) =>
-        getBuildingIds(log).map(String).includes(String(filters.buildingId))
+        getBuildingIds(log).map(String).some((id) => matchIds.includes(id))
       );
     }
     const text = searchText.trim().toLowerCase();
@@ -171,7 +194,7 @@ export default function WorkHistory() {
       });
     }
     return logs;
-  }, [data, effectiveFilters, filters.buildingId, searchText, customers, sites]);
+  }, [data, effectiveFilters, filters.buildingId, searchText, customers, sites, buildings]);
 
   // Each log row already IS one original registration — grouping here
   // means "one card per log", never merging separate logs that merely
@@ -246,7 +269,10 @@ export default function WorkHistory() {
       });
     }
     if (filters.buildingId) {
-      const name = buildings.find((b) => String(b.id) === String(filters.buildingId))?.name;
+      const name =
+        filters.buildingId === GENERAL_BUILDING_FILTER_VALUE
+          ? GENERAL_BUILDING_NAME
+          : buildings.find((b) => String(b.id) === String(filters.buildingId))?.name;
       list.push({
         key: "building",
         label: `מבנה: ${name || "לא נמצא"}`,
