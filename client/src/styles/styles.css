@@ -164,9 +164,10 @@ img {
 }
 
 .topbar-logo {
-    width: 28px;
-    height: 28px;
+    width: 46px;
+    height: 46px;
     padding: 9px;
+    box-sizing: border-box;
 
     background: var(--color-brand-orange-soft);
     border-radius: 12px;
@@ -184,6 +185,12 @@ img {
 
     background: var(--color-background);
     border-radius: 999px;
+}
+
+.topbar-last-login-icon {
+    font-size: 16px;
+
+    color: var(--color-muted);
 }
 
 .topbar-last-login-text {
@@ -839,16 +846,16 @@ tbody tr:hover {
     background:
         linear-gradient(
             135deg,
-            #2563eb 0%,
-            #1d4ed8 100%
+            var(--color-brand-orange) 0%,
+            #c2451a 100%
         );
 
     border-color:
-        rgba(147, 197, 253, 0.22);
+        rgba(231, 94, 40, 0.22);
 
     box-shadow:
         0 8px 22px
-        rgba(37, 99, 235, 0.28);
+        rgba(231, 94, 40, 0.28);
 }
 
 .sidebar .nav-btn.active::before {
@@ -862,7 +869,7 @@ tbody tr:hover {
 
     width: 4px;
 
-    background: #bfdbfe;
+    background: #fbd5b8;
 
     border-radius:
         8px 0 0 8px;
@@ -1115,8 +1122,8 @@ tbody tr:hover {
     }
 
     .topbar-logo {
-        width: 24px;
-        height: 24px;
+        width: 36px;
+        height: 36px;
         padding: 7px;
     }
 

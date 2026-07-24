@@ -17,6 +17,9 @@ export default function Topbar({ title }) {
 
       {previousLogin && (
         <div className="topbar-last-login">
+          <span className="material-symbols-rounded topbar-last-login-icon" aria-hidden="true">
+            schedule
+          </span>
           <div className="topbar-last-login-text">
             <span className="topbar-last-login-label">כניסה אחרונה</span>
             <span className="topbar-last-login-value">{formatDateTime(previousLogin)}</span>
