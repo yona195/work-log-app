@@ -1818,6 +1818,18 @@ body.loading .menu-overlay {
     box-shadow: var(--shadow-medium);
 }
 
+/* ConfirmModal's short confirm/cancel prompts don't need the full-size
+   edit-form width above — shrinks to fit its (short) text instead of
+   always stretching to 560px. min-width is capped with min() against the
+   viewport (minus .modal-overlay's own 20px+20px padding) so on very
+   narrow screens (~320px) the box shrinks below 320px instead of forcing
+   itself edge-to-edge and swallowing that padding. */
+.modal-content--confirm {
+    width: fit-content;
+    min-width: min(320px, calc(100vw - 40px));
+    max-width: 480px;
+}
+
 .modal-actions {
     display: flex;
     gap: 10px;

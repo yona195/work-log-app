@@ -25,6 +25,7 @@ export default function ConfirmModal({
     <ModalShell
       title={title}
       onClose={onCancel}
+      contentClassName="modal-content--confirm"
       actions={
         <>
           <button
