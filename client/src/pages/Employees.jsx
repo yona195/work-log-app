@@ -184,6 +184,9 @@ export default function Employees() {
     clear: clearEmployeeSelection,
   } = useBulkSelection(allVisibleEmployees);
 
+  const isAllVisibleEmployeesSelected = isEmployeeGroupFullySelected(allVisibleEmployees);
+  const toggleSelectAllVisibleEmployees = () => toggleAllEmployees(allVisibleEmployees);
+
   const {
     selectedIds: selectedSubcontractorIds,
     toggle: toggleSubcontractorSelection,
@@ -739,6 +742,47 @@ export default function Employees() {
             </label>
           </div>
 
+        </div>
+
+        <div className="employees-page-section">
+          <div className="bulk-select-row">
+            <label className="checkbox-item">
+              <input
+                type="checkbox"
+                checked={isAllVisibleEmployeesSelected}
+                onChange={toggleSelectAllVisibleEmployees}
+              />
+              <span>בחר הכל</span>
+            </label>
+            <label className="checkbox-item">
+              <input
+                type="checkbox"
+                checked={advancedModeEnabled}
+                onChange={(e) => setAdvancedModeEnabled(e.target.checked)}
+              />
+              <span>מצב מתקדם</span>
+            </label>
+            {selectedEmployeeIds.length > 0 && (
+              <div className="report-row-actions bulk-actions-inline">
+                <button
+                  className="archive-btn"
+                  type="button"
+                  onClick={bulkArchiveSelectedEmployees}
+                >
+                  ארכיון ({selectedEmployeeIds.length})
+                </button>
+                {advancedModeEnabled && (
+                  <button
+                    className="delete-btn"
+                    type="button"
+                    onClick={bulkDeleteSelectedEmployees}
+                  >
+                    מחק ({selectedEmployeeIds.length})
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="employees-page-section">
