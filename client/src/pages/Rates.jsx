@@ -443,6 +443,30 @@ export default function Rates() {
     showToast("success", `${total} תעריפים הועברו לארכיון בהצלחה`);
   };
 
+  const bulkRestoreSelectedRates = async () => {
+    if (
+      !(await confirmDialog(`לשחזר ${selectedRateIds.length} תעריפים מהארכיון?`, {
+        title: "לשחזר מהארכיון?",
+        mutedText: "הפריטים יחזרו להופיע לבחירה ברשומות חדשות.",
+        confirmLabel: "שחזר",
+      }))
+    ) {
+      return;
+    }
+    const total = selectedRateIds.length;
+    await runBulkOperation("משחזר תעריפים מהארכיון", total, async (setProgress) => {
+      let done = 0;
+      for (const id of selectedRateIds) {
+        // eslint-disable-next-line no-await-in-loop
+        await updateItem("rates", id, { archived: false }, { silent: true });
+        done += 1;
+        setProgress(done);
+      }
+    });
+    clearRateSelection();
+    showToast("success", `${total} תעריפים שוחזרו מהארכיון בהצלחה`);
+  };
+
   // Every delete button on this page (row/group/bulk) is hidden until this
   // is checked — "ארכיון"/"ערוך" stay visible either way, since only delete
   // is dangerous enough to need a second, explicit door.
@@ -1094,6 +1118,11 @@ export default function Rates() {
             </label>
             {selectedRateIds.length > 0 && (
               <div className="report-row-actions bulk-actions-inline">
+                {showArchived && (
+                  <button className="archive-btn" type="button" onClick={bulkRestoreSelectedRates}>
+                    שחזר ({selectedRateIds.length})
+                  </button>
+                )}
                 <button className="archive-btn" type="button" onClick={bulkArchiveSelectedRates}>
                   ארכיון ({selectedRateIds.length})
                 </button>

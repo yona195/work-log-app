@@ -247,6 +247,30 @@ export default function Sites() {
     showToast("success", `${total} מבנים הועברו לארכיון בהצלחה`);
   };
 
+  const bulkRestoreSelectedBuildings = async () => {
+    if (
+      !(await confirmDialog(`לשחזר ${selectedBuildingIds.length} מבנים מהארכיון?`, {
+        title: "לשחזר מהארכיון?",
+        mutedText: "הפריטים יחזרו להופיע לבחירה ברשומות חדשות.",
+        confirmLabel: "שחזר",
+      }))
+    ) {
+      return;
+    }
+    const total = selectedBuildingIds.length;
+    await runBulkOperation("משחזר מבנים מהארכיון", total, async (setProgress) => {
+      let done = 0;
+      for (const id of selectedBuildingIds) {
+        // eslint-disable-next-line no-await-in-loop
+        await updateItem("buildings", id, { archived: false }, { silent: true });
+        done += 1;
+        setProgress(done);
+      }
+    });
+    clearBuildingSelection();
+    showToast("success", `${total} מבנים שוחזרו מהארכיון בהצלחה`);
+  };
+
   const bulkDeleteSelectedBuildings = async () => {
     const selected = buildings.filter((b) => selectedBuildingIds.includes(b.id));
     if (
@@ -407,6 +431,38 @@ export default function Sites() {
     showToast("success", `${total} אתרים הועברו לארכיון בהצלחה`);
   };
 
+  // Same cascade as bulkArchiveSelectedSites (site plus all its own
+  // buildings move together), just restoring instead.
+  const bulkRestoreSelectedSites = async () => {
+    if (
+      !(await confirmDialog(`לשחזר ${selectedSiteIds.length} אתרים מהארכיון?`, {
+        title: "לשחזר מהארכיון?",
+        mutedText: "הפריטים יחזרו להופיע לבחירה ברשומות חדשות.",
+        confirmLabel: "שחזר",
+      }))
+    ) {
+      return;
+    }
+    const selected = sites.filter((s) => selectedSiteIds.includes(s.id));
+    const total = selected.length;
+    await runBulkOperation("משחזר אתרים מהארכיון", total, async (setProgress) => {
+      let done = 0;
+      for (const site of selected) {
+        // eslint-disable-next-line no-await-in-loop
+        await updateItem("sites", site.id, { archived: false }, { silent: true });
+        const siteBuildings = buildingsOfSite(site);
+        for (const building of siteBuildings) {
+          // eslint-disable-next-line no-await-in-loop
+          await updateItem("buildings", building.id, { archived: false }, { silent: true });
+        }
+        done += 1;
+        setProgress(done);
+      }
+    });
+    clearSiteSelection();
+    showToast("success", `${total} אתרים שוחזרו מהארכיון בהצלחה`);
+  };
+
   // Same cascade as the single deleteSite above (work logs, then rates,
   // then buildings, then the site itself), just applied to every selected
   // site in turn — one summary toast at the end instead of one per site.
@@ -557,6 +613,11 @@ export default function Sites() {
             </label>
             {selectedSiteIds.length > 0 && (
               <div className="report-row-actions bulk-actions-inline">
+                {showArchived && (
+                  <button className="archive-btn" type="button" onClick={bulkRestoreSelectedSites}>
+                    שחזר ({selectedSiteIds.length})
+                  </button>
+                )}
                 <button className="archive-btn" type="button" onClick={bulkArchiveSelectedSites}>
                   ארכיון ({selectedSiteIds.length})
                 </button>
@@ -644,6 +705,15 @@ export default function Sites() {
                           </label>
                           {selectedBuildingIds.length > 0 && (
                             <div className="report-row-actions bulk-actions-inline">
+                              {showArchived && (
+                                <button
+                                  className="archive-btn"
+                                  type="button"
+                                  onClick={bulkRestoreSelectedBuildings}
+                                >
+                                  שחזר ({selectedBuildingIds.length})
+                                </button>
+                              )}
                               <button
                                 className="archive-btn"
                                 type="button"

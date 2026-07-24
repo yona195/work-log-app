@@ -168,6 +168,30 @@ export default function Customers() {
     showToast("success", `${total} מזמינים הועברו לארכיון בהצלחה`);
   };
 
+  const bulkRestoreSelectedCustomers = async () => {
+    if (
+      !(await confirmDialog(`לשחזר ${selectedCustomerIds.length} מזמינים מהארכיון?`, {
+        title: "לשחזר מהארכיון?",
+        mutedText: "הפריטים יחזרו להופיע לבחירה ברשומות חדשות.",
+        confirmLabel: "שחזר",
+      }))
+    ) {
+      return;
+    }
+    const total = selectedCustomerIds.length;
+    await runBulkOperation("משחזר מזמינים מהארכיון", total, async (setProgress) => {
+      let done = 0;
+      for (const id of selectedCustomerIds) {
+        // eslint-disable-next-line no-await-in-loop
+        await updateItem("customers", id, { archived: false }, { silent: true });
+        done += 1;
+        setProgress(done);
+      }
+    });
+    clearCustomerSelection();
+    showToast("success", `${total} מזמינים שוחזרו מהארכיון בהצלחה`);
+  };
+
   const bulkDeleteSelectedCustomers = async () => {
     const selected = customers.filter((c) => selectedCustomerIds.includes(c.id));
     if (
@@ -248,6 +272,11 @@ export default function Customers() {
             </label>
             {selectedCustomerIds.length > 0 && (
               <div className="report-row-actions bulk-actions-inline">
+                {showArchived && (
+                  <button className="archive-btn" type="button" onClick={bulkRestoreSelectedCustomers}>
+                    שחזר ({selectedCustomerIds.length})
+                  </button>
+                )}
                 <button className="archive-btn" type="button" onClick={bulkArchiveSelectedCustomers}>
                   ארכיון ({selectedCustomerIds.length})
                 </button>

@@ -198,12 +198,30 @@ export default function Employees() {
   const isAllVisibleSubcontractorsSelected = isSubcontractorGroupFullySelected(visibleSubcontractors);
   const toggleSelectAllVisibleSubcontractors = () => toggleAllSubcontractors(visibleSubcontractors);
 
+  // The page-level "בחר הכל" covers employees and subcontractors together
+  // (one unified row above both sections) — each side's own toggle stays
+  // independent underneath, this just calls both at once. An empty side
+  // (e.g. no subcontractors yet) can't block the checkbox from showing
+  // "all selected" — isFullySelected([]) is always false, so it's only
+  // consulted when that side actually has items.
+  const isAllVisibleWorkforceSelected =
+    (allVisibleEmployees.length === 0 || isAllVisibleEmployeesSelected) &&
+    (visibleSubcontractors.length === 0 || isAllVisibleSubcontractorsSelected);
+  const toggleSelectAllVisibleWorkforce = () => {
+    toggleSelectAllVisibleEmployees();
+    toggleSelectAllVisibleSubcontractors();
+  };
+
   // Which subcontractors currently have their "בחר עובדים" picker
   // expanded — closed by default, so the employees bulk-select row/list
   // only takes up space in a card once the user asks for it there.
   const [expandedSubcontractorEmployeeIds, setExpandedSubcontractorEmployeeIds] = useState(
     () => new Set()
   );
+
+  // "העובדים שלי" gets the same collapsed-by-default treatment as each
+  // subcontractor's employee picker below.
+  const [internalEmployeesExpanded, setInternalEmployeesExpanded] = useState(false);
   const toggleSubcontractorEmployeesExpanded = (subcontractorId) =>
     setExpandedSubcontractorEmployeeIds((prev) => {
       const next = new Set(prev);
@@ -394,6 +412,30 @@ export default function Employees() {
     showToast("success", `${total} עובדים הועברו לארכיון בהצלחה`);
   };
 
+  const bulkRestoreSelectedEmployees = async () => {
+    if (
+      !(await confirmDialog(`לשחזר ${selectedEmployeeIds.length} עובדים מהארכיון?`, {
+        title: "לשחזר מהארכיון?",
+        mutedText: "הפריטים יחזרו להופיע לבחירה ברשומות חדשות.",
+        confirmLabel: "שחזר",
+      }))
+    ) {
+      return;
+    }
+    const total = selectedEmployeeIds.length;
+    await runBulkOperation("משחזר עובדים מהארכיון", total, async (setProgress) => {
+      let done = 0;
+      for (const id of selectedEmployeeIds) {
+        // eslint-disable-next-line no-await-in-loop
+        await updateItem("employees", id, { archived: false }, { silent: true });
+        done += 1;
+        setProgress(done);
+      }
+    });
+    clearEmployeeSelection();
+    showToast("success", `${total} עובדים שוחזרו מהארכיון בהצלחה`);
+  };
+
   // Reuses the same cascade as a single-employee delete, just applied to
   // every selected employee in turn with one shared logState so several
   // selections that touch the same work log see each other's removals.
@@ -565,6 +607,38 @@ export default function Employees() {
     showToast("success", `${total} קבלני משנה הועברו לארכיון בהצלחה`);
   };
 
+  // Same cascade as bulkArchiveSelectedSubcontractors (subcontractor plus
+  // all its own employees move together), just restoring instead.
+  const bulkRestoreSelectedSubcontractors = async () => {
+    if (
+      !(await confirmDialog(`לשחזר ${selectedSubcontractorIds.length} קבלני משנה מהארכיון?`, {
+        title: "לשחזר מהארכיון?",
+        mutedText: "הפריטים יחזרו להופיע לבחירה ברשומות חדשות.",
+        confirmLabel: "שחזר",
+      }))
+    ) {
+      return;
+    }
+    const selected = subcontractors.filter((s) => selectedSubcontractorIds.includes(s.id));
+    const total = selected.length;
+    await runBulkOperation("משחזר קבלני משנה מהארכיון", total, async (setProgress) => {
+      let done = 0;
+      for (const subcontractor of selected) {
+        // eslint-disable-next-line no-await-in-loop
+        await updateItem("subcontractors", subcontractor.id, { archived: false }, { silent: true });
+        const subEmployees = subcontractorEmployeesOf(subcontractor);
+        for (const employee of subEmployees) {
+          // eslint-disable-next-line no-await-in-loop
+          await updateItem("employees", employee.id, { archived: false }, { silent: true });
+        }
+        done += 1;
+        setProgress(done);
+      }
+    });
+    clearSubcontractorSelection();
+    showToast("success", `${total} קבלני משנה שוחזרו מהארכיון בהצלחה`);
+  };
+
   // Same cascade as the single deleteSubcontractor above (general rates,
   // then each employee via cascadeDeleteEmployeeDependents, then the
   // subcontractor itself), just applied to every selected subcontractor
@@ -607,6 +681,26 @@ export default function Employees() {
     });
     clearSubcontractorSelection();
     showToast("success", `${total} קבלני משנה נמחקו בהצלחה`);
+  };
+
+  // The page-level bulk-select row covers employees and subcontractors
+  // together — each button just runs the corresponding per-list action for
+  // whichever list actually has a selection, so a single-type selection
+  // behaves exactly as before (one confirm dialog), and a mixed selection
+  // runs both in turn.
+  const bulkArchiveSelectedWorkforce = async () => {
+    if (selectedEmployeeIds.length > 0) await bulkArchiveSelectedEmployees();
+    if (selectedSubcontractorIds.length > 0) await bulkArchiveSelectedSubcontractors();
+  };
+
+  const bulkRestoreSelectedWorkforce = async () => {
+    if (selectedEmployeeIds.length > 0) await bulkRestoreSelectedEmployees();
+    if (selectedSubcontractorIds.length > 0) await bulkRestoreSelectedSubcontractors();
+  };
+
+  const bulkDeleteSelectedWorkforce = async () => {
+    if (selectedEmployeeIds.length > 0) await bulkDeleteSelectedEmployees();
+    if (selectedSubcontractorIds.length > 0) await bulkDeleteSelectedSubcontractors();
   };
 
   return (
@@ -758,8 +852,8 @@ export default function Employees() {
             <label className="checkbox-item">
               <input
                 type="checkbox"
-                checked={isAllVisibleEmployeesSelected}
-                onChange={toggleSelectAllVisibleEmployees}
+                checked={isAllVisibleWorkforceSelected}
+                onChange={toggleSelectAllVisibleWorkforce}
               />
               <span>בחר הכל</span>
             </label>
@@ -771,22 +865,31 @@ export default function Employees() {
               />
               <span>מצב מתקדם</span>
             </label>
-            {selectedEmployeeIds.length > 0 && (
+            {selectedEmployeeIds.length + selectedSubcontractorIds.length > 0 && (
               <div className="report-row-actions bulk-actions-inline">
+                {showArchived && (
+                  <button
+                    className="archive-btn"
+                    type="button"
+                    onClick={bulkRestoreSelectedWorkforce}
+                  >
+                    שחזר ({selectedEmployeeIds.length + selectedSubcontractorIds.length})
+                  </button>
+                )}
                 <button
                   className="archive-btn"
                   type="button"
-                  onClick={bulkArchiveSelectedEmployees}
+                  onClick={bulkArchiveSelectedWorkforce}
                 >
-                  ארכיון ({selectedEmployeeIds.length})
+                  ארכיון ({selectedEmployeeIds.length + selectedSubcontractorIds.length})
                 </button>
                 {advancedModeEnabled && (
                   <button
                     className="delete-btn"
                     type="button"
-                    onClick={bulkDeleteSelectedEmployees}
+                    onClick={bulkDeleteSelectedWorkforce}
                   >
-                    מחק ({selectedEmployeeIds.length})
+                    מחק ({selectedEmployeeIds.length + selectedSubcontractorIds.length})
                   </button>
                 )}
               </div>
@@ -810,73 +913,88 @@ export default function Employees() {
                 />
               )
             }
-          >
-            {filteredInternalEmployees.length === 0 ? (
-              <p className="empty-message">
-                {search ? "לא נמצאו עובדים שלי התואמים לחיפוש." : "אין עדיין עובדים שלי."}
-              </p>
-            ) : (
-              <div className="employees-compact-list">
-                {filteredInternalEmployees.map((employee) => (
-                  <CompactRow
-                    key={employee.id}
-                    name={employee.name}
-                    archived={employee.archived}
-                    selected={selectedEmployeeIds.includes(employee.id)}
-                    onToggleSelect={() => toggleEmployeeSelection(employee.id)}
-                    onEdit={() => setEditingEmployee(employee)}
-                    onDelete={advancedModeEnabled ? () => deleteEmployee(employee) : undefined}
-                    onToggleArchive={() => toggleEmployeeArchive(employee)}
-                  />
-                ))}
+            groupActions={
+              <div className="report-row-actions">
+                <button
+                  className="secondary-btn"
+                  type="button"
+                  onClick={() => setInternalEmployeesExpanded((v) => !v)}
+                >
+                  בחר עובדים
+                </button>
               </div>
+            }
+          >
+            {internalEmployeesExpanded && (
+              <>
+                {filteredInternalEmployees.length > 0 && (
+                  <div className="bulk-select-row">
+                    <label className="checkbox-item">
+                      <input
+                        type="checkbox"
+                        checked={isEmployeeGroupFullySelected(filteredInternalEmployees)}
+                        onChange={() => toggleAllEmployees(filteredInternalEmployees)}
+                      />
+                      <span>בחר הכל</span>
+                    </label>
+                    {selectedEmployeeIds.length > 0 && (
+                      <div className="report-row-actions bulk-actions-inline">
+                        {showArchived && (
+                          <button
+                            className="archive-btn"
+                            type="button"
+                            onClick={bulkRestoreSelectedEmployees}
+                          >
+                            שחזר ({selectedEmployeeIds.length})
+                          </button>
+                        )}
+                        <button
+                          className="archive-btn"
+                          type="button"
+                          onClick={bulkArchiveSelectedEmployees}
+                        >
+                          ארכיון ({selectedEmployeeIds.length})
+                        </button>
+                        {advancedModeEnabled && (
+                          <button
+                            className="delete-btn"
+                            type="button"
+                            onClick={bulkDeleteSelectedEmployees}
+                          >
+                            מחק ({selectedEmployeeIds.length})
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+                {filteredInternalEmployees.length === 0 ? (
+                  <p className="empty-message">
+                    {search ? "לא נמצאו עובדים שלי התואמים לחיפוש." : "אין עדיין עובדים שלי."}
+                  </p>
+                ) : (
+                  <div className="employees-compact-list">
+                    {filteredInternalEmployees.map((employee) => (
+                      <CompactRow
+                        key={employee.id}
+                        name={employee.name}
+                        archived={employee.archived}
+                        selected={selectedEmployeeIds.includes(employee.id)}
+                        onToggleSelect={() => toggleEmployeeSelection(employee.id)}
+                        onEdit={() => setEditingEmployee(employee)}
+                        onDelete={advancedModeEnabled ? () => deleteEmployee(employee) : undefined}
+                        onToggleArchive={() => toggleEmployeeArchive(employee)}
+                      />
+                    ))}
+                  </div>
+                )}
+              </>
             )}
           </GroupCard>
         </div>
 
         <div className="employees-page-section">
           <h3>קבלני משנה</h3>
-
-          {visibleSubcontractors.length > 0 && (
-            <div className="bulk-select-row">
-              <label className="checkbox-item">
-                <input
-                  type="checkbox"
-                  checked={isAllVisibleSubcontractorsSelected}
-                  onChange={toggleSelectAllVisibleSubcontractors}
-                />
-                <span>בחר הכל</span>
-              </label>
-              <label className="checkbox-item">
-                <input
-                  type="checkbox"
-                  checked={advancedModeEnabled}
-                  onChange={(e) => setAdvancedModeEnabled(e.target.checked)}
-                />
-                <span>מצב מתקדם</span>
-              </label>
-              {selectedSubcontractorIds.length > 0 && (
-                <div className="report-row-actions bulk-actions-inline">
-                  <button
-                    className="archive-btn"
-                    type="button"
-                    onClick={bulkArchiveSelectedSubcontractors}
-                  >
-                    ארכיון ({selectedSubcontractorIds.length})
-                  </button>
-                  {advancedModeEnabled && (
-                    <button
-                      className="delete-btn"
-                      type="button"
-                      onClick={bulkDeleteSelectedSubcontractors}
-                    >
-                      מחק ({selectedSubcontractorIds.length})
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
 
           {contractorCards.length === 0 ? (
             <p className="empty-message">
@@ -949,6 +1067,15 @@ export default function Employees() {
                           </label>
                           {selectedEmployeeIds.length > 0 && (
                             <div className="report-row-actions bulk-actions-inline">
+                              {showArchived && (
+                                <button
+                                  className="archive-btn"
+                                  type="button"
+                                  onClick={bulkRestoreSelectedEmployees}
+                                >
+                                  שחזר ({selectedEmployeeIds.length})
+                                </button>
+                              )}
                               <button
                                 className="archive-btn"
                                 type="button"

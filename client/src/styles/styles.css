@@ -155,12 +155,57 @@ img {
     color: var(--color-muted);
 }
 
-.topbar-brand {
+.topbar-page-group {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+
+    gap: 16px;
+}
+
+.topbar-page-accent {
+    align-self: stretch;
+
+    width: 3px;
+    min-height: 40px;
+
+    background: var(--color-brand-orange);
+    border-radius: 3px;
+}
+
+.topbar-page-icon-frame {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+
+    width: 52px;
+    height: 52px;
+
+    background: var(--color-brand-orange-soft);
+    border-radius: 14px;
+}
+
+.topbar-page-icon {
+    font-size: 26px;
+
+    color: var(--color-brand-orange);
+}
+
+.topbar-meta-group {
     display: flex;
     align-items: center;
     flex-shrink: 0;
 
     gap: 14px;
+}
+
+.topbar-divider {
+    align-self: stretch;
+
+    width: 0;
+
+    border-inline-end: 0.5px solid var(--color-border);
 }
 
 .topbar-logo {
@@ -1127,8 +1172,23 @@ tbody tr:hover {
         padding: 7px;
     }
 
+    .topbar-page-icon-frame {
+        width: 40px;
+        height: 40px;
+        border-radius: 12px;
+    }
+
+    .topbar-page-icon {
+        font-size: 20px;
+    }
+
+    .topbar-page-accent {
+        min-height: 32px;
+    }
+
     /* מסך צר מדי לשורת "כניסה אחרונה" בלי לדחוק את הכותרת */
-    .topbar-last-login {
+    .topbar-last-login,
+    .topbar-divider {
         display: none;
     }
 

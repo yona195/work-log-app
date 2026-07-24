@@ -10,6 +10,7 @@ export default function Layout({ children }) {
 
   const current = NAV_ITEMS.find((item) => item.path === location.pathname);
   const title = current ? current.title : "יומן עבודה";
+  const icon = current?.icon || "dashboard";
 
   // Close the mobile menu and reset scroll on route change — React Router
   // doesn't do this on its own (unlike a full page navigation), so without
@@ -48,7 +49,7 @@ export default function Layout({ children }) {
       <div className="app">
         <Sidebar open={menuOpen} onNavigate={() => setMenuOpen(false)} />
         <main className="main">
-          <Topbar title={title} />
+          <Topbar title={title} icon={icon} />
           <section id="content">{children}</section>
         </main>
       </div>
