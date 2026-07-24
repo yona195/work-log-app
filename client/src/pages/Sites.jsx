@@ -52,8 +52,20 @@ export default function Sites() {
     clear: clearBuildingSelection,
   } = useBulkSelection(selectableBuildings);
 
-  const isAllVisibleBuildingsSelected = isBuildingGroupFullySelected(selectableBuildings);
-  const toggleSelectAllVisibleBuildings = () => toggleAllBuildings(selectableBuildings);
+  // Which sites currently have their "בחר מבנים" picker expanded — closed
+  // by default, so the buildings bulk-select row/list only takes up space
+  // in a card once the user asks for it there.
+  const [expandedSiteBuildingIds, setExpandedSiteBuildingIds] = useState(() => new Set());
+  const toggleSiteBuildingsExpanded = (siteId) =>
+    setExpandedSiteBuildingIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(siteId)) {
+        next.delete(siteId);
+      } else {
+        next.add(siteId);
+      }
+      return next;
+    });
 
   const {
     selectedIds: selectedSiteIds,
@@ -496,31 +508,6 @@ export default function Sites() {
               />
               <span>בחר הכל</span>
             </label>
-            {selectedSiteIds.length > 0 && (
-              <div className="report-row-actions bulk-actions-inline">
-                <button className="archive-btn" type="button" onClick={bulkArchiveSelectedSites}>
-                  ארכיון ({selectedSiteIds.length})
-                </button>
-                {advancedModeEnabled && (
-                  <button className="delete-btn" type="button" onClick={bulkDeleteSelectedSites}>
-                    מחק ({selectedSiteIds.length})
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-
-        {selectableBuildings.length > 0 && (
-          <div className="bulk-select-row">
-            <label className="checkbox-item">
-              <input
-                type="checkbox"
-                checked={isAllVisibleBuildingsSelected}
-                onChange={toggleSelectAllVisibleBuildings}
-              />
-              <span>בחר הכל - מבנים</span>
-            </label>
             <label className="checkbox-item">
               <input
                 type="checkbox"
@@ -529,14 +516,14 @@ export default function Sites() {
               />
               <span>מצב מתקדם</span>
             </label>
-            {selectedBuildingIds.length > 0 && (
+            {selectedSiteIds.length > 0 && (
               <div className="report-row-actions bulk-actions-inline">
-                <button className="archive-btn" type="button" onClick={bulkArchiveSelectedBuildings}>
-                  ארכיון ({selectedBuildingIds.length})
+                <button className="archive-btn" type="button" onClick={bulkArchiveSelectedSites}>
+                  ארכיון ({selectedSiteIds.length})
                 </button>
                 {advancedModeEnabled && (
-                  <button className="delete-btn" type="button" onClick={bulkDeleteSelectedBuildings}>
-                    מחק ({selectedBuildingIds.length})
+                  <button className="delete-btn" type="button" onClick={bulkDeleteSelectedSites}>
+                    מחק ({selectedSiteIds.length})
                   </button>
                 )}
               </div>
@@ -562,24 +549,12 @@ export default function Sites() {
                   countLabel="מבנים"
                   isArchived={site.archived}
                   selectionControl={
-                    <>
-                      <input
-                        type="checkbox"
-                        checked={selectedSiteIds.includes(site.id)}
-                        onChange={() => toggleSiteSelection(site.id)}
-                        aria-label={`בחר אתר - ${site.name}`}
-                        title="בחר אתר"
-                      />
-                      {selectableSiteBuildings.length > 0 && (
-                        <input
-                          type="checkbox"
-                          checked={isBuildingGroupFullySelected(selectableSiteBuildings)}
-                          onChange={() => toggleAllBuildings(selectableSiteBuildings)}
-                          aria-label={`בחר הכל - ${site.name}`}
-                          title="בחר את כל המבנים באתר"
-                        />
-                      )}
-                    </>
+                    <input
+                      type="checkbox"
+                      checked={selectedSiteIds.includes(site.id)}
+                      onChange={() => toggleSiteSelection(site.id)}
+                      aria-label={`בחר אתר - ${site.name}`}
+                    />
                   }
                   groupActions={
                     <div className="report-row-actions">
@@ -606,34 +581,77 @@ export default function Sites() {
                       >
                         {site.archived ? "שחזר" : "ארכיון"}
                       </button>
+                      <button
+                        className="secondary-btn"
+                        type="button"
+                        onClick={() => toggleSiteBuildingsExpanded(site.id)}
+                      >
+                        {expandedSiteBuildingIds.has(site.id) ? "הסתר מבנים" : "בחר מבנים"}
+                      </button>
                     </div>
                   }
                 >
-                  {siteBuildings.length === 0 ? (
-                    <p className="empty-message">אין מבנים באתר הזה.</p>
-                  ) : (
-                    <div className="employees-compact-list">
-                      {siteBuildings.map((building) => (
-                        <CompactRow
-                          key={building.id}
-                          name={building.name}
-                          archived={building.archived}
-                          selected={selectedBuildingIds.includes(building.id)}
-                          onToggleSelect={
-                            isGeneralBuilding(building) ? undefined : () => toggleBuildingSelection(building.id)
-                          }
-                          onEdit={isGeneralBuilding(building) ? undefined : () => setEditingBuilding(building)}
-                          onDelete={
-                            isGeneralBuilding(building) || !advancedModeEnabled
-                              ? undefined
-                              : () => deleteBuilding(building)
-                          }
-                          onToggleArchive={
-                            isGeneralBuilding(building) ? undefined : () => toggleBuildingArchive(building)
-                          }
-                        />
-                      ))}
-                    </div>
+                  {expandedSiteBuildingIds.has(site.id) && (
+                    <>
+                      {selectableSiteBuildings.length > 0 && (
+                        <div className="bulk-select-row">
+                          <label className="checkbox-item">
+                            <input
+                              type="checkbox"
+                              checked={isBuildingGroupFullySelected(selectableSiteBuildings)}
+                              onChange={() => toggleAllBuildings(selectableSiteBuildings)}
+                            />
+                            <span>בחר הכל</span>
+                          </label>
+                          {selectedBuildingIds.length > 0 && (
+                            <div className="report-row-actions bulk-actions-inline">
+                              <button
+                                className="archive-btn"
+                                type="button"
+                                onClick={bulkArchiveSelectedBuildings}
+                              >
+                                ארכיון ({selectedBuildingIds.length})
+                              </button>
+                              {advancedModeEnabled && (
+                                <button
+                                  className="delete-btn"
+                                  type="button"
+                                  onClick={bulkDeleteSelectedBuildings}
+                                >
+                                  מחק ({selectedBuildingIds.length})
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      {siteBuildings.length === 0 ? (
+                        <p className="empty-message">אין מבנים באתר הזה.</p>
+                      ) : (
+                        <div className="employees-compact-list">
+                          {siteBuildings.map((building) => (
+                            <CompactRow
+                              key={building.id}
+                              name={building.name}
+                              archived={building.archived}
+                              selected={selectedBuildingIds.includes(building.id)}
+                              onToggleSelect={
+                                isGeneralBuilding(building) ? undefined : () => toggleBuildingSelection(building.id)
+                              }
+                              onEdit={isGeneralBuilding(building) ? undefined : () => setEditingBuilding(building)}
+                              onDelete={
+                                isGeneralBuilding(building) || !advancedModeEnabled
+                                  ? undefined
+                                  : () => deleteBuilding(building)
+                              }
+                              onToggleArchive={
+                                isGeneralBuilding(building) ? undefined : () => toggleBuildingArchive(building)
+                              }
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </>
                   )}
                 </GroupCard>
               );
