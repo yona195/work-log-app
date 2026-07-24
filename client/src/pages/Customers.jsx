@@ -67,6 +67,15 @@ export default function Customers() {
 
   const toggleArchive = async (item) => {
     if (item.archived) {
+      if (
+        !(await confirmDialog(`לשחזר את ${item.name} מהארכיון?`, {
+          title: "לשחזר מהארכיון?",
+          mutedText: "יחזור להופיע לבחירה ברשומות חדשות.",
+          confirmLabel: "שחזר",
+        }))
+      ) {
+        return;
+      }
       await updateItem("customers", item.id, { archived: false });
       return;
     }

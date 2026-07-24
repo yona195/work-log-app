@@ -450,6 +450,15 @@ export default function Rates() {
 
   const toggleRateArchive = async (rate) => {
     if (rate.archived) {
+      if (
+        !(await confirmDialog("לשחזר את התעריף מהארכיון?", {
+          title: "לשחזר מהארכיון?",
+          mutedText: "יחזור להופיע לבחירה ברשומות חדשות.",
+          confirmLabel: "שחזר",
+        }))
+      ) {
+        return;
+      }
       await updateItem("rates", rate.id, { archived: false });
       return;
     }

@@ -137,6 +137,15 @@ export default function Sites() {
 
   const toggleBuildingArchive = async (building) => {
     if (building.archived) {
+      if (
+        !(await confirmDialog(`לשחזר את ${building.name} מהארכיון?`, {
+          title: "לשחזר מהארכיון?",
+          mutedText: "יחזור להופיע לבחירה ברשומות חדשות.",
+          confirmLabel: "שחזר",
+        }))
+      ) {
+        return;
+      }
       await updateItem("buildings", building.id, { archived: false });
       return;
     }

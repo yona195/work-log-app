@@ -270,6 +270,15 @@ export default function Employees() {
 
   const toggleEmployeeArchive = async (employee) => {
     if (employee.archived) {
+      if (
+        !(await confirmDialog(`לשחזר את ${employee.name} מהארכיון?`, {
+          title: "לשחזר מהארכיון?",
+          mutedText: "יחזור להופיע לבחירה ברשומות חדשות.",
+          confirmLabel: "שחזר",
+        }))
+      ) {
+        return;
+      }
       await updateItem("employees", employee.id, { archived: false });
       return;
     }
