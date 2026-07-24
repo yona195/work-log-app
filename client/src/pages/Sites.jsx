@@ -55,6 +55,17 @@ export default function Sites() {
   const isAllVisibleBuildingsSelected = isBuildingGroupFullySelected(selectableBuildings);
   const toggleSelectAllVisibleBuildings = () => toggleAllBuildings(selectableBuildings);
 
+  const {
+    selectedIds: selectedSiteIds,
+    toggle: toggleSiteSelection,
+    isFullySelected: isSiteGroupFullySelected,
+    toggleAll: toggleAllSites,
+    clear: clearSiteSelection,
+  } = useBulkSelection(visibleSites);
+
+  const isAllVisibleSitesSelected = isSiteGroupFullySelected(visibleSites);
+  const toggleSelectAllVisibleSites = () => toggleAllSites(visibleSites);
+
   // Every delete button on this page (row/group/bulk) is hidden until this
   // is checked — "ארכיון"/"ערוך" stay visible either way, since only delete
   // is dangerous enough to need a second, explicit door.
@@ -319,6 +330,76 @@ export default function Sites() {
     showToast("success", `${site.name}${cascadeNote} נמחק לצמיתות בהצלחה`);
   };
 
+  const bulkArchiveSelectedSites = async () => {
+    if (
+      !(await confirmDialog(
+        `להעביר את ${selectedSiteIds.length} האתרים שנבחרו לארכיון? האתרים והמבנים שלהם לא יופיעו יותר לבחירה ברשומות חדשות, אבל הדוחות הקיימים לא ישתנו.`
+      ))
+    ) {
+      return;
+    }
+    const selected = sites.filter((s) => selectedSiteIds.includes(s.id));
+    const total = selected.length;
+    await runBulkOperation("מעביר אתרים לארכיון", total, async (setProgress) => {
+      let done = 0;
+      for (const site of selected) {
+        // eslint-disable-next-line no-await-in-loop
+        await updateItem("sites", site.id, { archived: true }, { silent: true });
+        const siteBuildings = buildingsOfSite(site);
+        for (const building of siteBuildings) {
+          // eslint-disable-next-line no-await-in-loop
+          await updateItem("buildings", building.id, { archived: true }, { silent: true });
+        }
+        done += 1;
+        setProgress(done);
+      }
+    });
+    clearSiteSelection();
+    showToast("success", `${total} אתרים הועברו לארכיון בהצלחה`);
+  };
+
+  // Same cascade as the single deleteSite above (work logs, then rates,
+  // then buildings, then the site itself), just applied to every selected
+  // site in turn — one summary toast at the end instead of one per site.
+  const bulkDeleteSelectedSites = async () => {
+    const selected = sites.filter((s) => selectedSiteIds.includes(s.id));
+    if (
+      !(await confirmDialog(
+        `למחוק ${selected.length} אתרים שנבחרו לצמיתות? בשונה מהעברה לארכיון, מחיקה תשפיע גם על דוחות והיסטוריה שכבר נרשמו (מבנים, תעריפים ורישומי עבודה של כל אתר).`,
+        { danger: true }
+      ))
+    ) {
+      return;
+    }
+    const total = selected.length;
+    await runBulkOperation("מוחק אתרים", total, async (setProgress) => {
+      let done = 0;
+      for (const site of selected) {
+        const siteBuildings = buildingsOfSite(site);
+        const siteRates = rates.filter((r) => String(r.siteId) === String(site.id));
+        const siteWorkLogs = workLogs.filter((log) => String(log.siteId) === String(site.id));
+        for (const log of siteWorkLogs) {
+          // eslint-disable-next-line no-await-in-loop
+          await deleteItem("workLogs", log.id, { silent: true });
+        }
+        for (const rate of siteRates) {
+          // eslint-disable-next-line no-await-in-loop
+          await deleteItem("rates", rate.id, { silent: true });
+        }
+        for (const building of siteBuildings) {
+          // eslint-disable-next-line no-await-in-loop
+          await deleteItem("buildings", building.id, { silent: true });
+        }
+        // eslint-disable-next-line no-await-in-loop
+        await deleteItem("sites", site.id, { silent: true });
+        done += 1;
+        setProgress(done);
+      }
+    });
+    clearSiteSelection();
+    showToast("success", `${total} אתרים נמחקו בהצלחה`);
+  };
+
   // Every building requires a site, so unlike "העובדים שלי" there's no
   // built-in default group — but a building can still end up without a
   // live site card to render under if its site was deleted before the
@@ -405,6 +486,31 @@ export default function Sites() {
           </label>
         </div>
 
+        {visibleSites.length > 0 && (
+          <div className="bulk-select-row">
+            <label className="checkbox-item">
+              <input
+                type="checkbox"
+                checked={isAllVisibleSitesSelected}
+                onChange={toggleSelectAllVisibleSites}
+              />
+              <span>בחר הכל</span>
+            </label>
+            {selectedSiteIds.length > 0 && (
+              <div className="report-row-actions bulk-actions-inline">
+                <button className="archive-btn" type="button" onClick={bulkArchiveSelectedSites}>
+                  ארכיון ({selectedSiteIds.length})
+                </button>
+                {advancedModeEnabled && (
+                  <button className="delete-btn" type="button" onClick={bulkDeleteSelectedSites}>
+                    מחק ({selectedSiteIds.length})
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
         {selectableBuildings.length > 0 && (
           <div className="bulk-select-row">
             <label className="checkbox-item">
@@ -413,7 +519,7 @@ export default function Sites() {
                 checked={isAllVisibleBuildingsSelected}
                 onChange={toggleSelectAllVisibleBuildings}
               />
-              <span>בחר הכל</span>
+              <span>בחר הכל - מבנים</span>
             </label>
             <label className="checkbox-item">
               <input
@@ -456,14 +562,24 @@ export default function Sites() {
                   countLabel="מבנים"
                   isArchived={site.archived}
                   selectionControl={
-                    selectableSiteBuildings.length > 0 && (
+                    <>
                       <input
                         type="checkbox"
-                        checked={isBuildingGroupFullySelected(selectableSiteBuildings)}
-                        onChange={() => toggleAllBuildings(selectableSiteBuildings)}
-                        aria-label={`בחר הכל - ${site.name}`}
+                        checked={selectedSiteIds.includes(site.id)}
+                        onChange={() => toggleSiteSelection(site.id)}
+                        aria-label={`בחר אתר - ${site.name}`}
+                        title="בחר אתר"
                       />
-                    )
+                      {selectableSiteBuildings.length > 0 && (
+                        <input
+                          type="checkbox"
+                          checked={isBuildingGroupFullySelected(selectableSiteBuildings)}
+                          onChange={() => toggleAllBuildings(selectableSiteBuildings)}
+                          aria-label={`בחר הכל - ${site.name}`}
+                          title="בחר את כל המבנים באתר"
+                        />
+                      )}
+                    </>
                   }
                   groupActions={
                     <div className="report-row-actions">

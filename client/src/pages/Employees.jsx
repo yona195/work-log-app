@@ -183,6 +183,17 @@ export default function Employees() {
   const isAllVisibleEmployeesSelected = isEmployeeGroupFullySelected(allVisibleEmployees);
   const toggleSelectAllVisibleEmployees = () => toggleAllEmployees(allVisibleEmployees);
 
+  const {
+    selectedIds: selectedSubcontractorIds,
+    toggle: toggleSubcontractorSelection,
+    isFullySelected: isSubcontractorGroupFullySelected,
+    toggleAll: toggleAllSubcontractors,
+    clear: clearSubcontractorSelection,
+  } = useBulkSelection(visibleSubcontractors);
+
+  const isAllVisibleSubcontractorsSelected = isSubcontractorGroupFullySelected(visibleSubcontractors);
+  const toggleSelectAllVisibleSubcontractors = () => toggleAllSubcontractors(visibleSubcontractors);
+
   // Every delete button on this page (row/group/bulk) is hidden until this
   // is checked — "ארכיון"/"ערוך" stay visible either way, since only delete
   // is dangerous enough to need a second, explicit door.
@@ -475,6 +486,76 @@ export default function Employees() {
     showToast("success", `${subcontractor.name}${employeeNote} נמחק לצמיתות בהצלחה`);
   };
 
+  const bulkArchiveSelectedSubcontractors = async () => {
+    if (
+      !(await confirmDialog(
+        `להעביר את ${selectedSubcontractorIds.length} קבלני המשנה שנבחרו לארכיון? הם והעובדים שלהם לא יופיעו יותר לבחירה ברשומות חדשות, אבל הדוחות הקיימים לא ישתנו.`
+      ))
+    ) {
+      return;
+    }
+    const selected = subcontractors.filter((s) => selectedSubcontractorIds.includes(s.id));
+    const total = selected.length;
+    await runBulkOperation("מעביר קבלני משנה לארכיון", total, async (setProgress) => {
+      let done = 0;
+      for (const subcontractor of selected) {
+        // eslint-disable-next-line no-await-in-loop
+        await updateItem("subcontractors", subcontractor.id, { archived: true }, { silent: true });
+        const subEmployees = subcontractorEmployeesOf(subcontractor);
+        for (const employee of subEmployees) {
+          // eslint-disable-next-line no-await-in-loop
+          await updateItem("employees", employee.id, { archived: true }, { silent: true });
+        }
+        done += 1;
+        setProgress(done);
+      }
+    });
+    clearSubcontractorSelection();
+    showToast("success", `${total} קבלני משנה הועברו לארכיון בהצלחה`);
+  };
+
+  // Same cascade as the single deleteSubcontractor above (general rates,
+  // then each employee via cascadeDeleteEmployeeDependents, then the
+  // subcontractor itself), just applied to every selected subcontractor
+  // in turn with one shared logState — one summary toast at the end
+  // instead of one per subcontractor.
+  const bulkDeleteSelectedSubcontractors = async () => {
+    const selected = subcontractors.filter((s) => selectedSubcontractorIds.includes(s.id));
+    if (
+      !(await confirmDialog(
+        `למחוק ${selected.length} קבלני משנה שנבחרו לצמיתות? בשונה מהעברה לארכיון, מחיקה תשפיע גם על דוחות והיסטוריה שכבר נרשמו (תעריפים, רישום עבודה והיסטוריה של כל עובדיהם).`,
+        { danger: true }
+      ))
+    ) {
+      return;
+    }
+    const total = selected.length;
+    await runBulkOperation("מוחק קבלני משנה", total, async (setProgress) => {
+      const logState = new Map(workLogs.map((log) => [log.id, getEmployeeIds(log).map(String)]));
+      let done = 0;
+      for (const subcontractor of selected) {
+        const generalRates = subcontractorGeneralRates(subcontractor);
+        for (const rate of generalRates) {
+          // eslint-disable-next-line no-await-in-loop
+          await deleteItem("rates", rate.id, { silent: true });
+        }
+        const subEmployees = subcontractorEmployeesOf(subcontractor);
+        for (const employee of subEmployees) {
+          // eslint-disable-next-line no-await-in-loop
+          await cascadeDeleteEmployeeDependents(employee, logState, { silent: true });
+          // eslint-disable-next-line no-await-in-loop
+          await deleteItem("employees", employee.id, { silent: true });
+        }
+        // eslint-disable-next-line no-await-in-loop
+        await deleteItem("subcontractors", subcontractor.id, { silent: true });
+        done += 1;
+        setProgress(done);
+      }
+    });
+    clearSubcontractorSelection();
+    showToast("success", `${total} קבלני משנה נמחקו בהצלחה`);
+  };
+
   return (
     <>
       <div className="card">
@@ -693,6 +774,40 @@ export default function Employees() {
 
         <div className="employees-page-section">
           <h3>קבלני משנה</h3>
+
+          {visibleSubcontractors.length > 0 && (
+            <div className="bulk-select-row">
+              <label className="checkbox-item">
+                <input
+                  type="checkbox"
+                  checked={isAllVisibleSubcontractorsSelected}
+                  onChange={toggleSelectAllVisibleSubcontractors}
+                />
+                <span>בחר הכל</span>
+              </label>
+              {selectedSubcontractorIds.length > 0 && (
+                <div className="report-row-actions bulk-actions-inline">
+                  <button
+                    className="archive-btn"
+                    type="button"
+                    onClick={bulkArchiveSelectedSubcontractors}
+                  >
+                    ארכיון ({selectedSubcontractorIds.length})
+                  </button>
+                  {advancedModeEnabled && (
+                    <button
+                      className="delete-btn"
+                      type="button"
+                      onClick={bulkDeleteSelectedSubcontractors}
+                    >
+                      מחק ({selectedSubcontractorIds.length})
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
           {contractorCards.length === 0 ? (
             <p className="empty-message">
               {search ? "לא נמצאו קבלני משנה התואמים לחיפוש." : "אין עדיין קבלני משנה."}
@@ -708,14 +823,24 @@ export default function Employees() {
                   countLabel="עובדים"
                   isArchived={subcontractor.archived}
                   selectionControl={
-                    filteredList.length > 0 && (
+                    <>
                       <input
                         type="checkbox"
-                        checked={isEmployeeGroupFullySelected(filteredList)}
-                        onChange={() => toggleAllEmployees(filteredList)}
-                        aria-label={`בחר הכל - ${subcontractor.name}`}
+                        checked={selectedSubcontractorIds.includes(subcontractor.id)}
+                        onChange={() => toggleSubcontractorSelection(subcontractor.id)}
+                        aria-label={`בחר קבלן משנה - ${subcontractor.name}`}
+                        title="בחר קבלן משנה"
                       />
-                    )
+                      {filteredList.length > 0 && (
+                        <input
+                          type="checkbox"
+                          checked={isEmployeeGroupFullySelected(filteredList)}
+                          onChange={() => toggleAllEmployees(filteredList)}
+                          aria-label={`בחר הכל - ${subcontractor.name}`}
+                          title="בחר את כל עובדי הקבלן"
+                        />
+                      )}
+                    </>
                   }
                   groupActions={
                     <div className="report-row-actions">
