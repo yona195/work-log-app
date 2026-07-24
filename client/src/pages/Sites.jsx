@@ -586,7 +586,7 @@ export default function Sites() {
                         type="button"
                         onClick={() => toggleSiteBuildingsExpanded(site.id)}
                       >
-                        {expandedSiteBuildingIds.has(site.id) ? "הסתר מבנים" : "בחר מבנים"}
+                        בחר מבנים {expandedSiteBuildingIds.has(site.id) ? "▴" : "▾"}
                       </button>
                     </div>
                   }
