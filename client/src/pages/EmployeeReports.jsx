@@ -22,7 +22,7 @@ export default function EmployeeReports() {
   const dateRange = useDateRangeFilter();
   const [reportType, setReportType] = useState("work"); // "work" | "summary"
   const [group, setGroup] = useState("");
-  const [showArchived, setShowArchived] = useState(false);
+  const [showArchived, setShowArchived] = useState(true);
   const [employeeSearch, setEmployeeSearch] = useState("");
   const [contractorSearch, setContractorSearch] = useState("");
   const [pdfLoading, setPdfLoading] = useState(false);
@@ -220,7 +220,7 @@ export default function EmployeeReports() {
 
       <hr className="form-divider" />
 
-      <div className="form-section">
+      <div className="report-generate-card">
         <div className="section-title-row">
           <h4 className="form-section-title" style={{ marginBottom: 0 }}>הפקת הדוח</h4>
           <label className="checkbox-item" style={{ display: "inline-flex" }}>
@@ -229,22 +229,22 @@ export default function EmployeeReports() {
               checked={showArchived}
               onChange={(e) => setShowArchived(e.target.checked)}
             />
-            <span>הצג גם פריטים מהארכיון</span>
+            <span>הצג פריטים בארכיון</span>
           </label>
         </div>
 
         <label>סוג הדוח</label>
-        <div className="employee-actions">
+        <div className="segmented-control">
           <button
             type="button"
-            className={reportType === "work" ? "primary-btn" : "secondary-btn"}
+            className={`segmented-control-option${reportType === "work" ? " is-active" : ""}`}
             onClick={() => setReportType("work")}
           >
             דוח עבודה לעובדים
           </button>
           <button
             type="button"
-            className={reportType === "summary" ? "primary-btn" : "secondary-btn"}
+            className={`segmented-control-option${reportType === "summary" ? " is-active" : ""}`}
             onClick={() => setReportType("summary")}
           >
             דוח עובדים מסכם

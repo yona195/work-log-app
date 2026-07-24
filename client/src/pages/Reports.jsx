@@ -25,7 +25,7 @@ export default function Reports() {
   const [siteId, setSiteId] = useState("");
   const [customerId, setCustomerId] = useState("");
   const [group, setGroup] = useState("");
-  const [showArchived, setShowArchived] = useState(false);
+  const [showArchived, setShowArchived] = useState(true);
   const [employeeSearch, setEmployeeSearch] = useState("");
   const [contractorSearch, setContractorSearch] = useState("");
   const [pdfLoading, setPdfLoading] = useState(false);
@@ -55,10 +55,10 @@ export default function Reports() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [group, selectedSubcontractorIds]);
 
-  // Archived employees/subcontractors/sites/customers are hidden from these
-  // filter lists by default so they don't clutter the common case; the
-  // "הצג גם פריטים מהארכיון" checkbox brings them back for pulling a report
-  // that includes someone/something no longer active.
+  // Archived employees/subcontractors/sites/customers are shown in these
+  // filter lists by default (a report often needs to include someone/
+  // something no longer active) — the "הצג פריטים בארכיון" checkbox lets
+  // that be turned off to narrow back down to active-only.
   const visibleSites = showArchived ? sites : activeOnly(sites);
   const visibleCustomers = showArchived ? customers : activeOnly(customers);
 
@@ -260,7 +260,7 @@ export default function Reports() {
 
       <hr className="form-divider" />
 
-      <div className="form-section">
+      <div className="report-generate-card">
         <div className="section-title-row">
           <h4 className="form-section-title" style={{ marginBottom: 0 }}>הפקת הדוח</h4>
           <label className="checkbox-item" style={{ display: "inline-flex" }}>
@@ -269,22 +269,22 @@ export default function Reports() {
               checked={showArchived}
               onChange={(e) => setShowArchived(e.target.checked)}
             />
-            <span>הצג גם פריטים מהארכיון</span>
+            <span>הצג פריטים בארכיון</span>
           </label>
         </div>
 
         <label>סוג הדוח</label>
-        <div className="employee-actions">
+        <div className="segmented-control">
           <button
             type="button"
-            className={reportType === "customer" ? "primary-btn" : "secondary-btn"}
+            className={`segmented-control-option${reportType === "customer" ? " is-active" : ""}`}
             onClick={() => setReportType("customer")}
           >
             דוח מזמין
           </button>
           <button
             type="button"
-            className={reportType === "employer" ? "primary-btn" : "secondary-btn"}
+            className={`segmented-control-option${reportType === "employer" ? " is-active" : ""}`}
             onClick={() => setReportType("employer")}
           >
             דוח מעסיק

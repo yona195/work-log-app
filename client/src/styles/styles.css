@@ -368,6 +368,8 @@ a.pdf-btn {
     align-items: center;
     justify-content: center;
     gap: 8px;
+
+    flex: 1;
 }
 
 .pdf-btn .material-symbols-rounded,
@@ -1566,12 +1568,70 @@ body.loading .menu-overlay {
    דוחות - אזורי פעולה (מזמין / מעסיק)
 ========================================= */
 
+/* Wraps the "הפקת הדוח" section (Reports.jsx / EmployeeReports.jsx) in a
+   bordered card of its own, visually separating "pick what goes into the
+   report" (above) from "generate it" (inside here) — same surface color
+   as every other card in the app, so it reads as nested rather than a
+   different tone. */
+.report-generate-card {
+    margin-top: 24px;
+
+    padding: 1.25rem 1.5rem;
+
+    background: var(--color-surface);
+    border: 0.5px solid var(--color-border);
+    border-radius: var(--radius-medium);
+}
+
+/* iOS-style segmented control for the report-type toggle inside
+   .report-generate-card — a recessed track (--color-background, the
+   app's base gray) with the active option "raised" back to the card's
+   own white surface plus a hairline ring, instead of two separate
+   primary/secondary buttons. */
+.segmented-control {
+    display: inline-flex;
+
+    padding: 3px;
+
+    background: var(--color-background);
+    border-radius: var(--radius-small);
+}
+
+.segmented-control-option {
+    padding: 8px 16px;
+
+    background: transparent;
+    border: none;
+    border-radius: calc(var(--radius-small) - 2px);
+
+    color: var(--color-muted);
+    font-size: 14px;
+    font-weight: 400;
+    cursor: pointer;
+
+    transition:
+        background-color 0.2s ease,
+        color 0.2s ease,
+        box-shadow 0.2s ease;
+}
+
+.segmented-control-option.is-active {
+    background: var(--color-surface);
+    box-shadow: 0 0 0 0.5px var(--color-border);
+
+    color: var(--color-text);
+    font-weight: 500;
+}
+
 .report-actions {
     display: flex;
     align-items: stretch;
     gap: 16px;
 
     margin-top: 20px;
+    padding-top: 16px;
+
+    border-top: 0.5px solid var(--color-border);
 }
 
 .report-action-group {
