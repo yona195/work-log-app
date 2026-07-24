@@ -234,7 +234,15 @@ export default function WorkLog() {
 
   const bulkDeleteSelected = async () => {
     const total = selectedRecentLogIds.length;
-    if (!(await confirmDialog(`למחוק ${total} רשומות שנבחרו לצמיתות?`, { danger: true }))) return;
+    if (
+      !(await confirmDialog(`למחוק ${total} רשומות שנבחרו לצמיתות?`, {
+        title: "מחיקה לצמיתות?",
+        confirmLabel: "מחק לצמיתות",
+        danger: true,
+      }))
+    ) {
+      return;
+    }
     await runBulkOperation("מוחק רשומות עבודה", total, async (setProgress) => {
       let done = 0;
       for (const id of selectedRecentLogIds) {
@@ -759,7 +767,13 @@ export default function WorkLog() {
                             className="delete-btn"
                             type="button"
                             onClick={async () => {
-                              if (await confirmDialog("למחוק את הרשומה?", { danger: true })) {
+                              if (
+                                await confirmDialog("למחוק את הרשומה לצמיתות?", {
+                                  title: "מחיקה לצמיתות?",
+                                  confirmLabel: "מחק לצמיתות",
+                                  danger: true,
+                                })
+                              ) {
                                 deleteItem("workLogs", log.id);
                               }
                             }}

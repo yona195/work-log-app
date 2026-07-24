@@ -16,6 +16,10 @@ const matchesSearch = (text, value) => {
   return String(value || "").toLowerCase().includes(text);
 };
 
+// The muted second line under every archive confirmation in the app is
+// the same fixed explanation, regardless of what's being archived.
+const ARCHIVE_NOTE = "לא יופיע יותר לבחירה ברשומות חדשות. הדוחות וההיסטוריה הקיימים לא ישתנו.";
+
 // Paginates itself — this renders once for the legacy "unassigned" bucket,
 // so it gets its own independent page state for free with no extra wiring
 // in the parent. `selectedIds`/`toggleSelect`/`isFullySelected`/`toggleAll`
@@ -267,9 +271,11 @@ export default function Employees() {
       return;
     }
     if (
-      !(await confirmDialog(
-        `להעביר את ${employee.name} לארכיון? העובד לא יופיע יותר לבחירה ברשומות חדשות, אבל הדוחות הקיימים לא ישתנו.`
-      ))
+      !(await confirmDialog(`להעביר את ${employee.name} לארכיון?`, {
+        title: "להעביר לארכיון?",
+        mutedText: ARCHIVE_NOTE,
+        confirmLabel: "העבר לארכיון",
+      }))
     ) {
       return;
     }
@@ -326,16 +332,18 @@ export default function Employees() {
     const cascadeParts = [];
     if (employeeRates.length > 0) cascadeParts.push(`${employeeRates.length} תעריפים`);
     if (employeeLogs.length > 0) cascadeParts.push(`${employeeLogs.length} רשומות עבודה`);
-    const cascadeNote =
+    const cascadeMutedText =
       cascadeParts.length > 0
-        ? ` יושפעו ${cascadeParts.join(", ")} - רשומות עם עובדים נוספים יישארו, ורק ${employee.name} יוסר מהן.`
-        : "";
+        ? `ישפיע על ${cascadeParts.join(", ")} - רשומות עם עובדים נוספים יישארו, ${employee.name} יוסר מהן בלבד.`
+        : "הפעולה תשפיע על דוחות והיסטוריה קיימים.";
 
     if (
-      !(await confirmDialog(
-        `למחוק את ${employee.name} לצמיתות?${cascadeNote} בשונה מהעברה לארכיון, מחיקה תשפיע גם על דוחות והיסטוריה שכבר נרשמו עם העובד הזה.`,
-        { danger: true }
-      ))
+      !(await confirmDialog(`למחוק את ${employee.name} לצמיתות?`, {
+        title: "מחיקה לצמיתות?",
+        mutedText: cascadeMutedText,
+        confirmLabel: "מחק לצמיתות",
+        danger: true,
+      }))
     ) {
       return;
     }
@@ -352,9 +360,11 @@ export default function Employees() {
 
   const bulkArchiveSelectedEmployees = async () => {
     if (
-      !(await confirmDialog(
-        `להעביר את ${selectedEmployeeIds.length} העובדים שנבחרו לארכיון? העובדים לא יופיעו יותר לבחירה ברשומות חדשות, אבל הדוחות הקיימים לא ישתנו.`
-      ))
+      !(await confirmDialog(`להעביר את ${selectedEmployeeIds.length} העובדים שנבחרו לארכיון?`, {
+        title: "להעביר לארכיון?",
+        mutedText: ARCHIVE_NOTE,
+        confirmLabel: "העבר לארכיון",
+      }))
     ) {
       return;
     }
@@ -377,10 +387,12 @@ export default function Employees() {
   // selections that touch the same work log see each other's removals.
   const bulkDeleteSelectedEmployees = async () => {
     if (
-      !(await confirmDialog(
-        `למחוק ${selectedEmployeeIds.length} עובדים שנבחרו לצמיתות? בשונה מהעברה לארכיון, מחיקה תשפיע גם על דוחות והיסטוריה שכבר נרשמו איתם.`,
-        { danger: true }
-      ))
+      !(await confirmDialog(`למחוק ${selectedEmployeeIds.length} עובדים שנבחרו לצמיתות?`, {
+        title: "מחיקה לצמיתות?",
+        mutedText: "הפעולה תשפיע גם על דוחות והיסטוריה קיימים.",
+        confirmLabel: "מחק לצמיתות",
+        danger: true,
+      }))
     ) {
       return;
     }
@@ -433,9 +445,11 @@ export default function Employees() {
       return;
     }
     if (
-      !(await confirmDialog(
-        `להעביר את ${subcontractor.name}${cascadeSuffix} לארכיון? לא יופיעו יותר לבחירה ברשומות חדשות, אבל הדוחות הקיימים לא ישתנו.`
-      ))
+      !(await confirmDialog(`להעביר את ${subcontractor.name}${cascadeSuffix} לארכיון?`, {
+        title: "להעביר לארכיון?",
+        mutedText: ARCHIVE_NOTE,
+        confirmLabel: "העבר לארכיון",
+      }))
     ) {
       return;
     }
@@ -467,11 +481,17 @@ export default function Employees() {
     const generalRates = subcontractorGeneralRates(subcontractor);
     const employeeNote =
       subEmployees.length > 0 ? ` וכל ${subEmployees.length} העובדים שלו` : "";
+    const cascadeMutedText = employeeNote
+      ? `יימחקו גם${employeeNote}, וכל התעריפים ורישומי העבודה הקשורים.`
+      : "יימחקו גם כל התעריפים ורישומי העבודה הקשורים.";
+
     if (
-      !(await confirmDialog(
-        `למחוק את ${subcontractor.name}${employeeNote} לצמיתות? בשונה מהעברה לארכיון, מחיקה תשפיע גם על דוחות והיסטוריה שכבר נרשמו (תעריפים, רישום עבודה והיסטוריה של כל עובדיו).`,
-        { danger: true }
-      ))
+      !(await confirmDialog(`למחוק את ${subcontractor.name} לצמיתות?`, {
+        title: "מחיקה לצמיתות?",
+        mutedText: cascadeMutedText,
+        confirmLabel: "מחק לצמיתות",
+        danger: true,
+      }))
     ) {
       return;
     }
@@ -503,7 +523,12 @@ export default function Employees() {
   const bulkArchiveSelectedSubcontractors = async () => {
     if (
       !(await confirmDialog(
-        `להעביר את ${selectedSubcontractorIds.length} קבלני המשנה שנבחרו לארכיון? הם והעובדים שלהם לא יופיעו יותר לבחירה ברשומות חדשות, אבל הדוחות הקיימים לא ישתנו.`
+        `להעביר את ${selectedSubcontractorIds.length} קבלני המשנה שנבחרו לארכיון?`,
+        {
+          title: "להעביר לארכיון?",
+          mutedText: ARCHIVE_NOTE,
+          confirmLabel: "העבר לארכיון",
+        }
       ))
     ) {
       return;
@@ -536,10 +561,12 @@ export default function Employees() {
   const bulkDeleteSelectedSubcontractors = async () => {
     const selected = subcontractors.filter((s) => selectedSubcontractorIds.includes(s.id));
     if (
-      !(await confirmDialog(
-        `למחוק ${selected.length} קבלני משנה שנבחרו לצמיתות? בשונה מהעברה לארכיון, מחיקה תשפיע גם על דוחות והיסטוריה שכבר נרשמו (תעריפים, רישום עבודה והיסטוריה של כל עובדיהם).`,
-        { danger: true }
-      ))
+      !(await confirmDialog(`למחוק ${selected.length} קבלני משנה שנבחרו לצמיתות?`, {
+        title: "מחיקה לצמיתות?",
+        mutedText: "הפעולה תשפיע גם על דוחות והיסטוריה קיימים (תעריפים, רישום עבודה והיסטוריה של כל עובדיהם).",
+        confirmLabel: "מחק לצמיתות",
+        danger: true,
+      }))
     ) {
       return;
     }

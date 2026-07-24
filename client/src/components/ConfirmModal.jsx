@@ -7,9 +7,14 @@ import ModalShell from "./ModalShell.jsx";
 // unstyled system dialog. `danger` swaps the confirm button to the same
 // red delete-btn style used for destructive row actions elsewhere;
 // non-destructive confirmations (archive, save, ...) keep the default
-// primary-btn blue.
+// primary-btn blue. `title` is dynamic per caller (archive/delete/save use
+// their own fixed titles — see the three templates callers follow).
+// `mutedText`, when given, renders as a second, de-emphasized line below
+// the main message (e.g. a cascade note or "can't be undone" detail).
 export default function ConfirmModal({
+  title = "אישור פעולה",
   message,
+  mutedText,
   confirmLabel = "אישור",
   cancelLabel = "ביטול",
   danger = false,
@@ -18,7 +23,7 @@ export default function ConfirmModal({
 }) {
   return (
     <ModalShell
-      title="אישור פעולה"
+      title={title}
       onClose={onCancel}
       actions={
         <>
@@ -36,6 +41,7 @@ export default function ConfirmModal({
       }
     >
       <p style={{ whiteSpace: "pre-line" }}>{message}</p>
+      {mutedText && <p className="modal-note">{mutedText}</p>}
     </ModalShell>
   );
 }

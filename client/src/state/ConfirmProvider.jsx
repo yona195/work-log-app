@@ -28,7 +28,9 @@ export function ConfirmProvider({ children }) {
       {children}
       {request && (
         <ConfirmModal
+          title={request.title}
           message={request.message}
+          mutedText={request.mutedText}
           danger={request.danger}
           confirmLabel={request.confirmLabel}
           cancelLabel={request.cancelLabel}

@@ -99,7 +99,19 @@ export default function EditRateModal({ rates, onClose }) {
       return;
     }
 
-    if (!(await confirmDialog(`לשמור את השינויים עבור כל ${rates.length} התעריפים בקבוצה?`))) return;
+    const confirmMain =
+      rates.length === 1
+        ? "ההכנסה והעלות יתעדכנו לתעריף זה."
+        : "ההכנסה והעלות יתעדכנו לכל התעריפים בקבוצה הזו.";
+    if (
+      !(await confirmDialog(confirmMain, {
+        title: "לשמור שינויים?",
+        mutedText: "השינוי ישפיע גם על חישובים כספיים קודמים שכבר השתמשו בתעריפים האלה.",
+        confirmLabel: "שמור",
+      }))
+    ) {
+      return;
+    }
 
     setIsSubmitting(true);
     try {

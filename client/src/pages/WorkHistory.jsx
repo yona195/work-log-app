@@ -329,10 +329,12 @@ export default function WorkHistory() {
 
     if (!isPartial) {
       if (
-        await confirmDialog(
-          `למחוק את הרשומה כולה (${registration.totalEmployeeCount} עובדים מכל הקבלנים)?`,
-          { danger: true }
-        )
+        await confirmDialog("למחוק את הרשומה כולה לצמיתות?", {
+          title: "מחיקה לצמיתות?",
+          mutedText: `הרשומה כוללת ${registration.totalEmployeeCount} עובדים מכל הקבלנים.`,
+          confirmLabel: "מחק לצמיתות",
+          danger: true,
+        })
       ) {
         deleteItem("workLogs", registration.log.id);
       }
@@ -360,7 +362,15 @@ export default function WorkHistory() {
   // for WorkLog.jsx's "רשומות אחרונות").
   const bulkDeleteSelectedRegistrations = async () => {
     const total = selectedRegistrationIds.length;
-    if (!(await confirmDialog(`למחוק ${total} רשומות שנבחרו לצמיתות?`, { danger: true }))) return;
+    if (
+      !(await confirmDialog(`למחוק ${total} רשומות שנבחרו לצמיתות?`, {
+        title: "מחיקה לצמיתות?",
+        confirmLabel: "מחק לצמיתות",
+        danger: true,
+      }))
+    ) {
+      return;
+    }
     await runBulkOperation("מוחק רשומות עבודה", total, async (setProgress) => {
       let done = 0;
       for (const id of selectedRegistrationIds) {

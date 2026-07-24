@@ -25,7 +25,22 @@ export default function EditSimpleItemModal({ title, initialName, onSave, onClos
         return;
       }
     }
-    if (!(await confirmDialog("לשמור את השינויים?"))) return;
+    const nameChanged = trimmed !== initialName;
+    const confirmMain = nameChanged
+      ? `השם ${initialName} ישתנה ל-${trimmed}.`
+      : "לשמור את השינויים?";
+    const confirmMutedText = nameChanged
+      ? "השם החדש יופיע גם בדוחות ורישומים קודמים שכבר כוללים אותו."
+      : undefined;
+    if (
+      !(await confirmDialog(confirmMain, {
+        title: "לשמור שינויים?",
+        mutedText: confirmMutedText,
+        confirmLabel: "שמור",
+      }))
+    ) {
+      return;
+    }
 
     setIsSubmitting(true);
     try {

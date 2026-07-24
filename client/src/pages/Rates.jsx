@@ -20,6 +20,14 @@ import { useBulkSelection } from "../components/useBulkSelection.js";
 import { useBulkOperation } from "../components/useBulkOperation.jsx";
 import { findRedundantAt } from "../lib/rateConsolidation.js";
 
+// The muted second line under every archive confirmation in the app is
+// the same fixed explanation, regardless of what's being archived.
+const ARCHIVE_NOTE = "לא יופיע יותר לבחירה ברשומות חדשות. הדוחות וההיסטוריה הקיימים לא ישתנו.";
+
+// The muted second line under every rate-delete confirmation — the same
+// financial-impact note regardless of how many rates are involved.
+const RATE_DELETE_NOTE = "הפעולה תשפיע גם על חישובים כספיים היסטוריים שהשתמשו בתעריפים האלה.";
+
 const EMPTY_LIST_FILTERS = {
   group: "",
   subcontractorId: "",
@@ -388,10 +396,12 @@ export default function Rates() {
 
   const bulkDeleteSelectedRates = async () => {
     if (
-      !(await confirmDialog(
-        `למחוק ${selectedRateIds.length} תעריפים שנבחרו לצמיתות? בשונה מהעברה לארכיון, מחיקה תשפיע גם על חישובים כספיים היסטוריים שכבר השתמשו בתעריפים האלה.`,
-        { danger: true }
-      ))
+      !(await confirmDialog(`למחוק ${selectedRateIds.length} תעריפים שנבחרו לצמיתות?`, {
+        title: "מחיקה לצמיתות?",
+        mutedText: RATE_DELETE_NOTE,
+        confirmLabel: "מחק לצמיתות",
+        danger: true,
+      }))
     ) {
       return;
     }
@@ -411,9 +421,11 @@ export default function Rates() {
 
   const bulkArchiveSelectedRates = async () => {
     if (
-      !(await confirmDialog(
-        `להעביר את ${selectedRateIds.length} התעריפים שנבחרו לארכיון? התעריפים לא יופיעו יותר לבחירה, אבל הדוחות הקיימים לא ישתנו.`
-      ))
+      !(await confirmDialog(`להעביר את ${selectedRateIds.length} התעריפים שנבחרו לארכיון?`, {
+        title: "להעביר לארכיון?",
+        mutedText: ARCHIVE_NOTE,
+        confirmLabel: "העבר לארכיון",
+      }))
     ) {
       return;
     }
@@ -442,9 +454,11 @@ export default function Rates() {
       return;
     }
     if (
-      !(await confirmDialog(
-        "להעביר את התעריף לארכיון? התעריף לא יופיע יותר לבחירה, אבל הדוחות הקיימים לא ישתנו."
-      ))
+      !(await confirmDialog("להעביר את התעריף לארכיון?", {
+        title: "להעביר לארכיון?",
+        mutedText: ARCHIVE_NOTE,
+        confirmLabel: "העבר לארכיון",
+      }))
     ) {
       return;
     }
@@ -453,10 +467,12 @@ export default function Rates() {
 
   const deleteRate = async (rate) => {
     if (
-      !(await confirmDialog(
-        "למחוק את התעריף לצמיתות? בשונה מהעברה לארכיון, מחיקה תשפיע גם על חישובים כספיים היסטוריים שכבר השתמשו בתעריף הזה.",
-        { danger: true }
-      ))
+      !(await confirmDialog("למחוק את התעריף לצמיתות?", {
+        title: "מחיקה לצמיתות?",
+        mutedText: RATE_DELETE_NOTE,
+        confirmLabel: "מחק לצמיתות",
+        danger: true,
+      }))
     ) {
       return;
     }
@@ -485,9 +501,11 @@ export default function Rates() {
       return;
     }
     if (
-      !(await confirmDialog(
-        `להעביר את כל ${total} התעריפים בקבוצה לארכיון? התעריפים לא יופיעו יותר לבחירה, אבל הדוחות הקיימים לא ישתנו.`
-      ))
+      !(await confirmDialog(`להעביר את כל ${total} התעריפים בקבוצה לארכיון?`, {
+        title: "להעביר לארכיון?",
+        mutedText: ARCHIVE_NOTE,
+        confirmLabel: "העבר לארכיון",
+      }))
     ) {
       return;
     }
@@ -506,10 +524,12 @@ export default function Rates() {
   const deleteRateGroup = async (group) => {
     const total = group.rates.length;
     if (
-      !(await confirmDialog(
-        `למחוק את כל ${total} התעריפים בקבוצה לצמיתות? בשונה מהעברה לארכיון, מחיקה תשפיע גם על חישובים כספיים היסטוריים שכבר השתמשו בתעריפים האלה.`,
-        { danger: true }
-      ))
+      !(await confirmDialog(`למחוק את כל ${total} התעריפים בקבוצה לצמיתות?`, {
+        title: "מחיקה לצמיתות?",
+        mutedText: RATE_DELETE_NOTE,
+        confirmLabel: "מחק לצמיתות",
+        danger: true,
+      }))
     ) {
       return;
     }

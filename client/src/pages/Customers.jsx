@@ -9,6 +9,10 @@ import Pagination, { usePagedList } from "../components/Pagination.jsx";
 import { useBulkSelection } from "../components/useBulkSelection.js";
 import { useBulkOperation } from "../components/useBulkOperation.jsx";
 
+// The muted second line under every archive confirmation in the app is
+// the same fixed explanation, regardless of what's being archived.
+const ARCHIVE_NOTE = "לא יופיע יותר לבחירה ברשומות חדשות. הדוחות וההיסטוריה הקיימים לא ישתנו.";
+
 export default function Customers() {
   const { data, addItem, updateItem, deleteItem } = useData();
   const confirmDialog = useConfirm();
@@ -67,9 +71,11 @@ export default function Customers() {
       return;
     }
     if (
-      !(await confirmDialog(
-        `להעביר את ${item.name} לארכיון? הפריט לא יופיע יותר לבחירה ברשומות חדשות, אבל הדוחות הקיימים לא ישתנו.`
-      ))
+      !(await confirmDialog(`להעביר את ${item.name} לארכיון?`, {
+        title: "להעביר לארכיון?",
+        mutedText: ARCHIVE_NOTE,
+        confirmLabel: "העבר לארכיון",
+      }))
     ) {
       return;
     }
@@ -106,13 +112,18 @@ export default function Customers() {
     const cascadeParts = [];
     if (customerRates.length > 0) cascadeParts.push(`${customerRates.length} תעריפים`);
     if (customerWorkLogs.length > 0) cascadeParts.push(`${customerWorkLogs.length} רשומות עבודה`);
-    const cascadeNote = cascadeParts.length > 0 ? ` וכל ${cascadeParts.join(", ")}` : "";
+    const cascadeMutedText =
+      cascadeParts.length > 0
+        ? `יימחקו גם ${cascadeParts.join(", ")}. הפעולה תשפיע על דוחות והיסטוריה קיימים.`
+        : "הפעולה תשפיע על דוחות והיסטוריה קיימים.";
 
     if (
-      !(await confirmDialog(
-        `למחוק את ${item.name}${cascadeNote} לצמיתות? בשונה מהעברה לארכיון, מחיקה תשפיע גם על דוחות והיסטוריה שכבר נרשמו עם הפריט הזה.`,
-        { danger: true }
-      ))
+      !(await confirmDialog(`למחוק את ${item.name} לצמיתות?`, {
+        title: "מחיקה לצמיתות?",
+        mutedText: cascadeMutedText,
+        confirmLabel: "מחק לצמיתות",
+        danger: true,
+      }))
     ) {
       return;
     }
@@ -126,9 +137,11 @@ export default function Customers() {
 
   const bulkArchiveSelectedCustomers = async () => {
     if (
-      !(await confirmDialog(
-        `להעביר את ${selectedCustomerIds.length} המזמינים שנבחרו לארכיון? המזמינים לא יופיעו יותר לבחירה ברשומות חדשות, אבל הדוחות הקיימים לא ישתנו.`
-      ))
+      !(await confirmDialog(`להעביר את ${selectedCustomerIds.length} המזמינים שנבחרו לארכיון?`, {
+        title: "להעביר לארכיון?",
+        mutedText: ARCHIVE_NOTE,
+        confirmLabel: "העבר לארכיון",
+      }))
     ) {
       return;
     }
@@ -149,10 +162,12 @@ export default function Customers() {
   const bulkDeleteSelectedCustomers = async () => {
     const selected = customers.filter((c) => selectedCustomerIds.includes(c.id));
     if (
-      !(await confirmDialog(
-        `למחוק ${selected.length} מזמינים שנבחרו לצמיתות? בשונה מהעברה לארכיון, מחיקה תשפיע גם על דוחות והיסטוריה שכבר נרשמו איתם (תעריפים ורישומי עבודה).`,
-        { danger: true }
-      ))
+      !(await confirmDialog(`למחוק ${selected.length} מזמינים שנבחרו לצמיתות?`, {
+        title: "מחיקה לצמיתות?",
+        mutedText: "הפעולה תשפיע גם על דוחות והיסטוריה קיימים (תעריפים ורישומי עבודה).",
+        confirmLabel: "מחק לצמיתות",
+        danger: true,
+      }))
     ) {
       return;
     }

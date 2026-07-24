@@ -1824,6 +1824,14 @@ body.loading .menu-overlay {
     margin-top: 20px;
 }
 
+.modal-note {
+    margin-top: 6px;
+
+    color: var(--color-muted);
+    font-size: 13px;
+    font-weight: 400;
+}
+
 /* .delete-btn's red styling is normally scoped under .report-row-actions
    (row-level action buttons) — ConfirmModal's "danger" confirm button
    lives in .modal-actions instead, so it needs the same color treatment

@@ -81,7 +81,14 @@ export default function EditWorkLogModal({ log, onClose }) {
       alert("נא למלא תאריך, עובד, אתר, מבנה ומזמין");
       return;
     }
-    if (!(await confirmDialog("לשמור את השינויים?"))) return;
+    if (
+      !(await confirmDialog("לשמור את השינויים ברשומה?", {
+        title: "לשמור שינויים?",
+        confirmLabel: "שמור",
+      }))
+    ) {
+      return;
+    }
 
     setIsSubmitting(true);
     try {

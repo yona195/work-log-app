@@ -14,6 +14,10 @@ import CompactRow from "../components/CompactRow.jsx";
 import { useBulkSelection } from "../components/useBulkSelection.js";
 import { useBulkOperation } from "../components/useBulkOperation.jsx";
 
+// The muted second line under every archive confirmation in the app is
+// the same fixed explanation, regardless of what's being archived.
+const ARCHIVE_NOTE = "לא יופיע יותר לבחירה ברשומות חדשות. הדוחות וההיסטוריה הקיימים לא ישתנו.";
+
 export default function Sites() {
   const { data, addItem, updateItem, deleteItem, refresh } = useData();
   const confirmDialog = useConfirm();
@@ -137,9 +141,11 @@ export default function Sites() {
       return;
     }
     if (
-      !(await confirmDialog(
-        `להעביר את ${building.name} לארכיון? המבנה לא יופיע יותר לבחירה ברשומות חדשות, אבל הדוחות הקיימים לא ישתנו.`
-      ))
+      !(await confirmDialog(`להעביר את ${building.name} לארכיון?`, {
+        title: "להעביר לארכיון?",
+        mutedText: ARCHIVE_NOTE,
+        confirmLabel: "העבר לארכיון",
+      }))
     ) {
       return;
     }
@@ -186,11 +192,20 @@ export default function Sites() {
       getBuildingIds(log).map(String).includes(String(building.id))
     );
 
-    const confirmMessage =
+    const cascadeMutedText =
       affectedLogs.length > 0
-        ? `למחוק את ${building.name} לצמיתות? ${affectedLogs.length} רשומות עבודה שמצביעות על המבנה הזה יעברו אוטומטית למבנה "${GENERAL_BUILDING_NAME}" של האתר - שאר נתוני הרשומות (תאריך, עובדים, אתר, מזמין) יישארו ללא שינוי.`
-        : `למחוק את ${building.name} לצמיתות?`;
-    if (!(await confirmDialog(confirmMessage, { danger: true }))) return;
+        ? `${affectedLogs.length} רשומות עבודה יעברו אוטומטית למבנה "${GENERAL_BUILDING_NAME}" של האתר - שאר הנתונים יישארו ללא שינוי.`
+        : undefined;
+    if (
+      !(await confirmDialog(`למחוק את ${building.name} לצמיתות?`, {
+        title: "מחיקה לצמיתות?",
+        mutedText: cascadeMutedText,
+        confirmLabel: "מחק לצמיתות",
+        danger: true,
+      }))
+    ) {
+      return;
+    }
 
     const logState = new Map(workLogs.map((log) => [log.id, getBuildingIds(log).map(String)]));
     await runBulkOperation("מוחק מבנה", 1, async (setProgress) => {
@@ -201,9 +216,11 @@ export default function Sites() {
 
   const bulkArchiveSelectedBuildings = async () => {
     if (
-      !(await confirmDialog(
-        `להעביר את ${selectedBuildingIds.length} המבנים שנבחרו לארכיון? המבנים לא יופיעו יותר לבחירה ברשומות חדשות, אבל הדוחות הקיימים לא ישתנו.`
-      ))
+      !(await confirmDialog(`להעביר את ${selectedBuildingIds.length} המבנים שנבחרו לארכיון?`, {
+        title: "להעביר לארכיון?",
+        mutedText: ARCHIVE_NOTE,
+        confirmLabel: "העבר לארכיון",
+      }))
     ) {
       return;
     }
@@ -224,10 +241,12 @@ export default function Sites() {
   const bulkDeleteSelectedBuildings = async () => {
     const selected = buildings.filter((b) => selectedBuildingIds.includes(b.id));
     if (
-      !(await confirmDialog(
-        `למחוק ${selected.length} מבנים שנבחרו לצמיתות? רשומות עבודה שמצביעות עליהם יעברו אוטומטית למבנה "${GENERAL_BUILDING_NAME}" של האתר המתאים - שאר נתוני הרשומות יישארו ללא שינוי.`,
-        { danger: true }
-      ))
+      !(await confirmDialog(`למחוק ${selected.length} מבנים שנבחרו לצמיתות?`, {
+        title: "מחיקה לצמיתות?",
+        mutedText: `רשומות עבודה שמצביעות עליהם יעברו אוטומטית למבנה "${GENERAL_BUILDING_NAME}" של האתר המתאים - שאר הנתונים יישארו ללא שינוי.`,
+        confirmLabel: "מחק לצמיתות",
+        danger: true,
+      }))
     ) {
       return;
     }
@@ -269,9 +288,11 @@ export default function Sites() {
       return;
     }
     if (
-      !(await confirmDialog(
-        `להעביר את ${site.name}${buildingNote} לארכיון? לא יופיעו יותר לבחירה ברשומות חדשות, אבל הדוחות הקיימים לא ישתנו.`
-      ))
+      !(await confirmDialog(`להעביר את ${site.name}${buildingNote} לארכיון?`, {
+        title: "להעביר לארכיון?",
+        mutedText: ARCHIVE_NOTE,
+        confirmLabel: "העבר לארכיון",
+      }))
     ) {
       return;
     }
@@ -305,12 +326,17 @@ export default function Sites() {
     if (siteRates.length > 0) cascadeParts.push(`${siteRates.length} תעריפים`);
     if (siteWorkLogs.length > 0) cascadeParts.push(`${siteWorkLogs.length} רשומות עבודה`);
     const cascadeNote = cascadeParts.length > 0 ? ` וכל ${cascadeParts.join(", ")}` : "";
+    const cascadeMutedText = cascadeNote
+      ? `יימחקו גם${cascadeNote}.`
+      : "הפעולה תשפיע על דוחות והיסטוריה קיימים.";
 
     if (
-      !(await confirmDialog(
-        `למחוק את ${site.name}${cascadeNote} לצמיתות? בשונה מהעברה לארכיון, מחיקה תשפיע גם על דוחות והיסטוריה שכבר נרשמו.`,
-        { danger: true }
-      ))
+      !(await confirmDialog(`למחוק את ${site.name} לצמיתות?`, {
+        title: "מחיקה לצמיתות?",
+        mutedText: cascadeMutedText,
+        confirmLabel: "מחק לצמיתות",
+        danger: true,
+      }))
     ) {
       return;
     }
@@ -344,9 +370,11 @@ export default function Sites() {
 
   const bulkArchiveSelectedSites = async () => {
     if (
-      !(await confirmDialog(
-        `להעביר את ${selectedSiteIds.length} האתרים שנבחרו לארכיון? האתרים והמבנים שלהם לא יופיעו יותר לבחירה ברשומות חדשות, אבל הדוחות הקיימים לא ישתנו.`
-      ))
+      !(await confirmDialog(`להעביר את ${selectedSiteIds.length} האתרים שנבחרו לארכיון?`, {
+        title: "להעביר לארכיון?",
+        mutedText: ARCHIVE_NOTE,
+        confirmLabel: "העבר לארכיון",
+      }))
     ) {
       return;
     }
@@ -376,10 +404,12 @@ export default function Sites() {
   const bulkDeleteSelectedSites = async () => {
     const selected = sites.filter((s) => selectedSiteIds.includes(s.id));
     if (
-      !(await confirmDialog(
-        `למחוק ${selected.length} אתרים שנבחרו לצמיתות? בשונה מהעברה לארכיון, מחיקה תשפיע גם על דוחות והיסטוריה שכבר נרשמו (מבנים, תעריפים ורישומי עבודה של כל אתר).`,
-        { danger: true }
-      ))
+      !(await confirmDialog(`למחוק ${selected.length} אתרים שנבחרו לצמיתות?`, {
+        title: "מחיקה לצמיתות?",
+        mutedText: "יימחקו גם כל המבנים, התעריפים ורישומי העבודה של כל אתר.",
+        confirmLabel: "מחק לצמיתות",
+        danger: true,
+      }))
     ) {
       return;
     }
