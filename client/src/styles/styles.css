@@ -130,7 +130,7 @@ img {
     gap: 20px;
 
     width: 100%;
-    min-height: 110px;
+    min-height: 80px;
     padding: 14px 16px;
 
     background: var(--color-background);
