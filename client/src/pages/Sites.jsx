@@ -378,8 +378,8 @@ export default function Sites() {
     if (siteRates.length > 0) cascadeParts.push(`${siteRates.length} תעריפים`);
     if (siteWorkLogs.length > 0) cascadeParts.push(`${siteWorkLogs.length} רשומות עבודה`);
     const cascadeNote = cascadeParts.length > 0 ? ` וכל ${cascadeParts.join(", ")}` : "";
-    const cascadeMutedText = cascadeNote
-      ? `יימחקו גם${cascadeNote}.`
+    const cascadeMutedText = cascadeParts.length > 0
+      ? `יימחקו גם ${cascadeParts.join(", ")}.`
       : "הפעולה תשפיע על דוחות והיסטוריה קיימים.";
 
     if (

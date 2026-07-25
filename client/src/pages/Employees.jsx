@@ -582,8 +582,8 @@ export default function Employees() {
     const generalRates = subcontractorGeneralRates(subcontractor);
     const employeeNote =
       subEmployees.length > 0 ? ` וכל ${subEmployees.length} העובדים שלו` : "";
-    const cascadeMutedText = employeeNote
-      ? `יימחקו גם${employeeNote}, וכל התעריפים ורישומי העבודה הקשורים.`
+    const cascadeMutedText = subEmployees.length > 0
+      ? `יימחקו גם ${subEmployees.length} העובדים שלו, וכל התעריפים ורישומי העבודה הקשורים.`
       : "יימחקו גם כל התעריפים ורישומי העבודה הקשורים.";
 
     if (
