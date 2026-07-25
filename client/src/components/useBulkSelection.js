@@ -37,5 +37,14 @@ export function useBulkSelection(pruneScope) {
 
   const clear = () => setSelectedIds([]);
 
-  return { selectedIds, toggle, isFullySelected, toggleAll, clear };
+  // Removes exactly the given ids, leaving every other selected id (e.g.
+  // from a different group/card that a scoped bulk action didn't touch)
+  // untouched — unlike `toggle`, this never re-adds an id, so it's safe
+  // to call with ids that may already be gone from the selection.
+  const deselectIds = (ids) => {
+    const idSet = new Set(ids);
+    setSelectedIds((prev) => prev.filter((id) => !idSet.has(id)));
+  };
+
+  return { selectedIds, toggle, isFullySelected, toggleAll, clear, deselectIds };
 }

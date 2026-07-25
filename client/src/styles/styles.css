@@ -132,8 +132,9 @@ img {
     width: 100%;
     padding: 24px 32px;
 
-    background: #111827;
+    background: linear-gradient(180deg, #111827 0%, #1a2333 100%);
     border-bottom: 2px solid var(--color-brand-orange);
+    border-inline-start: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .topbar h1 {
@@ -162,6 +163,8 @@ img {
     flex-shrink: 0;
 
     gap: 12px;
+
+    padding-inline-start: 24px;
 }
 
 .topbar-page-icon {

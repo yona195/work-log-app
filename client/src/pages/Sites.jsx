@@ -53,7 +53,7 @@ export default function Sites() {
     toggle: toggleBuildingSelection,
     isFullySelected: isBuildingGroupFullySelected,
     toggleAll: toggleAllBuildings,
-    clear: clearBuildingSelection,
+    deselectIds: deselectBuildingIds,
   } = useBulkSelection(selectableBuildings);
 
   // Which sites currently have their "בחר מבנים" picker expanded — closed
@@ -76,7 +76,7 @@ export default function Sites() {
     toggle: toggleSiteSelection,
     isFullySelected: isSiteGroupFullySelected,
     toggleAll: toggleAllSites,
-    clear: clearSiteSelection,
+    deselectIds: deselectSiteIds,
   } = useBulkSelection(visibleSites);
 
   const isAllVisibleSitesSelected = isSiteGroupFullySelected(visibleSites);
@@ -238,9 +238,13 @@ export default function Sites() {
     showToast("success", `${building.name} נמחק לצמיתות בהצלחה`);
   };
 
-  const bulkArchiveSelectedBuildings = async () => {
+  // `ids` defaults to every selected active building page-wide, but a
+  // caller scoped to one site's "בחר מבנים" panel passes just that
+  // site's own subset, so the action (and its confirm-dialog count)
+  // only ever touches what belongs to that site.
+  const bulkArchiveSelectedBuildings = async (ids = activeSelectedBuildingIds) => {
     if (
-      !(await confirmDialog(`להעביר את ${activeSelectedBuildingIds.length} המבנים שנבחרו לארכיון?`, {
+      !(await confirmDialog(`להעביר את ${ids.length} המבנים שנבחרו לארכיון?`, {
         title: "להעביר לארכיון?",
         mutedText: ARCHIVE_NOTE,
         confirmLabel: "העבר לארכיון",
@@ -248,23 +252,23 @@ export default function Sites() {
     ) {
       return;
     }
-    const total = activeSelectedBuildingIds.length;
+    const total = ids.length;
     await runBulkOperation("מעביר מבנים לארכיון", total, async (setProgress) => {
       let done = 0;
-      for (const id of activeSelectedBuildingIds) {
+      for (const id of ids) {
         // eslint-disable-next-line no-await-in-loop
         await updateItem("buildings", id, { archived: true }, { silent: true });
         done += 1;
         setProgress(done);
       }
     });
-    clearBuildingSelection();
+    deselectBuildingIds(ids);
     showToast("success", `${total} מבנים הועברו לארכיון בהצלחה`);
   };
 
-  const bulkRestoreSelectedBuildings = async () => {
+  const bulkRestoreSelectedBuildings = async (ids = archivedSelectedBuildingIds) => {
     if (
-      !(await confirmDialog(`לשחזר ${archivedSelectedBuildingIds.length} מבנים מהארכיון?`, {
+      !(await confirmDialog(`לשחזר ${ids.length} מבנים מהארכיון?`, {
         title: "לשחזר מהארכיון?",
         mutedText: "הפריטים יחזרו להופיע לבחירה ברשומות חדשות.",
         confirmLabel: "שחזר",
@@ -272,22 +276,22 @@ export default function Sites() {
     ) {
       return;
     }
-    const total = archivedSelectedBuildingIds.length;
+    const total = ids.length;
     await runBulkOperation("משחזר מבנים מהארכיון", total, async (setProgress) => {
       let done = 0;
-      for (const id of archivedSelectedBuildingIds) {
+      for (const id of ids) {
         // eslint-disable-next-line no-await-in-loop
         await updateItem("buildings", id, { archived: false }, { silent: true });
         done += 1;
         setProgress(done);
       }
     });
-    clearBuildingSelection();
+    deselectBuildingIds(ids);
     showToast("success", `${total} מבנים שוחזרו מהארכיון בהצלחה`);
   };
 
-  const bulkDeleteSelectedBuildings = async () => {
-    const selected = buildings.filter((b) => selectedBuildingIds.includes(b.id));
+  const bulkDeleteSelectedBuildings = async (ids = selectedBuildingIds) => {
+    const selected = buildings.filter((b) => ids.includes(b.id));
     if (
       !(await confirmDialog(`למחוק ${selected.length} מבנים שנבחרו לצמיתות?`, {
         title: "מחיקה לצמיתות?",
@@ -303,7 +307,7 @@ export default function Sites() {
       const logState = new Map(workLogs.map((log) => [log.id, getBuildingIds(log).map(String)]));
       await deleteBuildingsCascade(selected, logState, { silent: true }, setProgress);
     });
-    clearBuildingSelection();
+    deselectBuildingIds(ids);
     showToast("success", `${total} מבנים נמחקו בהצלחה`);
   };
 
@@ -442,7 +446,7 @@ export default function Sites() {
         setProgress(done);
       }
     });
-    clearSiteSelection();
+    deselectSiteIds(activeSelectedSiteIds);
     showToast("success", `${total} אתרים הועברו לארכיון בהצלחה`);
   };
 
@@ -474,7 +478,7 @@ export default function Sites() {
         setProgress(done);
       }
     });
-    clearSiteSelection();
+    deselectSiteIds(archivedSelectedSiteIds);
     showToast("success", `${total} אתרים שוחזרו מהארכיון בהצלחה`);
   };
 
@@ -518,7 +522,7 @@ export default function Sites() {
         setProgress(done);
       }
     });
-    clearSiteSelection();
+    deselectSiteIds(selectedSiteIds);
     showToast("success", `${total} אתרים נמחקו בהצלחה`);
   };
 
@@ -657,6 +661,21 @@ export default function Sites() {
                 (b) => String(b.siteId || "") === String(site.id)
               );
               const selectableSiteBuildings = siteBuildings.filter((b) => !isGeneralBuilding(b));
+
+              // Scoped to just this site's own buildings — its
+              // bulk-select-row must only ever count/act on its own
+              // buildings, not every selected building page-wide.
+              const siteSelectedItems = selectedBuildingItems.filter(
+                (b) => String(b.siteId || "") === String(site.id)
+              );
+              const selectedSiteBuildingIds = siteSelectedItems.map((b) => b.id);
+              const activeSelectedSiteBuildingIds = siteSelectedItems
+                .filter((b) => !b.archived)
+                .map((b) => b.id);
+              const archivedSelectedSiteBuildingIds = siteSelectedItems
+                .filter((b) => b.archived)
+                .map((b) => b.id);
+
               return (
                 <GroupCard
                   key={site.id}
@@ -720,33 +739,37 @@ export default function Sites() {
                             />
                             <span>בחר הכל</span>
                           </label>
-                          {selectedBuildingIds.length > 0 && (
+                          {selectedSiteBuildingIds.length > 0 && (
                             <div className="report-row-actions bulk-actions-inline">
-                              {archivedSelectedBuildingIds.length > 0 && (
+                              {archivedSelectedSiteBuildingIds.length > 0 && (
                                 <button
                                   className="archive-btn"
                                   type="button"
-                                  onClick={bulkRestoreSelectedBuildings}
+                                  onClick={() =>
+                                    bulkRestoreSelectedBuildings(archivedSelectedSiteBuildingIds)
+                                  }
                                 >
-                                  שחזר ({archivedSelectedBuildingIds.length})
+                                  שחזר ({archivedSelectedSiteBuildingIds.length})
                                 </button>
                               )}
-                              {activeSelectedBuildingIds.length > 0 && (
+                              {activeSelectedSiteBuildingIds.length > 0 && (
                                 <button
                                   className="archive-btn"
                                   type="button"
-                                  onClick={bulkArchiveSelectedBuildings}
+                                  onClick={() =>
+                                    bulkArchiveSelectedBuildings(activeSelectedSiteBuildingIds)
+                                  }
                                 >
-                                  ארכיון ({activeSelectedBuildingIds.length})
+                                  ארכיון ({activeSelectedSiteBuildingIds.length})
                                 </button>
                               )}
                               {advancedModeEnabled && (
                                 <button
                                   className="delete-btn"
                                   type="button"
-                                  onClick={bulkDeleteSelectedBuildings}
+                                  onClick={() => bulkDeleteSelectedBuildings(selectedSiteBuildingIds)}
                                 >
-                                  מחק ({selectedBuildingIds.length})
+                                  מחק ({selectedSiteBuildingIds.length})
                                 </button>
                               )}
                             </div>
