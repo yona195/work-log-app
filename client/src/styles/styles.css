@@ -137,34 +137,24 @@ img {
     border-inline-start: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-/* Small, localized glows near the page icon and the company logo,
-   instead of a gradient spanning the whole bar — the center stays flat
-   #111827. Sit behind the real content (z-index: 0), which is why
-   .topbar-title/.topbar-meta-group get position + z-index below. */
-.topbar::before,
+/* One small, localized glow near the company logo, instead of a
+   gradient spanning the whole bar — the rest of the background stays
+   flat #111827. Sits behind the real content (z-index: 0), which is
+   why .topbar-meta-group gets position + z-index below. */
 .topbar::after {
     content: "";
 
     position: absolute;
     top: 0;
     bottom: 0;
+    left: 0;
 
     width: 180px;
 
+    background: radial-gradient(ellipse at left, rgba(231, 94, 40, 0.12) 0%, rgba(231, 94, 40, 0) 70%);
+
     pointer-events: none;
     z-index: 0;
-}
-
-.topbar::before {
-    right: 0;
-
-    background: radial-gradient(ellipse at right, rgba(231, 94, 40, 0.12) 0%, rgba(231, 94, 40, 0) 70%);
-}
-
-.topbar::after {
-    left: 0;
-
-    background: radial-gradient(ellipse at left, rgba(231, 94, 40, 0.12) 0%, rgba(231, 94, 40, 0) 70%);
 }
 
 .topbar h1 {
@@ -203,7 +193,7 @@ img {
 .topbar-page-icon {
     font-size: 36px;
 
-    color: var(--color-brand-orange);
+    color: #f0956a;
 }
 
 .topbar-meta-group {
@@ -812,7 +802,7 @@ tbody tr:hover {
     padding: 0 10px 18px;
     margin-bottom: 12px;
 
-    color: #f0956a;
+    color: #e75e28;
 
     font-family: "Rubik", sans-serif;
     font-size: 25px;
