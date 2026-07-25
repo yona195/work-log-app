@@ -125,11 +125,12 @@ img {
     position: relative;
 
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     justify-content: space-between;
     gap: 20px;
 
     width: 100%;
+    min-height: 110px;
     padding: 14px 16px;
 
     background: var(--color-background);
