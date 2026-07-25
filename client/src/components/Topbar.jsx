@@ -8,10 +8,8 @@ export default function Topbar({ title, icon }) {
   return (
     <header className="topbar">
       <div className="topbar-title">
-        <span className="topbar-page-icon-frame">
-          <span className="material-symbols-rounded topbar-page-icon" aria-hidden="true">
-            {icon}
-          </span>
+        <span className="material-symbols-rounded topbar-page-icon" aria-hidden="true">
+          {icon}
         </span>
         <div className="topbar-title-text">
           <h1>{title}</h1>

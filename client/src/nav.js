@@ -18,8 +18,8 @@ export const NAV_SECTIONS = [
       {
         path: "/work-history",
         icon: "history",
-        label: "היסטוריית עבודה",
-        title: "היסטוריית עבודה",
+        label: "היסטוריה",
+        title: "היסטוריה",
       },
     ],
   },
@@ -29,8 +29,8 @@ export const NAV_SECTIONS = [
       {
         path: "/reports",
         icon: "description",
-        label: "דוחות למזמיני עבודה",
-        title: "דוחות למזמיני עבודה",
+        label: "דוחות מזמינים",
+        title: "דוחות מזמינים",
       },
       {
         path: "/employee-reports",
@@ -46,20 +46,20 @@ export const NAV_SECTIONS = [
       {
         path: "/employees",
         icon: "groups",
-        label: "עובדים וקבלנים",
-        title: "עובדים וקבלנים",
+        label: "עובדים",
+        title: "עובדים",
       },
       {
         path: "/customers",
         icon: "person",
-        label: "מזמיני עבודה",
-        title: "מזמיני עבודה",
+        label: "מזמינים",
+        title: "מזמינים",
       },
       {
         path: "/sites",
         icon: "location_city",
-        label: "אתרי עבודה",
-        title: "אתרי עבודה",
+        label: "אתרים",
+        title: "אתרים",
       },
       {
         path: "/rates",
