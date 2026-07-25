@@ -82,6 +82,21 @@ export default function Sites() {
   const isAllVisibleSitesSelected = isSiteGroupFullySelected(visibleSites);
   const toggleSelectAllVisibleSites = () => toggleAllSites(visibleSites);
 
+  // A selection can mix active and archived items (e.g. selecting across
+  // pages while "הצג פריטים בארכיון" is on) — split it so "ארכיון (N)"/
+  // "שחזר (N)" only ever count and act on the subset each one applies to.
+  const selectedSiteItems = sites.filter((s) => selectedSiteIds.includes(s.id));
+  const activeSelectedSiteIds = selectedSiteItems.filter((s) => !s.archived).map((s) => s.id);
+  const archivedSelectedSiteIds = selectedSiteItems.filter((s) => s.archived).map((s) => s.id);
+
+  const selectedBuildingItems = buildings.filter((b) => selectedBuildingIds.includes(b.id));
+  const activeSelectedBuildingIds = selectedBuildingItems
+    .filter((b) => !b.archived)
+    .map((b) => b.id);
+  const archivedSelectedBuildingIds = selectedBuildingItems
+    .filter((b) => b.archived)
+    .map((b) => b.id);
+
   // Every delete button on this page (row/group/bulk) is hidden until this
   // is checked — "ארכיון"/"ערוך" stay visible either way, since only delete
   // is dangerous enough to need a second, explicit door.
@@ -225,7 +240,7 @@ export default function Sites() {
 
   const bulkArchiveSelectedBuildings = async () => {
     if (
-      !(await confirmDialog(`להעביר את ${selectedBuildingIds.length} המבנים שנבחרו לארכיון?`, {
+      !(await confirmDialog(`להעביר את ${activeSelectedBuildingIds.length} המבנים שנבחרו לארכיון?`, {
         title: "להעביר לארכיון?",
         mutedText: ARCHIVE_NOTE,
         confirmLabel: "העבר לארכיון",
@@ -233,10 +248,10 @@ export default function Sites() {
     ) {
       return;
     }
-    const total = selectedBuildingIds.length;
+    const total = activeSelectedBuildingIds.length;
     await runBulkOperation("מעביר מבנים לארכיון", total, async (setProgress) => {
       let done = 0;
-      for (const id of selectedBuildingIds) {
+      for (const id of activeSelectedBuildingIds) {
         // eslint-disable-next-line no-await-in-loop
         await updateItem("buildings", id, { archived: true }, { silent: true });
         done += 1;
@@ -249,7 +264,7 @@ export default function Sites() {
 
   const bulkRestoreSelectedBuildings = async () => {
     if (
-      !(await confirmDialog(`לשחזר ${selectedBuildingIds.length} מבנים מהארכיון?`, {
+      !(await confirmDialog(`לשחזר ${archivedSelectedBuildingIds.length} מבנים מהארכיון?`, {
         title: "לשחזר מהארכיון?",
         mutedText: "הפריטים יחזרו להופיע לבחירה ברשומות חדשות.",
         confirmLabel: "שחזר",
@@ -257,10 +272,10 @@ export default function Sites() {
     ) {
       return;
     }
-    const total = selectedBuildingIds.length;
+    const total = archivedSelectedBuildingIds.length;
     await runBulkOperation("משחזר מבנים מהארכיון", total, async (setProgress) => {
       let done = 0;
-      for (const id of selectedBuildingIds) {
+      for (const id of archivedSelectedBuildingIds) {
         // eslint-disable-next-line no-await-in-loop
         await updateItem("buildings", id, { archived: false }, { silent: true });
         done += 1;
@@ -403,7 +418,7 @@ export default function Sites() {
 
   const bulkArchiveSelectedSites = async () => {
     if (
-      !(await confirmDialog(`להעביר את ${selectedSiteIds.length} האתרים שנבחרו לארכיון?`, {
+      !(await confirmDialog(`להעביר את ${activeSelectedSiteIds.length} האתרים שנבחרו לארכיון?`, {
         title: "להעביר לארכיון?",
         mutedText: ARCHIVE_NOTE,
         confirmLabel: "העבר לארכיון",
@@ -411,7 +426,7 @@ export default function Sites() {
     ) {
       return;
     }
-    const selected = sites.filter((s) => selectedSiteIds.includes(s.id));
+    const selected = sites.filter((s) => activeSelectedSiteIds.includes(s.id));
     const total = selected.length;
     await runBulkOperation("מעביר אתרים לארכיון", total, async (setProgress) => {
       let done = 0;
@@ -435,7 +450,7 @@ export default function Sites() {
   // buildings move together), just restoring instead.
   const bulkRestoreSelectedSites = async () => {
     if (
-      !(await confirmDialog(`לשחזר ${selectedSiteIds.length} אתרים מהארכיון?`, {
+      !(await confirmDialog(`לשחזר ${archivedSelectedSiteIds.length} אתרים מהארכיון?`, {
         title: "לשחזר מהארכיון?",
         mutedText: "הפריטים יחזרו להופיע לבחירה ברשומות חדשות.",
         confirmLabel: "שחזר",
@@ -443,7 +458,7 @@ export default function Sites() {
     ) {
       return;
     }
-    const selected = sites.filter((s) => selectedSiteIds.includes(s.id));
+    const selected = sites.filter((s) => archivedSelectedSiteIds.includes(s.id));
     const total = selected.length;
     await runBulkOperation("משחזר אתרים מהארכיון", total, async (setProgress) => {
       let done = 0;
@@ -613,14 +628,16 @@ export default function Sites() {
             </label>
             {selectedSiteIds.length > 0 && (
               <div className="report-row-actions bulk-actions-inline">
-                {showArchived && (
+                {archivedSelectedSiteIds.length > 0 && (
                   <button className="archive-btn" type="button" onClick={bulkRestoreSelectedSites}>
-                    שחזר ({selectedSiteIds.length})
+                    שחזר ({archivedSelectedSiteIds.length})
                   </button>
                 )}
-                <button className="archive-btn" type="button" onClick={bulkArchiveSelectedSites}>
-                  ארכיון ({selectedSiteIds.length})
-                </button>
+                {activeSelectedSiteIds.length > 0 && (
+                  <button className="archive-btn" type="button" onClick={bulkArchiveSelectedSites}>
+                    ארכיון ({activeSelectedSiteIds.length})
+                  </button>
+                )}
                 {advancedModeEnabled && (
                   <button className="delete-btn" type="button" onClick={bulkDeleteSelectedSites}>
                     מחק ({selectedSiteIds.length})
@@ -705,22 +722,24 @@ export default function Sites() {
                           </label>
                           {selectedBuildingIds.length > 0 && (
                             <div className="report-row-actions bulk-actions-inline">
-                              {showArchived && (
+                              {archivedSelectedBuildingIds.length > 0 && (
                                 <button
                                   className="archive-btn"
                                   type="button"
                                   onClick={bulkRestoreSelectedBuildings}
                                 >
-                                  שחזר ({selectedBuildingIds.length})
+                                  שחזר ({archivedSelectedBuildingIds.length})
                                 </button>
                               )}
-                              <button
-                                className="archive-btn"
-                                type="button"
-                                onClick={bulkArchiveSelectedBuildings}
-                              >
-                                ארכיון ({selectedBuildingIds.length})
-                              </button>
+                              {activeSelectedBuildingIds.length > 0 && (
+                                <button
+                                  className="archive-btn"
+                                  type="button"
+                                  onClick={bulkArchiveSelectedBuildings}
+                                >
+                                  ארכיון ({activeSelectedBuildingIds.length})
+                                </button>
+                              )}
                               {advancedModeEnabled && (
                                 <button
                                   className="delete-btn"

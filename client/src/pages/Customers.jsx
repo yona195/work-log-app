@@ -44,6 +44,17 @@ export default function Customers() {
   const isAllCurrentPageSelected = isCustomerGroupFullySelected(pagedItems);
   const toggleSelectAllCurrentPage = () => toggleAllCustomers(pagedItems);
 
+  // A selection can mix active and archived items (e.g. selecting across
+  // pages while "הצג פריטים בארכיון" is on) — split it so "ארכיון (N)"/
+  // "שחזר (N)" only ever count and act on the subset each one applies to.
+  const selectedCustomerItems = customers.filter((c) => selectedCustomerIds.includes(c.id));
+  const activeSelectedCustomerIds = selectedCustomerItems
+    .filter((c) => !c.archived)
+    .map((c) => c.id);
+  const archivedSelectedCustomerIds = selectedCustomerItems
+    .filter((c) => c.archived)
+    .map((c) => c.id);
+
   // Every delete button on this page (row/bulk) is hidden until this is
   // checked — "ארכיון"/"ערוך" stay visible either way, since only delete
   // is dangerous enough to need a second, explicit door.
@@ -146,7 +157,7 @@ export default function Customers() {
 
   const bulkArchiveSelectedCustomers = async () => {
     if (
-      !(await confirmDialog(`להעביר את ${selectedCustomerIds.length} המזמינים שנבחרו לארכיון?`, {
+      !(await confirmDialog(`להעביר את ${activeSelectedCustomerIds.length} המזמינים שנבחרו לארכיון?`, {
         title: "להעביר לארכיון?",
         mutedText: ARCHIVE_NOTE,
         confirmLabel: "העבר לארכיון",
@@ -154,10 +165,10 @@ export default function Customers() {
     ) {
       return;
     }
-    const total = selectedCustomerIds.length;
+    const total = activeSelectedCustomerIds.length;
     await runBulkOperation("מעביר מזמינים לארכיון", total, async (setProgress) => {
       let done = 0;
-      for (const id of selectedCustomerIds) {
+      for (const id of activeSelectedCustomerIds) {
         // eslint-disable-next-line no-await-in-loop
         await updateItem("customers", id, { archived: true }, { silent: true });
         done += 1;
@@ -170,7 +181,7 @@ export default function Customers() {
 
   const bulkRestoreSelectedCustomers = async () => {
     if (
-      !(await confirmDialog(`לשחזר ${selectedCustomerIds.length} מזמינים מהארכיון?`, {
+      !(await confirmDialog(`לשחזר ${archivedSelectedCustomerIds.length} מזמינים מהארכיון?`, {
         title: "לשחזר מהארכיון?",
         mutedText: "הפריטים יחזרו להופיע לבחירה ברשומות חדשות.",
         confirmLabel: "שחזר",
@@ -178,10 +189,10 @@ export default function Customers() {
     ) {
       return;
     }
-    const total = selectedCustomerIds.length;
+    const total = archivedSelectedCustomerIds.length;
     await runBulkOperation("משחזר מזמינים מהארכיון", total, async (setProgress) => {
       let done = 0;
-      for (const id of selectedCustomerIds) {
+      for (const id of archivedSelectedCustomerIds) {
         // eslint-disable-next-line no-await-in-loop
         await updateItem("customers", id, { archived: false }, { silent: true });
         done += 1;
@@ -272,14 +283,16 @@ export default function Customers() {
             </label>
             {selectedCustomerIds.length > 0 && (
               <div className="report-row-actions bulk-actions-inline">
-                {showArchived && (
+                {archivedSelectedCustomerIds.length > 0 && (
                   <button className="archive-btn" type="button" onClick={bulkRestoreSelectedCustomers}>
-                    שחזר ({selectedCustomerIds.length})
+                    שחזר ({archivedSelectedCustomerIds.length})
                   </button>
                 )}
-                <button className="archive-btn" type="button" onClick={bulkArchiveSelectedCustomers}>
-                  ארכיון ({selectedCustomerIds.length})
-                </button>
+                {activeSelectedCustomerIds.length > 0 && (
+                  <button className="archive-btn" type="button" onClick={bulkArchiveSelectedCustomers}>
+                    ארכיון ({activeSelectedCustomerIds.length})
+                  </button>
+                )}
                 {advancedModeEnabled && (
                   <button className="delete-btn" type="button" onClick={bulkDeleteSelectedCustomers}>
                     מחק ({selectedCustomerIds.length})

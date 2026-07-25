@@ -7,14 +7,13 @@ export default function Topbar({ title, icon }) {
 
   return (
     <header className="topbar">
-      <div className="topbar-page-group">
-        <span className="topbar-page-accent" aria-hidden="true" />
+      <div className="topbar-title">
         <span className="topbar-page-icon-frame">
           <span className="material-symbols-rounded topbar-page-icon" aria-hidden="true">
             {icon}
           </span>
         </span>
-        <div className="topbar-title">
+        <div className="topbar-title-text">
           <h1>{title}</h1>
           <p>מערכת לניהול יומן עבודה</p>
         </div>

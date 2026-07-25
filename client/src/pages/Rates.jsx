@@ -394,6 +394,13 @@ export default function Rates() {
   const isGroupFullySelected = (group) => isRateGroupFullySelected(group.rates);
   const toggleSelectAllInGroup = (group) => toggleAllRates(group.rates);
 
+  // A selection can mix active and archived items (e.g. selecting across
+  // pages while "הצג פריטים בארכיון" is on) — split it so "ארכיון (N)"/
+  // "שחזר (N)" only ever count and act on the subset each one applies to.
+  const selectedRateItems = rates.filter((r) => selectedRateIds.includes(r.id));
+  const activeSelectedRateIds = selectedRateItems.filter((r) => !r.archived).map((r) => r.id);
+  const archivedSelectedRateIds = selectedRateItems.filter((r) => r.archived).map((r) => r.id);
+
   const bulkDeleteSelectedRates = async () => {
     if (
       !(await confirmDialog(`למחוק ${selectedRateIds.length} תעריפים שנבחרו לצמיתות?`, {
@@ -421,7 +428,7 @@ export default function Rates() {
 
   const bulkArchiveSelectedRates = async () => {
     if (
-      !(await confirmDialog(`להעביר את ${selectedRateIds.length} התעריפים שנבחרו לארכיון?`, {
+      !(await confirmDialog(`להעביר את ${activeSelectedRateIds.length} התעריפים שנבחרו לארכיון?`, {
         title: "להעביר לארכיון?",
         mutedText: ARCHIVE_NOTE,
         confirmLabel: "העבר לארכיון",
@@ -429,10 +436,10 @@ export default function Rates() {
     ) {
       return;
     }
-    const total = selectedRateIds.length;
+    const total = activeSelectedRateIds.length;
     await runBulkOperation("מעביר תעריפים לארכיון", total, async (setProgress) => {
       let done = 0;
-      for (const id of selectedRateIds) {
+      for (const id of activeSelectedRateIds) {
         // eslint-disable-next-line no-await-in-loop
         await updateItem("rates", id, { archived: true }, { silent: true });
         done += 1;
@@ -445,7 +452,7 @@ export default function Rates() {
 
   const bulkRestoreSelectedRates = async () => {
     if (
-      !(await confirmDialog(`לשחזר ${selectedRateIds.length} תעריפים מהארכיון?`, {
+      !(await confirmDialog(`לשחזר ${archivedSelectedRateIds.length} תעריפים מהארכיון?`, {
         title: "לשחזר מהארכיון?",
         mutedText: "הפריטים יחזרו להופיע לבחירה ברשומות חדשות.",
         confirmLabel: "שחזר",
@@ -453,10 +460,10 @@ export default function Rates() {
     ) {
       return;
     }
-    const total = selectedRateIds.length;
+    const total = archivedSelectedRateIds.length;
     await runBulkOperation("משחזר תעריפים מהארכיון", total, async (setProgress) => {
       let done = 0;
-      for (const id of selectedRateIds) {
+      for (const id of archivedSelectedRateIds) {
         // eslint-disable-next-line no-await-in-loop
         await updateItem("rates", id, { archived: false }, { silent: true });
         done += 1;
@@ -1118,14 +1125,16 @@ export default function Rates() {
             </label>
             {selectedRateIds.length > 0 && (
               <div className="report-row-actions bulk-actions-inline">
-                {showArchived && (
+                {archivedSelectedRateIds.length > 0 && (
                   <button className="archive-btn" type="button" onClick={bulkRestoreSelectedRates}>
-                    שחזר ({selectedRateIds.length})
+                    שחזר ({archivedSelectedRateIds.length})
                   </button>
                 )}
-                <button className="archive-btn" type="button" onClick={bulkArchiveSelectedRates}>
-                  ארכיון ({selectedRateIds.length})
-                </button>
+                {activeSelectedRateIds.length > 0 && (
+                  <button className="archive-btn" type="button" onClick={bulkArchiveSelectedRates}>
+                    ארכיון ({activeSelectedRateIds.length})
+                  </button>
+                )}
                 {advancedModeEnabled && (
                   <button className="delete-btn" type="button" onClick={bulkDeleteSelectedRates}>
                     מחק ({selectedRateIds.length})

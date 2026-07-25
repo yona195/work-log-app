@@ -212,6 +212,33 @@ export default function Employees() {
     toggleSelectAllVisibleSubcontractors();
   };
 
+  // A selection can mix active and archived items (e.g. selecting across
+  // "העובדים שלי" and a contractor's roster while "הצג פריטים בארכיון" is
+  // on) — split each side so "ארכיון (N)"/"שחזר (N)" only ever count and
+  // act on the subset each one applies to.
+  const selectedEmployeeItems = employees.filter((e) => selectedEmployeeIds.includes(e.id));
+  const activeSelectedEmployeeIds = selectedEmployeeItems
+    .filter((e) => !e.archived)
+    .map((e) => e.id);
+  const archivedSelectedEmployeeIds = selectedEmployeeItems
+    .filter((e) => e.archived)
+    .map((e) => e.id);
+
+  const selectedSubcontractorItems = subcontractors.filter((s) =>
+    selectedSubcontractorIds.includes(s.id)
+  );
+  const activeSelectedSubcontractorIds = selectedSubcontractorItems
+    .filter((s) => !s.archived)
+    .map((s) => s.id);
+  const archivedSelectedSubcontractorIds = selectedSubcontractorItems
+    .filter((s) => s.archived)
+    .map((s) => s.id);
+
+  const activeSelectedWorkforceCount =
+    activeSelectedEmployeeIds.length + activeSelectedSubcontractorIds.length;
+  const archivedSelectedWorkforceCount =
+    archivedSelectedEmployeeIds.length + archivedSelectedSubcontractorIds.length;
+
   // Which subcontractors currently have their "בחר עובדים" picker
   // expanded — closed by default, so the employees bulk-select row/list
   // only takes up space in a card once the user asks for it there.
@@ -390,7 +417,7 @@ export default function Employees() {
 
   const bulkArchiveSelectedEmployees = async () => {
     if (
-      !(await confirmDialog(`להעביר את ${selectedEmployeeIds.length} העובדים שנבחרו לארכיון?`, {
+      !(await confirmDialog(`להעביר את ${activeSelectedEmployeeIds.length} העובדים שנבחרו לארכיון?`, {
         title: "להעביר לארכיון?",
         mutedText: ARCHIVE_NOTE,
         confirmLabel: "העבר לארכיון",
@@ -398,10 +425,10 @@ export default function Employees() {
     ) {
       return;
     }
-    const total = selectedEmployeeIds.length;
+    const total = activeSelectedEmployeeIds.length;
     await runBulkOperation("מעביר עובדים לארכיון", total, async (setProgress) => {
       let done = 0;
-      for (const id of selectedEmployeeIds) {
+      for (const id of activeSelectedEmployeeIds) {
         // eslint-disable-next-line no-await-in-loop
         await updateItem("employees", id, { archived: true }, { silent: true });
         done += 1;
@@ -414,7 +441,7 @@ export default function Employees() {
 
   const bulkRestoreSelectedEmployees = async () => {
     if (
-      !(await confirmDialog(`לשחזר ${selectedEmployeeIds.length} עובדים מהארכיון?`, {
+      !(await confirmDialog(`לשחזר ${archivedSelectedEmployeeIds.length} עובדים מהארכיון?`, {
         title: "לשחזר מהארכיון?",
         mutedText: "הפריטים יחזרו להופיע לבחירה ברשומות חדשות.",
         confirmLabel: "שחזר",
@@ -422,10 +449,10 @@ export default function Employees() {
     ) {
       return;
     }
-    const total = selectedEmployeeIds.length;
+    const total = archivedSelectedEmployeeIds.length;
     await runBulkOperation("משחזר עובדים מהארכיון", total, async (setProgress) => {
       let done = 0;
-      for (const id of selectedEmployeeIds) {
+      for (const id of archivedSelectedEmployeeIds) {
         // eslint-disable-next-line no-await-in-loop
         await updateItem("employees", id, { archived: false }, { silent: true });
         done += 1;
@@ -577,7 +604,7 @@ export default function Employees() {
   const bulkArchiveSelectedSubcontractors = async () => {
     if (
       !(await confirmDialog(
-        `להעביר את ${selectedSubcontractorIds.length} קבלני המשנה שנבחרו לארכיון?`,
+        `להעביר את ${activeSelectedSubcontractorIds.length} קבלני המשנה שנבחרו לארכיון?`,
         {
           title: "להעביר לארכיון?",
           mutedText: ARCHIVE_NOTE,
@@ -587,7 +614,7 @@ export default function Employees() {
     ) {
       return;
     }
-    const selected = subcontractors.filter((s) => selectedSubcontractorIds.includes(s.id));
+    const selected = subcontractors.filter((s) => activeSelectedSubcontractorIds.includes(s.id));
     const total = selected.length;
     await runBulkOperation("מעביר קבלני משנה לארכיון", total, async (setProgress) => {
       let done = 0;
@@ -611,7 +638,7 @@ export default function Employees() {
   // all its own employees move together), just restoring instead.
   const bulkRestoreSelectedSubcontractors = async () => {
     if (
-      !(await confirmDialog(`לשחזר ${selectedSubcontractorIds.length} קבלני משנה מהארכיון?`, {
+      !(await confirmDialog(`לשחזר ${archivedSelectedSubcontractorIds.length} קבלני משנה מהארכיון?`, {
         title: "לשחזר מהארכיון?",
         mutedText: "הפריטים יחזרו להופיע לבחירה ברשומות חדשות.",
         confirmLabel: "שחזר",
@@ -619,7 +646,7 @@ export default function Employees() {
     ) {
       return;
     }
-    const selected = subcontractors.filter((s) => selectedSubcontractorIds.includes(s.id));
+    const selected = subcontractors.filter((s) => archivedSelectedSubcontractorIds.includes(s.id));
     const total = selected.length;
     await runBulkOperation("משחזר קבלני משנה מהארכיון", total, async (setProgress) => {
       let done = 0;
@@ -689,13 +716,13 @@ export default function Employees() {
   // behaves exactly as before (one confirm dialog), and a mixed selection
   // runs both in turn.
   const bulkArchiveSelectedWorkforce = async () => {
-    if (selectedEmployeeIds.length > 0) await bulkArchiveSelectedEmployees();
-    if (selectedSubcontractorIds.length > 0) await bulkArchiveSelectedSubcontractors();
+    if (activeSelectedEmployeeIds.length > 0) await bulkArchiveSelectedEmployees();
+    if (activeSelectedSubcontractorIds.length > 0) await bulkArchiveSelectedSubcontractors();
   };
 
   const bulkRestoreSelectedWorkforce = async () => {
-    if (selectedEmployeeIds.length > 0) await bulkRestoreSelectedEmployees();
-    if (selectedSubcontractorIds.length > 0) await bulkRestoreSelectedSubcontractors();
+    if (archivedSelectedEmployeeIds.length > 0) await bulkRestoreSelectedEmployees();
+    if (archivedSelectedSubcontractorIds.length > 0) await bulkRestoreSelectedSubcontractors();
   };
 
   const bulkDeleteSelectedWorkforce = async () => {
@@ -867,22 +894,24 @@ export default function Employees() {
             </label>
             {selectedEmployeeIds.length + selectedSubcontractorIds.length > 0 && (
               <div className="report-row-actions bulk-actions-inline">
-                {showArchived && (
+                {archivedSelectedWorkforceCount > 0 && (
                   <button
                     className="archive-btn"
                     type="button"
                     onClick={bulkRestoreSelectedWorkforce}
                   >
-                    שחזר ({selectedEmployeeIds.length + selectedSubcontractorIds.length})
+                    שחזר ({archivedSelectedWorkforceCount})
                   </button>
                 )}
-                <button
-                  className="archive-btn"
-                  type="button"
-                  onClick={bulkArchiveSelectedWorkforce}
-                >
-                  ארכיון ({selectedEmployeeIds.length + selectedSubcontractorIds.length})
-                </button>
+                {activeSelectedWorkforceCount > 0 && (
+                  <button
+                    className="archive-btn"
+                    type="button"
+                    onClick={bulkArchiveSelectedWorkforce}
+                  >
+                    ארכיון ({activeSelectedWorkforceCount})
+                  </button>
+                )}
                 {advancedModeEnabled && (
                   <button
                     className="delete-btn"
@@ -939,22 +968,24 @@ export default function Employees() {
                     </label>
                     {selectedEmployeeIds.length > 0 && (
                       <div className="report-row-actions bulk-actions-inline">
-                        {showArchived && (
+                        {archivedSelectedEmployeeIds.length > 0 && (
                           <button
                             className="archive-btn"
                             type="button"
                             onClick={bulkRestoreSelectedEmployees}
                           >
-                            שחזר ({selectedEmployeeIds.length})
+                            שחזר ({archivedSelectedEmployeeIds.length})
                           </button>
                         )}
-                        <button
-                          className="archive-btn"
-                          type="button"
-                          onClick={bulkArchiveSelectedEmployees}
-                        >
-                          ארכיון ({selectedEmployeeIds.length})
-                        </button>
+                        {activeSelectedEmployeeIds.length > 0 && (
+                          <button
+                            className="archive-btn"
+                            type="button"
+                            onClick={bulkArchiveSelectedEmployees}
+                          >
+                            ארכיון ({activeSelectedEmployeeIds.length})
+                          </button>
+                        )}
                         {advancedModeEnabled && (
                           <button
                             className="delete-btn"
@@ -1067,22 +1098,24 @@ export default function Employees() {
                           </label>
                           {selectedEmployeeIds.length > 0 && (
                             <div className="report-row-actions bulk-actions-inline">
-                              {showArchived && (
+                              {archivedSelectedEmployeeIds.length > 0 && (
                                 <button
                                   className="archive-btn"
                                   type="button"
                                   onClick={bulkRestoreSelectedEmployees}
                                 >
-                                  שחזר ({selectedEmployeeIds.length})
+                                  שחזר ({archivedSelectedEmployeeIds.length})
                                 </button>
                               )}
-                              <button
-                                className="archive-btn"
-                                type="button"
-                                onClick={bulkArchiveSelectedEmployees}
-                              >
-                                ארכיון ({selectedEmployeeIds.length})
-                              </button>
+                              {activeSelectedEmployeeIds.length > 0 && (
+                                <button
+                                  className="archive-btn"
+                                  type="button"
+                                  onClick={bulkArchiveSelectedEmployees}
+                                >
+                                  ארכיון ({activeSelectedEmployeeIds.length})
+                                </button>
+                              )}
                               {advancedModeEnabled && (
                                 <button
                                   className="delete-btn"
