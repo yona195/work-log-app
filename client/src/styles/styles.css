@@ -816,6 +816,13 @@ tbody tr:hover {
         rgba(255, 255, 255, 0.08);
 }
 
+.sidebar-logo img {
+    max-width: 100%;
+    max-height: 32px;
+
+    object-fit: contain;
+}
+
 
 /* =========================================
    14. קבוצות בתפריט
@@ -1119,6 +1126,10 @@ tbody tr:hover {
         text-align: right;
     }
 
+    .sidebar-logo img {
+        max-height: 26px;
+    }
+
     /* כותרות קבוצות */
 
     .sidebar-section-title {
@@ -1327,6 +1338,10 @@ tbody tr:hover {
 
     .sidebar-logo {
         font-size: 21px;
+    }
+
+    .sidebar-logo img {
+        max-height: 24px;
     }
 
     .topbar {

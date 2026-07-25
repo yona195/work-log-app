@@ -7,7 +7,9 @@ export default function Sidebar({ open, onNavigate }) {
 
   return (
     <aside className={`sidebar${open ? " open" : ""}`}>
-      <div className="sidebar-logo">יומן עבודה</div>
+      <div className="sidebar-logo">
+        <img src="/mitco-logo.png" alt="MITCO" />
+      </div>
 
       {NAV_SECTIONS.map((section, index) => (
         <div key={section.title}>
