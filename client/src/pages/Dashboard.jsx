@@ -127,40 +127,38 @@ export default function Dashboard() {
           )}
 
           <div className="cards dashboard-summary-cards" style={{ marginTop: 18 }}>
-            <div className="card dashboard-metric-revenue">
-              <h3>
+            <div className="card dashboard-metric-card dashboard-metric-revenue">
+              <h3 className="dashboard-metric-title">
                 <span className="material-symbols-rounded dashboard-metric-icon" aria-hidden="true">
                   payments
                 </span>
                 הכנסות
               </h3>
-              <p>{formatCurrency(totals.revenue)}</p>
+              <p className="dashboard-metric-value">{formatCurrency(totals.revenue)}</p>
             </div>
-            <div className="card dashboard-metric-cost">
-              <h3>
+            <div className="card dashboard-metric-card dashboard-metric-cost">
+              <h3 className="dashboard-metric-title">
                 <span className="material-symbols-rounded dashboard-metric-icon" aria-hidden="true">
                   shopping_cart
                 </span>
                 הוצאות
               </h3>
-              <p>{formatCurrency(totals.cost)}</p>
+              <p className="dashboard-metric-value">{formatCurrency(totals.cost)}</p>
             </div>
             <div
-              className={`card ${
+              className={`card dashboard-metric-card ${
                 totals.profit >= 0
                   ? "dashboard-metric-profit-positive"
                   : "dashboard-metric-profit-negative"
               }`}
             >
-              <h3>
+              <h3 className="dashboard-metric-title">
                 <span className="material-symbols-rounded dashboard-metric-icon" aria-hidden="true">
                   trending_up
                 </span>
                 רווח
               </h3>
-              <p className={totals.profit >= 0 ? "rates-profit-positive" : "rates-profit-negative"}>
-                {formatCurrency(totals.profit)}
-              </p>
+              <p className="dashboard-metric-value">{formatCurrency(totals.profit)}</p>
             </div>
           </div>
         </div>

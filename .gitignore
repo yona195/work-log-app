@@ -10,3 +10,5 @@ server/data/*.db-shm
 
 .env
 .DS_Store
+
+design-reference/
