@@ -955,26 +955,71 @@ export default function Employees() {
             }
           >
             {internalEmployeesExpanded && (
-              filteredInternalEmployees.length === 0 ? (
-                <p className="empty-message">
-                  {search ? "לא נמצאו עובדים שלי התואמים לחיפוש." : "אין עדיין עובדים שלי."}
-                </p>
-              ) : (
-                <div className="employees-compact-list">
-                  {filteredInternalEmployees.map((employee) => (
-                    <CompactRow
-                      key={employee.id}
-                      name={employee.name}
-                      archived={employee.archived}
-                      selected={selectedEmployeeIds.includes(employee.id)}
-                      onToggleSelect={() => toggleEmployeeSelection(employee.id)}
-                      onEdit={() => setEditingEmployee(employee)}
-                      onDelete={advancedModeEnabled ? () => deleteEmployee(employee) : undefined}
-                      onToggleArchive={() => toggleEmployeeArchive(employee)}
-                    />
-                  ))}
-                </div>
-              )
+              <>
+                {filteredInternalEmployees.length > 0 && (
+                  <div className="bulk-select-row">
+                    <label className="checkbox-item">
+                      <input
+                        type="checkbox"
+                        checked={isEmployeeGroupFullySelected(filteredInternalEmployees)}
+                        onChange={() => toggleAllEmployees(filteredInternalEmployees)}
+                      />
+                      <span>בחר הכל</span>
+                    </label>
+                    {selectedEmployeeIds.length > 0 && (
+                      <div className="report-row-actions bulk-actions-inline">
+                        {archivedSelectedEmployeeIds.length > 0 && (
+                          <button
+                            className="archive-btn"
+                            type="button"
+                            onClick={bulkRestoreSelectedEmployees}
+                          >
+                            שחזר ({archivedSelectedEmployeeIds.length})
+                          </button>
+                        )}
+                        {activeSelectedEmployeeIds.length > 0 && (
+                          <button
+                            className="archive-btn"
+                            type="button"
+                            onClick={bulkArchiveSelectedEmployees}
+                          >
+                            ארכיון ({activeSelectedEmployeeIds.length})
+                          </button>
+                        )}
+                        {advancedModeEnabled && (
+                          <button
+                            className="delete-btn"
+                            type="button"
+                            onClick={bulkDeleteSelectedEmployees}
+                          >
+                            מחק ({selectedEmployeeIds.length})
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+                {filteredInternalEmployees.length === 0 ? (
+                  <p className="empty-message">
+                    {search ? "לא נמצאו עובדים שלי התואמים לחיפוש." : "אין עדיין עובדים שלי."}
+                  </p>
+                ) : (
+                  <div className="employees-compact-list">
+                    {filteredInternalEmployees.map((employee) => (
+                      <CompactRow
+                        key={employee.id}
+                        name={employee.name}
+                        archived={employee.archived}
+                        selected={selectedEmployeeIds.includes(employee.id)}
+                        onToggleSelect={() => toggleEmployeeSelection(employee.id)}
+                        onEdit={() => setEditingEmployee(employee)}
+                        onDelete={advancedModeEnabled ? () => deleteEmployee(employee) : undefined}
+                        onToggleArchive={() => toggleEmployeeArchive(employee)}
+                      />
+                    ))}
+                  </div>
+                )}
+              </>
             )}
           </GroupCard>
         </div>
@@ -1040,28 +1085,73 @@ export default function Employees() {
                   }
                 >
                   {expandedSubcontractorEmployeeIds.has(subcontractor.id) && (
-                    filteredList.length === 0 ? (
-                      <p className="empty-message">
-                        {list.length === 0
-                          ? "אין עובדים המשויכים לקבלן הזה."
-                          : "לא נמצאו עובדים התואמים לחיפוש."}
-                      </p>
-                    ) : (
-                      <div className="employees-compact-list">
-                        {filteredList.map((employee) => (
-                          <CompactRow
-                            key={employee.id}
-                            name={employee.name}
-                            archived={employee.archived}
-                            selected={selectedEmployeeIds.includes(employee.id)}
-                            onToggleSelect={() => toggleEmployeeSelection(employee.id)}
-                            onEdit={() => setEditingEmployee(employee)}
-                            onDelete={advancedModeEnabled ? () => deleteEmployee(employee) : undefined}
-                            onToggleArchive={() => toggleEmployeeArchive(employee)}
-                          />
-                        ))}
-                      </div>
-                    )
+                    <>
+                      {filteredList.length > 0 && (
+                        <div className="bulk-select-row">
+                          <label className="checkbox-item">
+                            <input
+                              type="checkbox"
+                              checked={isEmployeeGroupFullySelected(filteredList)}
+                              onChange={() => toggleAllEmployees(filteredList)}
+                            />
+                            <span>בחר הכל</span>
+                          </label>
+                          {selectedEmployeeIds.length > 0 && (
+                            <div className="report-row-actions bulk-actions-inline">
+                              {archivedSelectedEmployeeIds.length > 0 && (
+                                <button
+                                  className="archive-btn"
+                                  type="button"
+                                  onClick={bulkRestoreSelectedEmployees}
+                                >
+                                  שחזר ({archivedSelectedEmployeeIds.length})
+                                </button>
+                              )}
+                              {activeSelectedEmployeeIds.length > 0 && (
+                                <button
+                                  className="archive-btn"
+                                  type="button"
+                                  onClick={bulkArchiveSelectedEmployees}
+                                >
+                                  ארכיון ({activeSelectedEmployeeIds.length})
+                                </button>
+                              )}
+                              {advancedModeEnabled && (
+                                <button
+                                  className="delete-btn"
+                                  type="button"
+                                  onClick={bulkDeleteSelectedEmployees}
+                                >
+                                  מחק ({selectedEmployeeIds.length})
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      {filteredList.length === 0 ? (
+                        <p className="empty-message">
+                          {list.length === 0
+                            ? "אין עובדים המשויכים לקבלן הזה."
+                            : "לא נמצאו עובדים התואמים לחיפוש."}
+                        </p>
+                      ) : (
+                        <div className="employees-compact-list">
+                          {filteredList.map((employee) => (
+                            <CompactRow
+                              key={employee.id}
+                              name={employee.name}
+                              archived={employee.archived}
+                              selected={selectedEmployeeIds.includes(employee.id)}
+                              onToggleSelect={() => toggleEmployeeSelection(employee.id)}
+                              onEdit={() => setEditingEmployee(employee)}
+                              onDelete={advancedModeEnabled ? () => deleteEmployee(employee) : undefined}
+                              onToggleArchive={() => toggleEmployeeArchive(employee)}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </>
                   )}
                 </GroupCard>
               ))}
