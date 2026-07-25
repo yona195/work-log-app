@@ -130,9 +130,9 @@ img {
     gap: 20px;
 
     width: 100%;
-    padding: 24px 32px;
+    padding: 14px 16px;
 
-    background: var(--color-surface);
+    background: var(--color-background);
     border-inline-start: 1px solid rgba(255, 255, 255, 0.1);
 }
 
@@ -164,7 +164,7 @@ img {
     font-weight: 700;
     line-height: 1.25;
 
-    color: var(--color-brand-orange);
+    color: var(--color-text);
 }
 
 .topbar-title {
@@ -228,7 +228,7 @@ img {
     font-weight: 700;
     line-height: 1.3;
 
-    color: var(--color-muted);
+    color: var(--color-text);
 }
 
 .topbar-last-login-value {
