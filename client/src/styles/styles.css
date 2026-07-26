@@ -1616,6 +1616,69 @@ body.loading .menu-overlay {
     font-weight: 400 !important;
 }
 
+.dashboard-section-note {
+    margin-top: 4px;
+    margin-bottom: 0;
+
+    color: var(--color-muted);
+    font-size: 13px;
+    font-weight: 400;
+}
+
+/* Existing bar chart (right, in RTL) paired with a new PieChart (left) —
+   used under כוח אדם / אתרי עבודה / מזמיני עבודה, and for the two
+   monthly-trend charts side by side. */
+.dashboard-chart-pie-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+/* Grid items default to min-width: auto, which lets the chart canvas's
+   intrinsic width push the column wider than its track instead of
+   shrinking to fit — constrain both children so charts stay in bounds. */
+.dashboard-chart-pie-row > * {
+    min-width: 0;
+}
+
+.dashboard-pie-chart {
+    display: flex;
+    flex-direction: column;
+}
+
+.dashboard-pie-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 16px;
+
+    margin-top: 12px;
+}
+
+.dashboard-pie-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+
+    font-size: 13px;
+}
+
+.dashboard-pie-legend-swatch {
+    flex-shrink: 0;
+
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+}
+
+.dashboard-pie-legend-label {
+    color: var(--color-text);
+    font-weight: 500;
+}
+
+.dashboard-pie-legend-percent {
+    color: var(--color-muted);
+}
+
 .missing-rates-card {
     border-right: 5px solid #f59e0b;
 }
@@ -1872,6 +1935,10 @@ body.loading .menu-overlay {
 
     .chart-container {
         height: 320px;
+    }
+
+    .dashboard-chart-pie-row {
+        grid-template-columns: 1fr;
     }
 
     .loading-box {

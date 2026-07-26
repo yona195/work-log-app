@@ -1,12 +1,18 @@
 import { useMemo, useState } from "react";
 import ProfitBarChart from "../components/ProfitBarChart.jsx";
 import RevenueCostBarChart from "../components/RevenueCostBarChart.jsx";
+import PieChart from "../components/PieChart.jsx";
+import MonthlyTrendChart from "../components/MonthlyTrendChart.jsx";
 import DatePicker from "../components/DatePicker.jsx";
 import { useData } from "../state/DataProvider.jsx";
 import { formatCurrency, formatExcelDate } from "../lib/format.js";
 import { getCurrentMonthRange } from "../lib/entities.js";
 import { getMissingRatesForLogs } from "../lib/finance.js";
-import { calculateFinancialSummary, filterReportLogs } from "../lib/reports.js";
+import {
+  calculateFinancialSummary,
+  calculateMonthlySummaries,
+  filterReportLogs,
+} from "../lib/reports.js";
 
 function formatLocalDate(date) {
   const year = date.getFullYear();
@@ -95,6 +101,27 @@ export default function Dashboard() {
   const missingRates = useMemo(
     () => getMissingRatesForLogs(data, data.workLogs),
     [data]
+  );
+
+  // Fixed to the current year (January through this month) — deliberately
+  // independent of the period picker above, which only affects the
+  // "סיכום כספי" totals and the three breakdown sections.
+  const monthlySummaries = useMemo(() => calculateMonthlySummaries(data), [data]);
+  const hasMonthlyTrendData = monthlySummaries.some(
+    (m) => m.revenue !== 0 || m.cost !== 0 || m.profit !== 0
+  );
+
+  const workforceCostShare = useMemo(
+    () => workforce.map((g) => ({ name: g.name, value: g.cost })),
+    [workforce]
+  );
+  const sitesProfitShare = useMemo(
+    () => sites.map((g) => ({ name: g.name, value: g.profit })),
+    [sites]
+  );
+  const customersRevenueShare = useMemo(
+    () => customers.map((g) => ({ name: g.name, value: g.revenue })),
+    [customers]
   );
 
   return (
@@ -201,7 +228,10 @@ export default function Dashboard() {
               אין נתונים מתאימים בתקופה שנבחרה.
             </p>
           ) : (
-            <RevenueCostBarChart groups={workforce} />
+            <div className="dashboard-chart-pie-row">
+              <RevenueCostBarChart groups={workforce} />
+              <PieChart groups={workforceCostShare} valueLabel="עלות" />
+            </div>
           )}
         </div>
 
@@ -241,7 +271,10 @@ export default function Dashboard() {
               אין נתונים מתאימים בתקופה שנבחרה.
             </p>
           ) : (
-            <ProfitBarChart groups={sites} label="רווח" />
+            <div className="dashboard-chart-pie-row">
+              <ProfitBarChart groups={sites} label="רווח" />
+              <PieChart groups={sitesProfitShare} valueLabel="רווח" />
+            </div>
           )}
         </div>
 
@@ -281,7 +314,28 @@ export default function Dashboard() {
               אין נתונים מתאימים בתקופה שנבחרה.
             </p>
           ) : (
-            <ProfitBarChart groups={customers} label="רווח" />
+            <div className="dashboard-chart-pie-row">
+              <ProfitBarChart groups={customers} label="רווח" />
+              <PieChart groups={customersRevenueShare} valueLabel="הכנסות" />
+            </div>
+          )}
+        </div>
+
+        <div className="card" style={{ marginTop: 20 }}>
+          <h3>מגמה שנתית</h3>
+          <p className="dashboard-section-note">
+            ינואר עד החודש הנוכחי — לא תלוי בבחירת התקופה למעלה.
+          </p>
+
+          {hasMonthlyTrendData ? (
+            <div className="dashboard-chart-pie-row">
+              <MonthlyTrendChart mode="profit" data={monthlySummaries} />
+              <MonthlyTrendChart mode="revenue-cost" data={monthlySummaries} />
+            </div>
+          ) : (
+            <p className="dashboard-empty-text" style={{ marginTop: 20 }}>
+              אין נתונים מתאימים.
+            </p>
           )}
         </div>
 

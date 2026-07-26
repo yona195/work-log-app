@@ -16,6 +16,22 @@ export const HEBREW_MONTHS = [
 // Sunday-first, matching the app's work week.
 export const HEBREW_WEEKDAYS_SHORT = ["א׳", "ב׳", "ג׳", "ד׳", "ה׳", "ו׳", "ש׳"];
 
+// Short labels for narrow spaces (e.g. monthly trend chart axis ticks).
+export const HEBREW_MONTHS_SHORT = [
+  "ינו",
+  "פבר",
+  "מרץ",
+  "אפר",
+  "מאי",
+  "יונ",
+  "יול",
+  "אוג",
+  "ספט",
+  "אוק",
+  "נוב",
+  "דצמ",
+];
+
 function pad(n) {
   return String(n).padStart(2, "0");
 }

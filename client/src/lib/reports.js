@@ -1,4 +1,5 @@
 import { normalizeDate, formatMonthLabel } from "./format.js";
+import { HEBREW_MONTHS_SHORT } from "./calendar.js";
 import {
   getEmployeeIds,
   getName,
@@ -255,6 +256,40 @@ export function calculateFinancialSummary(data, logs, filters) {
     customers: Object.values(customerGroups),
     missingRates,
   };
+}
+
+/**
+ * One calculateFinancialSummary totals row per calendar month of the
+ * current year, January through the current month (real logged data
+ * only — a month with no matching logs just comes back at 0/0/0, it's
+ * never skipped, so the array always has a fixed, predictable length
+ * for a trend chart's x-axis).
+ * Returns [{ month: "ינו", revenue, cost, profit }, ...].
+ */
+export function calculateMonthlySummaries(data) {
+  const now = new Date();
+  const year = now.getFullYear();
+  const currentMonthIndex = now.getMonth(); // 0 = January
+
+  const summaries = [];
+  for (let monthIndex = 0; monthIndex <= currentMonthIndex; monthIndex += 1) {
+    const monthNum = String(monthIndex + 1).padStart(2, "0");
+    const lastDay = new Date(year, monthIndex + 1, 0).getDate();
+    const filters = {
+      from: `${year}-${monthNum}-01`,
+      to: `${year}-${monthNum}-${String(lastDay).padStart(2, "0")}`,
+    };
+    const logs = filterReportLogs(data, filters);
+    const summary = calculateFinancialSummary(data, logs, filters);
+    summaries.push({
+      month: HEBREW_MONTHS_SHORT[monthIndex],
+      revenue: summary.totalRevenue,
+      cost: summary.totalCost,
+      profit: summary.totalProfit,
+    });
+  }
+
+  return summaries;
 }
 
 /**

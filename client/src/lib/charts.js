@@ -1,5 +1,6 @@
 // Register the Chart.js pieces used by the dashboard once, on import.
 import {
+  ArcElement,
   BarElement,
   CategoryScale,
   Chart as ChartJS,
@@ -8,7 +9,7 @@ import {
   Tooltip,
 } from "chart.js";
 
-ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend);
+ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Tooltip, Legend);
 
 export { ChartJS };
 
