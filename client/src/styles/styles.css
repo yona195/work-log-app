@@ -3,20 +3,20 @@
 ========================================= */
 
 :root {
-    --color-primary: #2563eb;
-    --color-primary-hover: #1d4ed8;
-    --color-primary-soft: #eff6ff;
+    --color-primary: #2952d4;
+    --color-primary-hover: #1e3fae;
+    --color-primary-soft: #eef2ff;
 
-    --color-sidebar: #111827;
-    --color-sidebar-hover: #1f2937;
-    --color-sidebar-text: #f9fafb;
-    --color-sidebar-muted: #9ca3af;
+    --color-sidebar: #0f172a;
+    --color-sidebar-hover: #1c2942;
+    --color-sidebar-text: #f8fafc;
+    --color-sidebar-muted: #93a1bd;
 
-    --color-background: #f3f4f6;
+    --color-background: #f4f5f9;
     --color-surface: #ffffff;
-    --color-text: #1f2937;
+    --color-text: #1e2433;
     --color-muted: #6b7280;
-    --color-border: #e5e7eb;
+    --color-border: #e6e8f0;
 
     --color-danger: #dc2626;
     --color-warning: #f59e0b;
@@ -29,15 +29,20 @@
     --color-brand-orange: #e75e28;
     --color-brand-orange-soft: #fdf1ea;
 
-    --radius-small: 8px;
-    --radius-medium: 12px;
-    --radius-large: 16px;
+    --font-heading: "Rubik", "Assistant", Arial, sans-serif;
+    --font-body: "Assistant", "Rubik", Arial, sans-serif;
+
+    --radius-small: 10px;
+    --radius-medium: 14px;
+    --radius-large: 18px;
 
     --shadow-small:
-        0 1px 3px rgba(15, 23, 42, 0.08);
+        0 1px 2px rgba(15, 23, 42, 0.05),
+        0 2px 6px rgba(15, 23, 42, 0.05);
 
     --shadow-medium:
-        0 8px 24px rgba(15, 23, 42, 0.08);
+        0 10px 30px rgba(15, 23, 42, 0.10),
+        0 2px 8px rgba(15, 23, 42, 0.06);
 
     --sidebar-width: 260px;
 }
@@ -63,18 +68,16 @@ body {
     width: 100%;
     min-height: 100vh;
 
-    font-family:
-        Arial,
-        Helvetica,
-        sans-serif;
+    font-family: var(--font-body);
 
     direction: rtl;
 
     background: var(--color-background);
     color: var(--color-text);
 
-    line-height: 1.5;
+    line-height: 1.55;
     overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
 }
 
 button,
@@ -131,39 +134,24 @@ img {
 
     width: 100%;
     min-height: 80px;
-    padding: 14px 16px;
+    padding: 14px 30px;
 
-    background: var(--color-background);
-    border-inline-start: 1px solid rgba(255, 255, 255, 0.1);
+    background: var(--color-surface);
+    border-bottom: 1px solid var(--color-border);
 }
 
-/* One small, localized glow near the company logo, instead of a
-   gradient spanning the whole bar — the rest of the background stays
-   flat #111827. Sits behind the real content (z-index: 0), which is
-   why .topbar-meta-group gets position + z-index below. */
 .topbar::after {
-    content: "";
-
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    left: 0;
-
-    width: 180px;
-
-    background: radial-gradient(ellipse at left, rgba(231, 94, 40, 0.12) 0%, rgba(231, 94, 40, 0) 70%);
-
-    pointer-events: none;
-    z-index: 0;
+    display: none;
 }
 
 .topbar h1 {
     margin: 0;
 
-    font-family: "Rubik", sans-serif;
+    font-family: var(--font-heading);
     font-size: 22px;
     font-weight: 700;
     line-height: 1.25;
+    letter-spacing: -0.2px;
 
     color: var(--color-text);
 }
@@ -182,9 +170,18 @@ img {
 }
 
 .topbar-page-icon {
-    font-size: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 
-    color: #e75e28;
+    width: 46px;
+    height: 46px;
+
+    font-size: 24px;
+    color: var(--color-brand-orange);
+
+    background: var(--color-brand-orange-soft);
+    border-radius: var(--radius-medium);
 }
 
 .topbar-meta-group {
@@ -207,7 +204,8 @@ img {
     padding: 10px 18px;
     white-space: nowrap;
 
-    background: rgba(255, 255, 255, 0.06);
+    background: var(--color-background);
+    border: 1px solid var(--color-border);
     border-radius: 999px;
 }
 
@@ -272,11 +270,11 @@ img {
 
 .card {
     width: 100%;
-    padding: 24px;
+    padding: 26px 28px;
 
     background: var(--color-surface);
-    border: 1px solid rgba(229, 231, 235, 0.8);
-    border-radius: var(--radius-medium);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-large);
 
     box-shadow: var(--shadow-small);
 }
@@ -284,6 +282,7 @@ img {
 .card h2,
 .card h3,
 .card h4 {
+    font-family: var(--font-heading);
     color: var(--color-text);
 }
 
@@ -406,17 +405,19 @@ a.pdf-btn {
 .pdf-btn {
     min-height: 42px;
 
-    padding: 10px 18px;
+    padding: 10px 20px;
 
     border-radius: var(--radius-small);
 
+    font-family: var(--font-body);
     font-size: 14px;
-    font-weight: 600;
+    font-weight: 700;
 
     transition:
         background-color 0.2s ease,
         border-color 0.2s ease,
         color 0.2s ease,
+        box-shadow 0.2s ease,
         transform 0.15s ease;
 }
 
@@ -444,6 +445,7 @@ a.pdf-btn {
 .primary-btn:hover {
     background: var(--color-primary-hover);
     border-color: var(--color-primary-hover);
+    box-shadow: 0 6px 18px rgba(41, 82, 212, 0.3);
 }
 
 .secondary-btn {
@@ -507,18 +509,18 @@ table {
     background: var(--color-surface);
 
     border: 1px solid var(--color-border);
-    border-radius: var(--radius-small);
+    border-radius: var(--radius-medium);
 
     overflow: hidden;
 }
 
 thead {
-    background: var(--color-primary);
+    background: var(--color-background);
 }
 
 th,
 td {
-    padding: 12px 14px;
+    padding: 13px 14px;
 
     border-bottom: 1px solid var(--color-border);
 
@@ -529,12 +531,14 @@ td {
 }
 
 th {
-    color: white;
+    color: var(--color-muted);
+    font-size: 12.5px;
     font-weight: 700;
+    letter-spacing: 0.3px;
 }
 
 td {
-    color: #374151;
+    color: var(--color-text);
 }
 
 tbody tr:last-child td {
@@ -542,11 +546,11 @@ tbody tr:last-child td {
 }
 
 tbody tr:nth-child(even) {
-    background: #f9fafb;
+    background: var(--color-background);
 }
 
 tbody tr:hover {
-    background: #eff6ff;
+    background: var(--color-primary-soft);
 }
 
 /* Compact prev/label/next control, anchored to the visual left (flex-end
@@ -754,8 +758,8 @@ tbody tr:hover {
     background:
         linear-gradient(
             180deg,
-            #111827 0%,
-            #172033 100%
+            #0f172a 0%,
+            #16223d 100%
         );
 
     color: var(--color-sidebar-text);
@@ -778,11 +782,11 @@ tbody tr:hover {
     min-height: 58px;
 
     padding: 0 10px 18px;
-    margin-bottom: 12px;
+    margin-bottom: 14px;
 
     color: #f0956a;
 
-    font-family: "Rubik", sans-serif;
+    font-family: var(--font-heading);
     font-size: 25px;
     font-weight: 800;
     letter-spacing: 0.2px;
@@ -860,6 +864,7 @@ tbody tr:hover {
     text-align: right;
     text-decoration: none;
 
+    font-family: var(--font-body);
     font-size: 15px;
     font-weight: 600;
 
@@ -1550,7 +1555,7 @@ body.loading .menu-overlay {
    override below 900px. */
 @media (min-width: 901px) {
     .dashboard-summary-cards {
-        grid-template-columns: repeat(3, minmax(220px, 1fr));
+        grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 }
 
