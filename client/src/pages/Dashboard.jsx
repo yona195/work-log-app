@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import ProfitBarChart from "../components/ProfitBarChart.jsx";
-import RevenueCostBarChart from "../components/RevenueCostBarChart.jsx";
 import PieChart from "../components/PieChart.jsx";
 import MonthlyTrendChart from "../components/MonthlyTrendChart.jsx";
 import DatePicker from "../components/DatePicker.jsx";
@@ -111,8 +110,8 @@ export default function Dashboard() {
     (m) => m.revenue !== 0 || m.cost !== 0 || m.profit !== 0
   );
 
-  const workforceCostShare = useMemo(
-    () => workforce.map((g) => ({ name: g.name, value: g.cost })),
+  const workforceProfitShare = useMemo(
+    () => workforce.map((g) => ({ name: g.name, value: g.profit })),
     [workforce]
   );
   const sitesProfitShare = useMemo(
@@ -222,15 +221,15 @@ export default function Dashboard() {
             </table>
           )}
 
-          <h4 style={{ marginTop: 20 }}>הכנסות מול הוצאות לפי כוח אדם</h4>
+          <h4 style={{ marginTop: 20 }}>רווח לפי כוח אדם</h4>
           {workforce.length === 0 ? (
             <p className="dashboard-empty-text">
               אין נתונים מתאימים בתקופה שנבחרה.
             </p>
           ) : (
             <div className="dashboard-chart-pie-row">
-              <RevenueCostBarChart groups={workforce} />
-              <PieChart groups={workforceCostShare} valueLabel="עלות" />
+              <ProfitBarChart groups={workforce} label="רווח" />
+              <PieChart groups={workforceProfitShare} valueLabel="רווח" />
             </div>
           )}
         </div>
@@ -328,10 +327,7 @@ export default function Dashboard() {
           </p>
 
           {hasMonthlyTrendData ? (
-            <div className="dashboard-chart-pie-row">
-              <MonthlyTrendChart mode="profit" data={monthlySummaries} />
-              <MonthlyTrendChart mode="revenue-cost" data={monthlySummaries} />
-            </div>
+            <MonthlyTrendChart data={monthlySummaries} />
           ) : (
             <p className="dashboard-empty-text" style={{ marginTop: 20 }}>
               אין נתונים מתאימים.

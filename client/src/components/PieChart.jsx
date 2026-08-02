@@ -1,6 +1,6 @@
 import { Doughnut } from "react-chartjs-2";
 import { formatCurrency } from "../lib/format.js";
-import { CATEGORICAL_COLORS } from "../lib/charts.js";
+import { CATEGORICAL_COLORS, centerTextPlugin } from "../lib/charts.js";
 
 // Generic doughnut for "share of <valueLabel> by <entity>" — a negative
 // slice (e.g. a loss-making site's profit) is sized by its magnitude like
@@ -9,6 +9,9 @@ import { CATEGORICAL_COLORS } from "../lib/charts.js";
 export default function PieChart({ groups, valueLabel }) {
   const colors = groups.map((_, index) => CATEGORICAL_COLORS[index % CATEGORICAL_COLORS.length]);
   const total = groups.reduce((sum, g) => sum + Math.abs(g.value), 0);
+  // The real net total (unlike `total` above, not clamped to magnitude) —
+  // what the center-text plugin shows, so a net loss still reads negative.
+  const signedTotal = groups.reduce((sum, g) => sum + g.value, 0);
 
   return (
     <div className="dashboard-pie-chart">
@@ -25,6 +28,7 @@ export default function PieChart({ groups, valueLabel }) {
               },
             ],
           }}
+          plugins={[centerTextPlugin]}
           options={{
             responsive: true,
             maintainAspectRatio: false,
@@ -36,6 +40,7 @@ export default function PieChart({ groups, valueLabel }) {
                     `${ctx.label}: ${formatCurrency(groups[ctx.dataIndex].value)}`,
                 },
               },
+              centerText: { value: formatCurrency(signedTotal) },
             },
           }}
         />
