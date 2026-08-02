@@ -297,9 +297,12 @@ img {
 }
 
 .card h4 {
-    margin-top: 8px;
-    margin-bottom: 12px;
-    font-size: 16px;
+    margin-top: 4px;
+    margin-bottom: 4px;
+
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--color-muted);
 }
 
 /*
@@ -1282,7 +1285,7 @@ tbody tr:hover {
     /* גרפים */
 
     .chart-container {
-        height: 320px;
+        height: 280px;
     }
 }
 
@@ -1341,7 +1344,7 @@ tbody tr:hover {
     }
 
     .chart-container {
-        height: 280px;
+        height: 240px;
     }
 }
 /* =========================================
@@ -1608,7 +1611,7 @@ body.loading .menu-overlay {
     position: relative;
 
     width: 100%;
-    height: 380px;
+    height: 300px;
 
     margin-top: 20px;
 }
@@ -1637,6 +1640,11 @@ body.loading .menu-overlay {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 20px;
+
+    margin-top: 16px;
+    padding-top: 16px;
+
+    border-top: 1px dashed var(--color-border);
 }
 
 /* Grid items default to min-width: auto, which lets the chart canvas's
@@ -1939,7 +1947,7 @@ body.loading .menu-overlay {
 @media (max-width: 900px) {
 
     .chart-container {
-        height: 320px;
+        height: 280px;
     }
 
     .dashboard-chart-pie-row {
@@ -1984,7 +1992,7 @@ body.loading .menu-overlay {
     }
 
     .chart-container {
-        height: 280px;
+        height: 240px;
     }
 
     .missing-rates-card {
