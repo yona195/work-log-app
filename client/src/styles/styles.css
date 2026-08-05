@@ -812,7 +812,7 @@ tbody tr:hover {
 .sidebar-close-btn {
     display: none;
     position: absolute;
-    left: 16px;
+    left: 8px;
     top: 50%;
     transform: translateY(-50%);
 
@@ -832,6 +832,9 @@ tbody tr:hover {
 
 .sidebar-close-btn .material-symbols-rounded {
     font-size: 18px;
+    font-variation-settings: "opsz" 18;
+    line-height: 1;
+    display: block;
 }
 
 
