@@ -8,6 +8,12 @@ export default function Topbar({ title, icon, menuOpen, onToggleMenu }) {
   return (
     <header className="topbar">
       <div className="topbar-title">
+        <span className="material-symbols-rounded topbar-page-icon" aria-hidden="true">
+          {icon}
+        </span>
+        <div className="topbar-title-text">
+          <h1>{title}</h1>
+        </div>
         {!menuOpen && (
           <button
             className="menu-toggle"
@@ -21,12 +27,6 @@ export default function Topbar({ title, icon, menuOpen, onToggleMenu }) {
             </span>
           </button>
         )}
-        <span className="material-symbols-rounded topbar-page-icon" aria-hidden="true">
-          {icon}
-        </span>
-        <div className="topbar-title-text">
-          <h1>{title}</h1>
-        </div>
       </div>
 
       <div className="topbar-meta-group">
