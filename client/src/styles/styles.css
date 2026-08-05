@@ -812,7 +812,7 @@ tbody tr:hover {
 .sidebar-close-btn {
     display: none;
     position: absolute;
-    left: 8px;
+    left: 4px;
     top: 50%;
     transform: translateY(-50%);
 
@@ -822,6 +822,7 @@ tbody tr:hover {
 
     width: 32px;
     height: 32px;
+    min-height: 32px;
 
     background: rgba(255, 255, 255, 0.08);
     border: none;
@@ -1116,7 +1117,7 @@ tbody tr:hover {
 
         padding:
             calc(20px + env(safe-area-inset-top))
-            16px
+            8px
             calc(22px + env(safe-area-inset-bottom));
 
         overflow-y: auto;
