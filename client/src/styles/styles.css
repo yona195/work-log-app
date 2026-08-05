@@ -1030,7 +1030,10 @@ tbody tr:hover {
 
     .menu-toggle {
         display: flex;
-        position: relative;
+        position: absolute;
+        right: 16px;
+        top: 50%;
+        transform: translateY(-50%);
         z-index: 1101;
 
         flex-shrink: 0;
@@ -1057,7 +1060,7 @@ tbody tr:hover {
     }
 
     .menu-toggle:active {
-        transform: scale(0.96);
+        transform: translateY(-50%) scale(0.96);
     }
 
     .sidebar-close-btn {
