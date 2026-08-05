@@ -816,8 +816,8 @@ tbody tr:hover {
     align-items: center;
     justify-content: center;
 
-    width: 36px;
-    height: 36px;
+    width: 44px;
+    height: 44px;
 
     background: rgba(255, 255, 255, 0.08);
     border: none;
@@ -1124,7 +1124,7 @@ tbody tr:hover {
     /* לוגו במובייל */
 
     .sidebar-logo {
-        justify-content: center;
+        justify-content: space-between;
 
         min-height: 48px;
 
