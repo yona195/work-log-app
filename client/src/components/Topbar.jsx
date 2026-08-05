@@ -9,13 +9,15 @@ export default function Topbar({ title, icon, menuOpen, onToggleMenu }) {
     <header className="topbar">
       <div className="topbar-title">
         <button
-          className="menu-toggle"
+          className={`menu-toggle${menuOpen ? " open" : ""}`}
           type="button"
           aria-label={menuOpen ? "סגירת תפריט" : "פתיחת תפריט"}
           aria-expanded={menuOpen}
           onClick={onToggleMenu}
         >
-          {menuOpen ? "✕" : "☰"}
+          <span className="material-symbols-rounded" aria-hidden="true">
+            {menuOpen ? "close" : "menu"}
+          </span>
         </button>
         <span className="material-symbols-rounded topbar-page-icon" aria-hidden="true">
           {icon}

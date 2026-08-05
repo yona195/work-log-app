@@ -1032,6 +1032,17 @@ tbody tr:hover {
         transform: scale(0.96);
     }
 
+    /* Open state: the button now sits over the dark sidebar it triggered,
+       so it reads as part of that panel instead of a floating blue chip
+       left over from the light topbar behind it. */
+    .menu-toggle.open {
+        margin-top: 62px;
+
+        background: rgba(255, 255, 255, 0.08);
+        color: white;
+        box-shadow: none;
+    }
+
     /* שכבת רקע */
 
     .menu-overlay {
