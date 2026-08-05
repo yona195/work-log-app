@@ -1,13 +1,22 @@
 import { useData } from "../state/DataProvider.jsx";
 import { formatDateTime } from "../lib/format.js";
 
-export default function Topbar({ title, icon }) {
+export default function Topbar({ title, icon, menuOpen, onToggleMenu }) {
   const { data } = useData();
   const { previousLogin } = data;
 
   return (
     <header className="topbar">
       <div className="topbar-title">
+        <button
+          className="menu-toggle"
+          type="button"
+          aria-label={menuOpen ? "סגירת תפריט" : "פתיחת תפריט"}
+          aria-expanded={menuOpen}
+          onClick={onToggleMenu}
+        >
+          {menuOpen ? "✕" : "☰"}
+        </button>
         <span className="material-symbols-rounded topbar-page-icon" aria-hidden="true">
           {icon}
         </span>

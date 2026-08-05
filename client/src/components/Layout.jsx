@@ -31,16 +31,6 @@ export default function Layout({ children }) {
 
   return (
     <>
-      <button
-        className="menu-toggle"
-        type="button"
-        aria-label={menuOpen ? "סגירת תפריט" : "פתיחת תפריט"}
-        aria-expanded={menuOpen}
-        onClick={() => setMenuOpen((v) => !v)}
-      >
-        {menuOpen ? "✕" : "☰"}
-      </button>
-
       <div
         className={`menu-overlay${menuOpen ? " open" : ""}`}
         onClick={() => setMenuOpen(false)}
@@ -49,7 +39,12 @@ export default function Layout({ children }) {
       <div className="app">
         <Sidebar open={menuOpen} onNavigate={() => setMenuOpen(false)} />
         <main className="main">
-          <Topbar title={title} icon={icon} />
+          <Topbar
+            title={title}
+            icon={icon}
+            menuOpen={menuOpen}
+            onToggleMenu={() => setMenuOpen((v) => !v)}
+          />
           <section id="content">{children}</section>
         </main>
       </div>

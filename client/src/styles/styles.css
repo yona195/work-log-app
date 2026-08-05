@@ -961,7 +961,10 @@ tbody tr:hover {
    18. תפריט המבורגר
 ========================================= */
 
-.menu-toggle,
+.menu-toggle {
+    display: none;
+}
+
 .menu-overlay {
     display: none;
 }
@@ -997,12 +1000,8 @@ tbody tr:hover {
 
     .menu-toggle {
         display: flex;
-        position: fixed;
 
-        top: max(14px, env(safe-area-inset-top));
-        right: 14px;
-
-        z-index: 1101;
+        flex-shrink: 0;
 
         width: 48px;
         height: 48px;
@@ -1152,10 +1151,7 @@ tbody tr:hover {
     .topbar {
         width: 100%;
 
-        padding:
-            calc(76px + env(safe-area-inset-top))
-            16px
-            18px;
+        padding: 14px 16px 18px;
     }
 
     .topbar h1 {
@@ -1297,9 +1293,6 @@ tbody tr:hover {
 @media (max-width: 480px) {
 
     .menu-toggle {
-        top: max(12px, env(safe-area-inset-top));
-        right: 12px;
-
         width: 46px;
         height: 46px;
 
