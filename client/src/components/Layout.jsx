@@ -37,7 +37,12 @@ export default function Layout({ children }) {
       ></div>
 
       <div className="app">
-        <Sidebar open={menuOpen} onNavigate={() => setMenuOpen(false)} />
+        <Sidebar
+          open={menuOpen}
+          onNavigate={() => setMenuOpen(false)}
+          menuOpen={menuOpen}
+          onClose={() => setMenuOpen(false)}
+        />
         <main className="main">
           <Topbar
             title={title}

@@ -778,6 +778,7 @@ tbody tr:hover {
     display: flex;
     align-items: center;
     justify-content: center;
+    gap: 12px;
 
     min-height: 58px;
 
@@ -803,6 +804,26 @@ tbody tr:hover {
     max-height: 32px;
 
     object-fit: contain;
+}
+
+/* Mobile-only close button, rendered inside .sidebar-logo itself — only
+   ever shown on desktop by accident if this weren't hidden by default,
+   since the desktop sidebar has no open/closed state of its own. */
+.sidebar-close-btn {
+    display: none;
+
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+
+    width: 36px;
+    height: 36px;
+
+    background: rgba(255, 255, 255, 0.08);
+    border: none;
+    border-radius: 8px;
+
+    color: white;
 }
 
 
@@ -1032,15 +1053,8 @@ tbody tr:hover {
         transform: scale(0.96);
     }
 
-    /* Open state: the button now sits over the dark sidebar it triggered,
-       so it reads as part of that panel instead of a floating blue chip
-       left over from the light topbar behind it. */
-    .menu-toggle.open {
-        margin-top: 62px;
-
-        background: rgba(255, 255, 255, 0.08);
-        color: white;
-        box-shadow: none;
+    .sidebar-close-btn {
+        display: flex;
     }
 
     /* שכבת רקע */
@@ -1090,7 +1104,7 @@ tbody tr:hover {
         min-height: 100vh;
 
         padding:
-            calc(76px + env(safe-area-inset-top))
+            calc(20px + env(safe-area-inset-top))
             16px
             calc(22px + env(safe-area-inset-bottom));
 

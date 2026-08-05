@@ -2,13 +2,25 @@ import { NavLink } from "react-router-dom";
 import { NAV_SECTIONS } from "../nav.js";
 import { useAuth } from "../state/AuthProvider.jsx";
 
-export default function Sidebar({ open, onNavigate }) {
+export default function Sidebar({ open, onNavigate, menuOpen, onClose }) {
   const { authRequired, logout } = useAuth();
 
   return (
     <aside className={`sidebar${open ? " open" : ""}`}>
       <div className="sidebar-logo">
         <img src="/mitco-logo.png" alt="MITCO" />
+        {menuOpen && (
+          <button
+            type="button"
+            className="sidebar-close-btn"
+            aria-label="סגירת תפריט"
+            onClick={onClose}
+          >
+            <span className="material-symbols-rounded" aria-hidden="true">
+              close
+            </span>
+          </button>
+        )}
       </div>
 
       {NAV_SECTIONS.map((section, index) => (

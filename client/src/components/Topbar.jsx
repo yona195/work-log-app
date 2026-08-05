@@ -8,17 +8,19 @@ export default function Topbar({ title, icon, menuOpen, onToggleMenu }) {
   return (
     <header className="topbar">
       <div className="topbar-title">
-        <button
-          className={`menu-toggle${menuOpen ? " open" : ""}`}
-          type="button"
-          aria-label={menuOpen ? "סגירת תפריט" : "פתיחת תפריט"}
-          aria-expanded={menuOpen}
-          onClick={onToggleMenu}
-        >
-          <span className="material-symbols-rounded" aria-hidden="true">
-            {menuOpen ? "close" : "menu"}
-          </span>
-        </button>
+        {!menuOpen && (
+          <button
+            className="menu-toggle"
+            type="button"
+            aria-label="פתיחת תפריט"
+            aria-expanded={menuOpen}
+            onClick={onToggleMenu}
+          >
+            <span className="material-symbols-rounded" aria-hidden="true">
+              menu
+            </span>
+          </button>
+        )}
         <span className="material-symbols-rounded topbar-page-icon" aria-hidden="true">
           {icon}
         </span>
